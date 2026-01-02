@@ -23,6 +23,8 @@ dependencies {
     implementation project(':modules:taste')
     implementation project(':modules:search')
 
+    implementation project(':infra:redis')
+
     // Test
     testImplementation 'com.tngtech.archunit:archunit-junit5:1.4.0'
     testImplementation 'org.testcontainers:junit-jupiter'

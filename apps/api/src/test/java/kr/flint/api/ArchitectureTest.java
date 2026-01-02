@@ -21,6 +21,7 @@ class ArchitectureTest {
     private static final String ROOT_PACKAGE = "kr.flint";
     private static final String API_PACKAGE = "kr.flint.api";
     private static final String SHARED_PACKAGE = "kr.flint.shared";
+    private static final String INFRA_PACKAGE = "kr.flint.infra";
 
     private static final String[] DOMAIN_MODULES = {
             "kr.flint.user",
@@ -30,6 +31,10 @@ class ArchitectureTest {
             "kr.flint.bookmark",
             "kr.flint.taste",
             "kr.flint.search"
+    };
+
+    private static final String[] INFRA_MODULES = {
+            "kr.flint.infra.redis"
     };
 
     @BeforeAll
@@ -75,6 +80,30 @@ class ArchitectureTest {
             ArchRule rule = SlicesRuleDefinition.slices()
                     .matching("kr.flint.(*)..")
                     .should().beFreeOfCycles();
+
+            rule.check(allClasses);
+        }
+
+        @Test
+        @DisplayName("infra 모듈은 도메인 모듈에 의존하지 않는다")
+        void infra_should_not_depend_on_domain_modules() {
+            ArchRule rule = noClasses()
+                    .that().resideInAPackage(INFRA_PACKAGE + "..")
+                    .should().dependOnClassesThat()
+                    .resideInAnyPackage(toSubPackages(DOMAIN_MODULES))
+                    .allowEmptyShould(true);
+
+            rule.check(allClasses);
+        }
+
+        @Test
+        @DisplayName("infra 모듈은 apps 패키지에 의존하지 않는다")
+        void infra_should_not_depend_on_apps() {
+            ArchRule rule = noClasses()
+                    .that().resideInAPackage(INFRA_PACKAGE + "..")
+                    .should().dependOnClassesThat()
+                    .resideInAPackage(API_PACKAGE + "..")
+                    .allowEmptyShould(true);
 
             rule.check(allClasses);
         }

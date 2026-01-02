@@ -10,3 +10,5 @@ include 'modules:collection'
 include 'modules:bookmark'
 include 'modules:taste'
 include 'modules:search'
+
+include 'infra:redis'

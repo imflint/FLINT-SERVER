@@ -7,6 +7,7 @@
 - **Java 21** + **Spring Boot 3.5**
 - **Gradle** (멀티 모듈)
 - **MySQL 8.0** + **JPA/Hibernate**
+- **Redis** (캐싱)
 - **QueryDSL** (동적 쿼리)
 - **P6Spy** (SQL 로깅)
 
@@ -29,6 +30,9 @@ flint-api/
 │   ├── bookmark/               # 북마크 도메인
 │   ├── taste/                  # 취향 키워드 도메인
 │   └── search/                 # 검색 도메인
+│
+├── infra/
+│   └── redis/                  # Redis 캐싱 인프라
 │
 ├── .env                        # 환경 변수 (git ignored)
 └── PRD.md                      # 제품 요구사항 문서
@@ -105,6 +109,13 @@ REST API 애플리케이션 모듈. 모든 도메인 모듈을 조합하여 API�
 ### modules:search
 검색 기능을 담당합니다.
 
+### infra:redis
+Redis 캐싱 인프라를 담당합니다.
+
+| 패키지 | 역할 |
+|--------|------|
+| `config` | RedisTemplate, CacheManager 설정 |
+
 ## 모듈 의존성 규칙
 
 ```
@@ -115,12 +126,16 @@ apps:api
    ├── modules:collection
    ├── modules:bookmark
    ├── modules:taste
-   └── modules:search
-          │
-          └── modules:shared (모든 모듈이 의존)
+   ├── modules:search
+   │      │
+   │      └── modules:shared (모든 도메인 모듈이 의존)
+   │
+   └── infra:redis
 ```
 
-- `apps:*` → `modules:*`만 의존
+- `apps:*` → `modules:*`, `infra:*` 의존
+- `modules:*` → `modules:shared`만 의존 (다른 도메인 모듈 의존 금지)
+- `infra:*` → 외부 라이브러리만 의존 (도메인 모듈 의존 금지)
 - 엔티티는 단일 모듈 소유, 다른 모듈은 ID로만 참조
 - 모듈 간 순환 의존 금지
 

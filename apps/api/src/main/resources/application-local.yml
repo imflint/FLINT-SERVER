@@ -10,6 +10,11 @@ spring:
       ddl-auto: create
     show-sql: false
 
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+
 decorator:
   datasource:
     p6spy:
