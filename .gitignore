@@ -39,3 +39,4 @@ out/
 .*/
 !.github/
 *.json
+logs/
