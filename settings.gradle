@@ -1,0 +1,12 @@
+rootProject.name = 'flint-api'
+
+include 'apps:api'
+
+include 'modules:shared'
+include 'modules:user'
+include 'modules:auth'
+include 'modules:content'
+include 'modules:collection'
+include 'modules:bookmark'
+include 'modules:taste'
+include 'modules:search'

@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: flint-api
+
+  config:
+    import:
+      - optional:file:.env[.properties]
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+        default_batch_fetch_size: 100
+
+  jackson:
+    default-property-inclusion: non_null
+
+server:
+  port: 8080
+  shutdown: graceful
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs

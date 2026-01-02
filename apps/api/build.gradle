@@ -1,0 +1,31 @@
+plugins {
+    id 'org.springframework.boot'
+}
+
+bootJar {
+    archiveBaseName = 'flint-api'
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+
+    runtimeOnly 'com.mysql:mysql-connector-j'
+    runtimeOnly 'com.github.gavlyukovskiy:p6spy-spring-boot-starter:1.12.1'
+
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
+    implementation project(':modules:shared')
+    implementation project(':modules:user')
+    implementation project(':modules:auth')
+    implementation project(':modules:content')
+    implementation project(':modules:collection')
+    implementation project(':modules:bookmark')
+    implementation project(':modules:taste')
+    implementation project(':modules:search')
+
+    // Test
+    testImplementation 'com.tngtech.archunit:archunit-junit5:1.4.0'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:mysql'
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+}

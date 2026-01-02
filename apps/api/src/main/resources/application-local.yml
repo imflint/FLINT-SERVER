@@ -1,0 +1,29 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create
+    show-sql: false
+
+decorator:
+  datasource:
+    p6spy:
+      enable-logging: true
+      multiline: true
+      logging: slf4j
+
+p6spy:
+  filter:
+    allow:
+      - kr.flint
+    deny:
+      - kr.flint.shared
+
+logging:
+  level:
+    kr.flint: debug
