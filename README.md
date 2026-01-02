@@ -15,13 +15,13 @@
 
 ```
 flint-api/
-├── apps/
+├── apps/                       # 애플리케이션
 │   └── api/                    # REST API 애플리케이션
 │       └── config/             # Security, Swagger, JPA 설정
 │       └── controller/         # API 엔드포인트
 │       └── facade/             # HomeQueryFacade, DiscoveryQueryFacade
 │
-├── modules/
+├── modules/                    # 도메인 모듈
 │   ├── shared/                 # 공통 컴포넌트
 │   ├── user/                   # 사용자 도메인
 │   ├── auth/                   # 인증 도메인
@@ -31,8 +31,8 @@ flint-api/
 │   ├── taste/                  # 취향 키워드 도메인
 │   └── search/                 # 검색 도메인
 │
-├── infra/
-│   └── redis/                  # Redis 캐싱 인프라
+├── infra/                      # 외부 인프라 모듈
+│   └── redis/
 │
 ├── .env                        # 환경 변수 (git ignored)
 └── PRD.md                      # 제품 요구사항 문서
