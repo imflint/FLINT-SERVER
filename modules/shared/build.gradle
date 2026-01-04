@@ -1,0 +1,16 @@
+dependencies {
+    api 'org.springframework.boot:spring-boot-starter-data-jpa'
+    api 'org.springframework.boot:spring-boot-starter-web'
+    api 'org.springframework.boot:spring-boot-starter-validation'
+
+    // TSID
+    api 'io.hypersistence:hypersistence-utils-hibernate-63:3.9.0'
+
+    // swagger
+    api 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.4'
+
+    // p6spy
+    compileOnly 'p6spy:p6spy:3.9.1'
+
+    api 'org.jspecify:jspecify:1.0.0'
+}

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+    <Properties>
+        <Property name="LOG_PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} %highlight{%-5level} [%thread] %cyan{%logger{36}} - %msg%n</Property>
+        <Property name="LOG_PATH">logs</Property>
+    </Properties>
+
+    <Appenders>
+        <!-- 콘솔 출력 -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+        </Console>
+
+        <!-- 파일 출력 (Rolling) -->
+        <RollingFile name="File"
+                     fileName="${LOG_PATH}/flint-api.log"
+                     filePattern="${LOG_PATH}/flint-api.%d{yyyy-MM-dd}.%i.log.gz">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="100MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="30"/>
+        </RollingFile>
+    </Appenders>
+
+    <Loggers>
+        <!-- Spring 프레임워크 -->
+        <Logger name="org.springframework" level="INFO"/>
+        <Logger name="org.springframework.web" level="INFO"/>
+
+        <!-- Hibernate -->
+        <Logger name="org.hibernate" level="INFO"/>
+        <Logger name="org.hibernate.SQL" level="DEBUG"/>
+
+        <!-- 애플리케이션 -->
+        <Logger name="kr.flint" level="DEBUG"/>
+
+        <!-- Root -->
+        <Root level="INFO">
+            <AppenderRef ref="Console"/>
+        </Root>
+    </Loggers>
+
+    <!-- Local 프로파일 -->
+    <SpringProfile name="local">
+        <Loggers>
+            <Logger name="kr.flint" level="DEBUG"/>
+            <Root level="INFO">
+                <AppenderRef ref="Console"/>
+            </Root>
+        </Loggers>
+    </SpringProfile>
+
+    <!-- Prod 프로파일 -->
+    <SpringProfile name="prod">
+        <Loggers>
+            <Logger name="kr.flint" level="INFO"/>
+            <Logger name="org.hibernate.SQL" level="INFO"/>
+            <Root level="INFO">
+                <AppenderRef ref="Console"/>
+                <AppenderRef ref="File"/>
+            </Root>
+        </Loggers>
+    </SpringProfile>
+</Configuration>

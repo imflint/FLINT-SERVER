@@ -1,0 +1,69 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.5.9' apply false
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+allprojects {
+    group = 'kr.flint'
+    version = '0.0.1-SNAPSHOT'
+
+    repositories {
+        mavenCentral()
+    }
+}
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'io.spring.dependency-management'
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(21)
+        }
+    }
+
+    configurations {
+        compileOnly {
+            extendsFrom annotationProcessor
+        }
+        // Logback 제외
+        configureEach {
+            exclude group: 'org.springframework.boot', module: 'spring-boot-starter-logging'
+        }
+    }
+
+    dependencyManagement {
+        imports {
+            mavenBom 'org.springframework.boot:spring-boot-dependencies:3.5.9'
+            mavenBom 'org.testcontainers:testcontainers-bom:1.20.4'
+        }
+    }
+
+    dependencies {
+        // Log4j2
+        implementation 'org.springframework.boot:spring-boot-starter-log4j2'
+
+        compileOnly 'org.projectlombok:lombok'
+        annotationProcessor 'org.projectlombok:lombok'
+        testCompileOnly 'org.projectlombok:lombok'
+        testAnnotationProcessor 'org.projectlombok:lombok'
+
+        implementation 'com.querydsl:querydsl-jpa:5.1.0:jakarta'
+        annotationProcessor 'com.querydsl:querydsl-apt:5.1.0:jakarta'
+        annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
+        annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
+
+        testImplementation 'org.springframework.boot:spring-boot-starter-test'
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    }
+
+    tasks.named('test') {
+        useJUnitPlatform()
+    }
+}
+
+// 모듈 공통 설정
+configure(subprojects.findAll { it.path.startsWith(':modules:') }) {
+    apply plugin: 'java-library'
+}
