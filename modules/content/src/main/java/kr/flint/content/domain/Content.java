@@ -9,12 +9,14 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.JoinColumn;
 import kr.flint.shared.domain.BaseTime;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class Content extends BaseTime {
 
 	@Column(nullable = false, unique = true)
@@ -42,15 +44,4 @@ public class Content extends BaseTime {
 	)
 	@Column(name = "genre", nullable = false)
 	private List<String> genre;
-
-	public Content(Long tmdbId, String title, int year, String author, String description, String poster,
-		List<String> genre) {
-		this.tmdbId = tmdbId;
-		this.title = title;
-		this.year = year;
-		this.author = author;
-		this.description = description;
-		this.poster = poster;
-		this.genre = genre;
-	}
 }

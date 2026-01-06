@@ -1,17 +1,13 @@
 package kr.flint.collection.domain;
 
-import io.hypersistence.utils.hibernate.id.Tsid;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-import kr.flint.shared.domain.BaseTime;
+import kr.flint.shared.domain.Base;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -27,7 +23,7 @@ import lombok.NoArgsConstructor;
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
-public class CollectionContent extends BaseTime {
+public class CollectionContent extends Base {
 
 	@ManyToOne(targetEntity = Collection.class, fetch = FetchType.LAZY)
 	@JoinColumn(name = "collection_id", nullable = false)
