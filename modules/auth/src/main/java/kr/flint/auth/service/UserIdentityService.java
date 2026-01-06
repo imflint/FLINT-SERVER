@@ -6,6 +6,7 @@ import kr.flint.auth.exception.AuthErrorCode;
 import kr.flint.auth.exception.AuthException;
 import kr.flint.auth.repository.UserIdentityRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,10 +25,14 @@ public class UserIdentityService {
 
     @Transactional
     public UserIdentity create(Long userId, AuthProvider provider, String providerUserId) {
-        if (userIdentityRepository.existsByProviderAndProviderUserId(provider, providerUserId)) {
-            throw new AuthException(AuthErrorCode.DUPLICATE_IDENTITY);
+        try {
+            return userIdentityRepository.save(UserIdentity.create(userId, provider, providerUserId));
+        } catch (DataIntegrityViolationException e) {
+            if (userIdentityRepository.existsByProviderAndProviderUserId(provider, providerUserId)) {
+                throw new AuthException(AuthErrorCode.DUPLICATE_IDENTITY);
+            }
+            throw e;
         }
-        return userIdentityRepository.save(UserIdentity.create(userId, provider, providerUserId));
     }
 
     @Transactional
