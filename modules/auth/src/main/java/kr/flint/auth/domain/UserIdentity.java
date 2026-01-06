@@ -27,6 +27,14 @@ public class UserIdentity extends BaseTime {
     @Column(name = "provider_user_id", nullable = false)
     private String providerUserId;
 
+    /**
+     * Create a UserIdentity for the given internal user and external provider identifier.
+     *
+     * @param userId         the internal user's ID
+     * @param provider       the authentication provider (e.g., GOOGLE, FACEBOOK)
+     * @param providerUserId the identifier assigned by the authentication provider
+     * @return               a new UserIdentity populated with the provided values
+     */
     public static UserIdentity create(Long userId, AuthProvider provider, String providerUserId) {
         return UserIdentity.builder()
                 .userId(userId)
