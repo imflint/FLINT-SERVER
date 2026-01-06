@@ -23,14 +23,15 @@ import java.util.function.Predicate;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User extends BaseTime {
 
+    @Column(nullable = false)
     private String realName;
 
-    @Column(nullable = false, length = 50, unique = true)
+    @Column(nullable = false, length = 10, unique = true)
     private String nickname;
 
+    @Column(nullable = false)
     private String nickNameNorm;
 
-    @Column(length = 500)
     private String profileImage;
 
     @Column(nullable = false)
