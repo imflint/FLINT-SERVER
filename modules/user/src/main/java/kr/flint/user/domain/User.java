@@ -5,8 +5,11 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import kr.flint.shared.domain.BaseTime;
+import kr.flint.user.exception.UserErrorCode;
+import kr.flint.user.exception.UserException;
 import lombok.*;
 import org.hibernate.annotations.SQLRestriction;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 
@@ -45,7 +48,9 @@ public class User extends BaseTime {
         return create(realName, nickname, null, UserRole.FLINER);
     }
 
-    private static User create(String realName, String nickname,  String profileImage, UserRole userRole) {
+    private static User create(String realName, String nickname, String profileImage, UserRole userRole) {
+        validateRealName(realName);
+        validateNickname(nickname);
         return User.builder()
                 .realName(realName)
                 .profileImage(profileImage)
@@ -56,6 +61,7 @@ public class User extends BaseTime {
     }
 
     public void updateNickname(String nickname) {
+        validateNickname(nickname);
         this.nickname = nickname;
     }
 
@@ -66,5 +72,17 @@ public class User extends BaseTime {
     public void withdraw() {
         this.status = UserStatus.WITHDRAWN;
         this.deletedAt = LocalDateTime.now();
+    }
+
+    private static void validateRealName(String realName) {
+        if (!StringUtils.hasText(realName)) {
+            throw new UserException(UserErrorCode.INVALID_REAL_NAME);
+        }
+    }
+
+    private static void validateNickname(String nickname) {
+        if (!StringUtils.hasText(nickname)) {
+            throw new UserException(UserErrorCode.INVALID_NICKNAME);
+        }
     }
 }

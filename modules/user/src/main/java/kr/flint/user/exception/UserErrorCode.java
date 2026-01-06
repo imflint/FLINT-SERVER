@@ -11,7 +11,9 @@ public enum UserErrorCode implements AppError {
 
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER.NOT_FOUND", "User Not Found", "사용자를 찾을 수 없습니다."),
     DUPLICATE_NICKNAME(HttpStatus.CONFLICT, "USER.DUPLICATE_NICKNAME", "Duplicate Nickname", "이미 사용 중인 닉네임입니다."),
-    ALREADY_WITHDRAWN(HttpStatus.BAD_REQUEST, "USER.ALREADY_WITHDRAWN", "Already Withdrawn", "이미 탈퇴한 사용자입니다.");
+    ALREADY_WITHDRAWN(HttpStatus.BAD_REQUEST, "USER.ALREADY_WITHDRAWN", "Already Withdrawn", "이미 탈퇴한 사용자입니다."),
+    INVALID_REAL_NAME(HttpStatus.BAD_REQUEST, "USER.INVALID_REAL_NAME", "Invalid Real Name", "실명은 필수입니다."),
+    INVALID_NICKNAME(HttpStatus.BAD_REQUEST, "USER.INVALID_NICKNAME", "Invalid Nickname", "닉네임은 필수입니다.");
 
     private final HttpStatus httpStatus;
     private final String code;
