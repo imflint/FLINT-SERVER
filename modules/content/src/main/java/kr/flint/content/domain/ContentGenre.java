@@ -4,6 +4,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import kr.flint.shared.domain.Base;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -14,6 +16,14 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
+@Table(
+	uniqueConstraints = {
+		@UniqueConstraint(
+			name = "uk_content_genre",
+			columnNames = {"content_id", "genre_id"}
+		)
+	}
+)
 public class ContentGenre extends Base {
 	@ManyToOne(targetEntity = Content.class, fetch = FetchType.LAZY)
 	@JoinColumn(name = "content_id", nullable = false)
