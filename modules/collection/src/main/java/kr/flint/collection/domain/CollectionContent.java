@@ -9,6 +9,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import kr.flint.shared.domain.Base;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -22,6 +23,7 @@ import lombok.NoArgsConstructor;
 	}
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Getter
 public class CollectionContent extends Base {
 
@@ -37,13 +39,6 @@ public class CollectionContent extends Base {
 
 	@Column(nullable = false)
 	private String reason;
-
-	public CollectionContent(Collection collection, Long contentId, boolean isSpoiler, String reason) {
-		this.collection = collection;
-		this.contentId = contentId;
-		this.isSpoiler = isSpoiler;
-		this.reason = reason;
-	}
 
 	public static CollectionContent create(Collection collection, Long contentId, boolean isSpoiler, String reason) {
 		return new CollectionContent(collection, contentId, isSpoiler, reason);
