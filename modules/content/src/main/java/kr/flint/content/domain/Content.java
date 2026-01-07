@@ -7,6 +7,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import kr.flint.shared.domain.BaseTime;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -36,12 +37,4 @@ public class Content extends BaseTime {
 
 	@Column(nullable = false)
 	private String poster;
-
-	@ElementCollection
-	@CollectionTable(
-		name = "content_genre",
-		joinColumns = @JoinColumn(name = "content_id")
-	)
-	@Column(name = "genre", nullable = false)
-	private List<String> genre;
 }
