@@ -14,10 +14,10 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class RecentViewedCollection extends BaseTime {
 	@Column(nullable = false)
-	private Long collectionId;
+	private Long userId;
 
 	@Column(nullable = false)
-	private Long userId;
+	private Long collectionId;
 
 	public static RecentViewedCollection create(Long userId, Long collectionId) {
 		return new RecentViewedCollection(userId, collectionId);

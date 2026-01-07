@@ -16,10 +16,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Genre extends Base {
-	@Column(nullable = false)
+	@Column(nullable = false, unique = true)
 	private String name;
-
-	@ManyToOne(targetEntity = Content.class, fetch = FetchType.LAZY)
-	@JoinColumn(name = "content_id", nullable = false)
-	private Content content;
 }
