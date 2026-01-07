@@ -7,7 +7,7 @@ public record AddContentReq(
 	Long contentId,
 	@NotNull(message = "스포일러 여부는 필수 입력값입니다")
 	boolean isSpoiler,
-	@NotNull(message = "작품 선정 이뉴는 필수 입ㄹ력 값입니다")
+	@NotNull(message = "작품 선정 이유는 필수 입력 값입니다")
 	String reason
 ) {
 }
