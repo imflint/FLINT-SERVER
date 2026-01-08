@@ -25,7 +25,7 @@ public class SecurityConfig {
             "/auth/**",
             "/actuator/health",
             "/actuator/info",
-            "/api/v1/**"
+            "/api/v1/**",
     };
 
     @Bean
