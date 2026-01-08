@@ -17,3 +17,10 @@ spring:
   security:
     user:
       password: test
+
+cloud:
+  aws:
+    s3:
+      bucket: test-bucket
+      region: ap-northeast-2
+      presign-expiration: 10m

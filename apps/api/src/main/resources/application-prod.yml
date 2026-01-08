@@ -13,6 +13,13 @@ decorator:
     p6spy:
       enable-logging: false
 
+cloud:
+  aws:
+    s3:
+      bucket: ${S3_BUCKET}
+      region: ${S3_REGION:ap-northeast-2}
+      presign-expiration: 10m
+
 logging:
   level:
     kr.flint: info

@@ -25,6 +25,7 @@ dependencies {
     implementation project(':modules:search')
 
     implementation project(':infra:redis')
+    implementation project(':infra:s3')
 
     // Test
     testImplementation 'com.tngtech.archunit:archunit-junit5:1.4.0'
