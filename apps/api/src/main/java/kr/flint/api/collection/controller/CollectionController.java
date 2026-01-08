@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.validation.Valid;
 import kr.flint.api.collection.service.CollectionCommandFacade;
 import kr.flint.collection.dto.request.CreateCollectionReq;
 import kr.flint.shared.dto.response.SuccessCode;
@@ -22,9 +23,11 @@ public class CollectionController {
 	@PostMapping
 	public ResponseEntity<SuccessResponse<?>> postCollection(
 		//@AuthenticationPrincipal Long userId,
-		@RequestBody CreateCollectionReq createCollectionReq
+		@Valid @RequestBody CreateCollectionReq createCollectionReq
 	){
 		collectionCommandFacade.createCollection(1L, createCollectionReq);
-		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_CREATE));
+		return ResponseEntity
+			.status(SuccessCode.SUCCESS_CREATE.getHttpStatus())
+			.body(SuccessResponse.of(SuccessCode.SUCCESS_CREATE));
 	}
 }

@@ -7,7 +7,8 @@ import lombok.RequiredArgsConstructor;
 
 @Getter
 @RequiredArgsConstructor
-public enum SuccessCode {    /* 201 CREATED */
+public enum SuccessCode {
+	/* 201 CREATED */
 	SUCCESS_CREATE(HttpStatus.CREATED, "생성이 완료되었습니다"),
 
 	/* 200 OK */
