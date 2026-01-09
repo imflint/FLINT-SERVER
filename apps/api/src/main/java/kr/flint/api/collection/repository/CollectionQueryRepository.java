@@ -29,7 +29,8 @@ public class CollectionQueryRepository {
 			))
 			.from(collection)
 			.where(
-				cursor != null ? collection.id.lt(cursor) : null
+				cursor != null ? collection.id.lt(cursor) : null,
+				collection.isPublic.isTrue()
 			)
 			.orderBy(collection.id.desc())
 			.limit(size + 1L)
