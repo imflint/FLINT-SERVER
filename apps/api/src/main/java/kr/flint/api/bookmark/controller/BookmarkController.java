@@ -14,7 +14,7 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/bookmarks")
+@RequestMapping("/bookmarks")
 public class BookmarkController {
 	private final BookmarkCommandFacade bookmarkCommandFacade;
 
