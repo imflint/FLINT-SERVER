@@ -62,16 +62,15 @@ public class AuthService {
         return new TempTokenPayload(provider, providerUserId);
     }
 
-    // Access/Refresh Token 발급
+    // Access / Refresh Token 발급
     @Transactional
     public AuthTokenResponse issueTokens(Long userId, String role) {
         String accessToken = jwtProvider.createAccessToken(userId, role);
-        String refreshToken = jwtProvider.createRefreshToken(userId);
+        String refreshToken = jwtProvider.createRefreshToken();
 
-        // Redis에 Refresh Token 저장
-        String tokenId = jwtProvider.getTokenId(refreshToken);
+        // Redis에 Refresh Token 저장 (token → userId)
         long ttlSeconds = jwtProvider.getRefreshTokenTtlSeconds();
-        refreshTokenRepository.save(userId, tokenId, refreshToken, ttlSeconds);
+        refreshTokenRepository.save(refreshToken, userId, ttlSeconds);
 
         return AuthTokenResponse.of(accessToken, refreshToken, userId);
     }
@@ -79,30 +78,22 @@ public class AuthService {
     // Refresh Token으로 토큰 갱신
     @Transactional
     public AuthTokenResponse refreshTokens(String refreshToken) {
-        if (!jwtProvider.isRefreshToken(refreshToken)) {
-            throw new GeneralException(AuthErrorCode.INVALID_TOKEN);
-        }
-
-        Long userId = jwtProvider.getUserId(refreshToken);
-        String tokenId = jwtProvider.getTokenId(refreshToken);
-
-        // Redis에서 Refresh Token 검증
-        refreshTokenRepository.findByUserIdAndTokenId(userId, tokenId)
+        // Redis에서 userId 조회
+        Long userId = refreshTokenRepository.findUserIdByToken(refreshToken)
                 .orElseThrow(() -> new GeneralException(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND));
 
         // 기존 Refresh Token 삭제
-        refreshTokenRepository.deleteByUserIdAndTokenId(userId, tokenId);
+        refreshTokenRepository.delete(refreshToken);
 
-        // 새 토큰 발급 (role은 기존 토큰에서 가져올 수 없으므로 null)
+        // 새 토큰 발급
         return issueTokens(userId, null);
     }
 
     // 로그아웃 (현재 Refresh Token 삭제)
     @Transactional
-    public void logout(Long userId, String refreshToken) {
-        if (refreshToken != null && jwtProvider.isRefreshToken(refreshToken)) {
-            String tokenId = jwtProvider.getTokenId(refreshToken);
-            refreshTokenRepository.deleteByUserIdAndTokenId(userId, tokenId);
+    public void logout(String refreshToken) {
+        if (refreshToken != null) {
+            refreshTokenRepository.delete(refreshToken);
         }
     }
 

@@ -75,7 +75,7 @@ public class AuthFacade {
         if (refreshToken == null) {
             authService.logoutAll(userId);
         } else {
-            authService.logout(userId, refreshToken);
+            authService.logout(refreshToken);
         }
     }
 

@@ -24,13 +24,11 @@ public class JwtProvider {
 
     private static final String CLAIM_USER_ID = "userId";
     private static final String CLAIM_ROLE = "role";
-    private static final String CLAIM_TOKEN_ID = "tokenId";
     private static final String CLAIM_PROVIDER = "provider";
     private static final String CLAIM_PROVIDER_USER_ID = "providerUserId";
     private static final String CLAIM_TOKEN_TYPE = "type";
 
     private static final String TOKEN_TYPE_ACCESS = "ACCESS";
-    private static final String TOKEN_TYPE_REFRESH = "REFRESH";
     private static final String TOKEN_TYPE_TEMP = "TEMP";
 
     private final SecretKey secretKey;
@@ -41,7 +39,7 @@ public class JwtProvider {
         this.secretKey = Keys.hmacShaKeyFor(jwtProperties.secret().getBytes(StandardCharsets.UTF_8));
     }
 
-    // Access Token 생성 (userId, role 포함)
+    // Access Token 생성
     public String createAccessToken(Long userId, String role) {
         Instant now = Instant.now();
         Instant expiry = now.plus(jwtProperties.accessExpiration());
@@ -57,21 +55,9 @@ public class JwtProvider {
                 .compact();
     }
 
-    // Refresh Token 생성 (tokenId 포함)
-    public String createRefreshToken(Long userId) {
-        Instant now = Instant.now();
-        Instant expiry = now.plus(jwtProperties.refreshExpiration());
-        String tokenId = UUID.randomUUID().toString();
-
-        return Jwts.builder()
-                .subject(String.valueOf(userId))
-                .claim(CLAIM_USER_ID, userId)
-                .claim(CLAIM_TOKEN_ID, tokenId)
-                .claim(CLAIM_TOKEN_TYPE, TOKEN_TYPE_REFRESH)
-                .issuedAt(Date.from(now))
-                .expiration(Date.from(expiry))
-                .signWith(secretKey)
-                .compact();
+    // Refresh Token
+    public String createRefreshToken() {
+        return UUID.randomUUID().toString();
     }
 
     // Temp Token 생성 (소셜 정보 포함, 회원가입용)
@@ -89,7 +75,7 @@ public class JwtProvider {
                 .compact();
     }
 
-    // 토큰 검증 및 Claims 추출
+    // JWT 토큰 검증 및 Claims 추출
     public Claims parseToken(String token) {
         try {
             return Jwts.parser()
@@ -105,51 +91,43 @@ public class JwtProvider {
         }
     }
 
-    // 토큰에서 userId 추출
     public Long getUserId(String token) {
         Claims claims = parseToken(token);
         return claims.get(CLAIM_USER_ID, Long.class);
     }
 
-    // 토큰에서 role 추출
     public String getRole(String token) {
         Claims claims = parseToken(token);
         return claims.get(CLAIM_ROLE, String.class);
     }
 
-    // 토큰에서 tokenId 추출 (Refresh Token용)
-    public String getTokenId(String token) {
-        Claims claims = parseToken(token);
-        return claims.get(CLAIM_TOKEN_ID, String.class);
-    }
-
-    // Temp Token에서 provider 추출
     public AuthProvider getProvider(String token) {
         Claims claims = parseToken(token);
         String providerName = claims.get(CLAIM_PROVIDER, String.class);
         return AuthProvider.valueOf(providerName);
     }
 
-    // Temp Token에서 providerUserId 추출
     public String getProviderUserId(String token) {
         Claims claims = parseToken(token);
         return claims.get(CLAIM_PROVIDER_USER_ID, String.class);
     }
 
-    // 토큰 타입 확인
     public boolean isAccessToken(String token) {
-        Claims claims = parseToken(token);
-        return TOKEN_TYPE_ACCESS.equals(claims.get(CLAIM_TOKEN_TYPE, String.class));
-    }
-
-    public boolean isRefreshToken(String token) {
-        Claims claims = parseToken(token);
-        return TOKEN_TYPE_REFRESH.equals(claims.get(CLAIM_TOKEN_TYPE, String.class));
+        try {
+            Claims claims = parseToken(token);
+            return TOKEN_TYPE_ACCESS.equals(claims.get(CLAIM_TOKEN_TYPE, String.class));
+        } catch (GeneralException e) {
+            return false;
+        }
     }
 
     public boolean isTempToken(String token) {
-        Claims claims = parseToken(token);
-        return TOKEN_TYPE_TEMP.equals(claims.get(CLAIM_TOKEN_TYPE, String.class));
+        try {
+            Claims claims = parseToken(token);
+            return TOKEN_TYPE_TEMP.equals(claims.get(CLAIM_TOKEN_TYPE, String.class));
+        } catch (GeneralException e) {
+            return false;
+        }
     }
 
     // Refresh Token TTL 반환 (Redis 저장용)
