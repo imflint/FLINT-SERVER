@@ -1,5 +1,6 @@
 package kr.flint.api.config;
 
+import kr.flint.api.config.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -8,6 +9,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -19,13 +21,17 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
     private static final String[] PUBLIC_ENDPOINTS = {
             "/swagger-ui/**",
             "/v3/api-docs/**",
-            "/auth/**",
+            "/auth/social/verify",
+            "/auth/nickname/check",
+            "/auth/signup",
+            "/auth/refresh",
             "/actuator/health",
             "/actuator/info",
-            "/api/v1/**",
     };
 
     @Bean
@@ -38,6 +44,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
                         .anyRequest().authenticated())
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 
