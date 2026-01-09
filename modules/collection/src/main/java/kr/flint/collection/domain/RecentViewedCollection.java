@@ -1,7 +1,10 @@
-package kr.flint.bookmark.domain;
+package kr.flint.collection.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import kr.flint.shared.domain.BaseTime;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -16,11 +19,12 @@ public class RecentViewedCollection extends BaseTime {
 	@Column(nullable = false)
 	private Long userId;
 
-	@Column(nullable = false)
-	private Long collectionId;
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "collection_id", nullable = false)
+	private Collection collection;
 
-	public static RecentViewedCollection create(Long userId, Long collectionId) {
-		return new RecentViewedCollection(userId, collectionId);
+	public static RecentViewedCollection create(Long userId, Collection collection) {
+		return new RecentViewedCollection(userId, collection);
 	}
 
 }
