@@ -26,7 +26,8 @@ public class ContentService {
 		content.increaseBookmarkCount();
 	}
 
-	@Transactional void decreaseBookmarkCount(final Long contentId) {
+	@Transactional
+	public void decreaseBookmarkCount(final Long contentId) {
 		Content content = getContentById(contentId);
 		content.decreaseBookmarkCount();
 	}

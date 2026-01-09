@@ -24,7 +24,7 @@ public class BookmarkCommandFacade {
 		boolean isBookmarked = bookmarkService.toggleContent(userId, contentId);
 
 		if (isBookmarked) {contentService.increaseBookmarkCount(contentId);}
-		else {collectionService.decreaseBookmarkCount(contentId);}
+		else {contentService.decreaseBookmarkCount(contentId);}
 
 		return isBookmarked;
 	}
