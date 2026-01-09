@@ -4,9 +4,9 @@ public record GetCollectionDetailListRes(
 	Long collectionId,
 	String title,
 	String description,
-	int bookmarkCount,
-	boolean isBookmarked,
-
+	String imageUrl,
+	Integer bookmarkCount,
+	Boolean isBookmarked,
 
 	Long userId,
 	String nickname,

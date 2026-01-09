@@ -57,19 +57,19 @@ public class CollectionController {
 
 	@GetMapping("/{collectionId}")
 	public ResponseEntity<SuccessResponse<GetCollectionDetailRes>> getCollectionDetail(
-		@AuthenticationPrincipal Long userId,
+		//@AuthenticationPrincipal Long userId,
 		@PathVariable Long collectionId
 	){
-		GetCollectionDetailRes collectionDetail = collectionQueryFacade.getCollectionDetail(userId, collectionId);
-		collectionService.saveRecentCollection(userId, collectionId);
+		GetCollectionDetailRes collectionDetail = collectionQueryFacade.getCollectionDetail(collectionId, 1L);
+		collectionService.saveRecentCollection(1L, collectionId);
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, collectionDetail));
 	}
 
 	@GetMapping("/recent")
 	public ResponseEntity<SuccessResponse<List<GetCollectionDetailListRes>>> getRecentCollectionList(
-		@AuthenticationPrincipal Long userId
+		//@AuthenticationPrincipal Long userId
 	){
-		List<GetCollectionDetailListRes> getCollectionDetailListRes = collectionQueryService.getRecentCollectionList(userId);
+		List<GetCollectionDetailListRes> getCollectionDetailListRes = collectionQueryService.getRecentCollectionList(1L);
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, getCollectionDetailListRes));
 	}
 

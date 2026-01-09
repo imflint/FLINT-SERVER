@@ -1,6 +1,7 @@
 package kr.flint.api.collection.repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.stereotype.Repository;
@@ -57,16 +58,12 @@ public class CollectionQueryRepository {
 				collection.title,
 				collection.description,
 				collection.image,
-				Expressions.dateTemplate(
-					LocalDate.class,
-					"DATE({0})",
-					collection.createdAt
-				),
+				collection.createdAt,
 
 				user.id,
 				user.nickname,
 				user.profileImage,
-				user.userRole,
+				user.userRole.stringValue(),
 
 				collectionBookmark.id.isNotNull()
 			))
@@ -86,11 +83,11 @@ public class CollectionQueryRepository {
 				content.title,
 				content.poster,
 
-				collectionContent.isSpoiler,
-				collectionContent.reason,
-
+				contentBookmark.id.isNotNull(),
 				content.bookmarkCount,
-				contentBookmark.id.isNotNull()
+
+				collectionContent.isSpoiler,
+				collectionContent.reason
 			))
 			.from(collectionContent)
 			.join(content).on(content.id.eq(collectionContent.contentId))
@@ -134,7 +131,7 @@ public class CollectionQueryRepository {
 		String title,
 		String description,
 		String imageUrl,
-		LocalDate createdAt,
+		LocalDateTime createdAt,
 
 		Long authorId,
 		String authorName,

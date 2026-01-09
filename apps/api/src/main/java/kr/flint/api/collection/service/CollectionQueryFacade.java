@@ -34,7 +34,7 @@ public class CollectionQueryFacade {
 			header.title(),
 			header.description(),
 			header.imageUrl(),
-			header.createdAt(),
+			header.createdAt().toLocalDate(),
 			header.isBookmarked(),
 			header.toAuthor(),
 			contentList
