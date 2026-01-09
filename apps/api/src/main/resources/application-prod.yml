@@ -20,6 +20,16 @@ cloud:
       region: ${S3_REGION:ap-northeast-2}
       presign-expiration: 10m
 
+jwt:
+  secret: ${JWT_SECRET}
+  access-expiration: 1h
+  refresh-expiration: 14d
+  temp-expiration: 30m
+
+oauth:
+  kakao:
+    user-info-url: https://kapi.kakao.com/v2/user/me
+
 logging:
   level:
     kr.flint: info
