@@ -16,7 +16,7 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/collections")
+@RequestMapping("/collections")
 public class CollectionController {
 	private final CollectionCommandFacade collectionCommandFacade;
 

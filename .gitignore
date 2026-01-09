@@ -37,9 +37,5 @@ out/
 
 .env*
 .*/
-*.md
-!README.md
-!ISSUE_TEMPLATE.md
-!.github/
 *.json
 logs/

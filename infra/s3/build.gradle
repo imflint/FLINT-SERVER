@@ -1,0 +1,15 @@
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    api platform("software.amazon.awssdk:bom:2.29.51")
+    api 'software.amazon.awssdk:s3'
+    api project(':modules:shared')
+
+    implementation 'org.springframework.boot:spring-boot-starter'
+
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    compileOnly 'org.jspecify:jspecify:1.0.0'
+}
