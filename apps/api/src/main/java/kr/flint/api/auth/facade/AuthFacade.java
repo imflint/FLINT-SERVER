@@ -24,9 +24,9 @@ public class AuthFacade {
     private final UserService userService;
     private final UserIdentityService userIdentityService;
 
-    // 소셜 토큰 검증
-    public SocialVerifyResponse verifySocialToken(SocialVerifyRequest request) {
-        return authService.verifySocialToken(request.provider(), request.accessToken());
+    // 소셜 로그인 (Authorization Code Flow)
+    public SocialVerifyResponse verifySocialCode(SocialVerifyRequest request) {
+        return authService.verifySocialCode(request.provider(), request.code());
     }
 
     // 닉네임 중복 체크

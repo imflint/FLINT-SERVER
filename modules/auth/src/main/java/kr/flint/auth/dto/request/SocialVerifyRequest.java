@@ -8,7 +8,7 @@ public record SocialVerifyRequest(
         @NotNull(message = "소셜 로그인 제공자는 필수입니다.")
         AuthProvider provider,
 
-        @NotBlank(message = "액세스 토큰은 필수입니다.")
-        String accessToken
+        @NotBlank(message = "인가 코드는 필수입니다.")
+        String code
 ) {
 }

@@ -22,13 +22,13 @@ import kr.flint.shared.exception.ProblemDetail;
 public interface AuthControllerDocs {
 
     @Operation(
-            summary = "소셜 로그인 검증",
-            description = "소셜 로그인 토큰을 검증하고, 기존 회원이면 JWT를 발급하고 신규 회원이면 임시 토큰을 발급합니다."
+            summary = "소셜 로그인",
+            description = "Authorization Code를 사용하여 소셜 로그인을 처리합니다. 기존 회원이면 JWT를 발급하고, 신규 회원이면 임시 토큰을 발급합니다."
     )
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
-                    description = "소셜 검증 성공",
+                    description = "소셜 로그인 성공",
                     content = @Content(schema = @Schema(implementation = SocialVerifyResponse.class))
             ),
             @ApiResponse(
@@ -37,7 +37,7 @@ public interface AuthControllerDocs {
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))
             )
     })
-    SocialVerifyResponse verifySocialToken(SocialVerifyRequest request);
+    SocialVerifyResponse verifySocialCode(SocialVerifyRequest request);
 
     @Operation(
             summary = "닉네임 중복 체크",

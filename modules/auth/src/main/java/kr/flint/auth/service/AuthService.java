@@ -1,7 +1,7 @@
 package kr.flint.auth.service;
 
 import kr.flint.auth.client.KakaoOAuthClient;
-import kr.flint.auth.client.KakaoOAuthClient.KakaoUserInfo;
+import kr.flint.auth.client.dto.KakaoUserInfo;
 import kr.flint.auth.domain.UserIdentity;
 import kr.flint.auth.domain.enums.AuthProvider;
 import kr.flint.auth.dto.response.AuthTokenResponse;
@@ -27,9 +27,9 @@ public class AuthService {
     private final UserIdentityService userIdentityService;
     private final KakaoOAuthClient kakaoOAuthClient;
 
-    // 소셜 토큰 검증 및 기존 회원 확인
-    public SocialVerifyResponse verifySocialToken(AuthProvider provider, String accessToken) {
-        KakaoUserInfo userInfo = getSocialUserInfo(provider, accessToken);
+    // Authorization Code로 소셜 로그인 처리
+    public SocialVerifyResponse verifySocialCode(AuthProvider provider, String code) {
+        KakaoUserInfo userInfo = getSocialUserInfoByCode(provider, code);
 
         Optional<UserIdentity> existingIdentity = userIdentityService
                 .findByProviderAndProviderUserId(provider, userInfo.providerUserId());
@@ -112,10 +112,10 @@ public class AuthService {
         refreshTokenRepository.deleteAllByUserId(userId);
     }
 
-    // 소셜 제공자별 사용자 정보 조회
-    private KakaoUserInfo getSocialUserInfo(AuthProvider provider, String accessToken) {
+    // 소셜 제공자별 사용자 정보 조회 (Authorization Code 사용)
+    private KakaoUserInfo getSocialUserInfoByCode(AuthProvider provider, String code) {
         return switch (provider) {
-            case KAKAO -> kakaoOAuthClient.getUserInfo(accessToken);
+            case KAKAO -> kakaoOAuthClient.getUserInfoByCode(code);
             case APPLE -> throw new GeneralException(AuthErrorCode.UNSUPPORTED_PROVIDER);
         };
     }

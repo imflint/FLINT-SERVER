@@ -1,6 +1,8 @@
 package kr.flint.auth.client;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import kr.flint.auth.client.dto.KakaoTokenResponse;
+import kr.flint.auth.client.dto.KakaoUserInfo;
+import kr.flint.auth.client.dto.KakaoUserResponse;
 import kr.flint.auth.config.KakaoProperties;
 import kr.flint.auth.exception.AuthErrorCode;
 import kr.flint.shared.exception.GeneralException;
@@ -9,6 +11,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
@@ -20,13 +24,40 @@ public class KakaoOAuthClient {
     private final RestClient kakaoRestClient;
     private final KakaoProperties kakaoProperties;
 
-    // 카카오 사용자 정보 조회
+    // Authorization Code로 Access Token 발급
+    public KakaoTokenResponse getToken(String authorizationCode) {
+        try {
+            MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+            params.add("grant_type", "authorization_code");
+            params.add("client_id", kakaoProperties.clientId());
+            params.add("client_secret", kakaoProperties.clientSecret());
+            params.add("redirect_uri", kakaoProperties.redirectUri());
+            params.add("code", authorizationCode);
+
+            KakaoTokenResponse response = kakaoRestClient.post()
+                    .uri(kakaoProperties.tokenUrl())
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(params)
+                    .retrieve()
+                    .body(KakaoTokenResponse.class);
+
+            if (response == null || response.accessToken() == null) {
+                throw new GeneralException(AuthErrorCode.SOCIAL_AUTH_FAILED);
+            }
+
+            return response;
+        } catch (RestClientException e) {
+            log.error("카카오 토큰 발급 실패: {}", e.getMessage());
+            throw new GeneralException(AuthErrorCode.SOCIAL_AUTH_FAILED);
+        }
+    }
+
+    // Access Token으로 사용자 정보 조회
     public KakaoUserInfo getUserInfo(String accessToken) {
         try {
             KakaoUserResponse response = kakaoRestClient.get()
                     .uri(kakaoProperties.userInfoUrl())
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED_VALUE)
                     .retrieve()
                     .body(KakaoUserResponse.class);
 
@@ -36,48 +67,14 @@ public class KakaoOAuthClient {
 
             return KakaoUserInfo.from(response);
         } catch (RestClientException e) {
-            log.error("카카오 API 호출 실패: {}", e.getMessage());
+            log.error("카카오 사용자 정보 조회 실패: {}", e.getMessage());
             throw new GeneralException(AuthErrorCode.SOCIAL_AUTH_FAILED);
         }
     }
 
-    // 카카오 API 응답 DTO
-    public record KakaoUserResponse(
-            Long id,
-            @JsonProperty("kakao_account") KakaoAccount kakaoAccount
-    ) {
-        public record KakaoAccount(
-                String email,
-                KakaoProfile profile
-        ) {
-            public record KakaoProfile(
-                    String nickname
-            ) {}
-        }
-    }
-
-    // 내부에서 사용하는 사용자 정보 DTO
-    public record KakaoUserInfo(
-            String providerUserId,
-            String email,
-            String nickname
-    ) {
-        public static KakaoUserInfo from(KakaoUserResponse response) {
-            String email = null;
-            String nickname = null;
-
-            if (response.kakaoAccount() != null) {
-                email = response.kakaoAccount().email();
-                if (response.kakaoAccount().profile() != null) {
-                    nickname = response.kakaoAccount().profile().nickname();
-                }
-            }
-
-            return new KakaoUserInfo(
-                    String.valueOf(response.id()),
-                    email,
-                    nickname
-            );
-        }
+    // Authorization Code로 사용자 정보 조회 (토큰 발급 + 사용자 정보 조회)
+    public KakaoUserInfo getUserInfoByCode(String authorizationCode) {
+        KakaoTokenResponse tokenResponse = getToken(authorizationCode);
+        return getUserInfo(tokenResponse.accessToken());
     }
 }

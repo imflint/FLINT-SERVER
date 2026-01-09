@@ -25,8 +25,8 @@ public class AuthController implements AuthControllerDocs {
 
     @Override
     @PostMapping("/social/verify")
-    public SocialVerifyResponse verifySocialToken(@Valid @RequestBody SocialVerifyRequest request) {
-        return authFacade.verifySocialToken(request);
+    public SocialVerifyResponse verifySocialCode(@Valid @RequestBody SocialVerifyRequest request) {
+        return authFacade.verifySocialCode(request);
     }
 
     @Override
