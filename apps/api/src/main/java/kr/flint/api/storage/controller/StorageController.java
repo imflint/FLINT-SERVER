@@ -17,7 +17,7 @@ public class StorageController implements StorageControllerDocs {
     private final StorageFacade storageFacade;
 
     @Override
-    @GetMapping("/presigned-url/upload")
+    @GetMapping("/presigned-url")
     public StorageUploadUrl getUploadUrl(
             @RequestParam String pathType,
             @RequestParam String extension
