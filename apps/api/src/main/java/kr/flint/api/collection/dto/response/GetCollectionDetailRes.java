@@ -1,8 +1,34 @@
 package kr.flint.api.collection.dto.response;
 
-import kr.flint.collection.dto.response.GetCollectionSimpleRes;
+import java.time.LocalDate;
+import java.util.List;
 
 public record GetCollectionDetailRes(
-	GetCollectionSimpleRes getCollectionSimpleRes
+	Long collectionId,
+	String title,
+	String description,
+	String imageUrl,
+	LocalDate createdAt,
+	boolean isBookmarked,
+
+	Author author,
+
+	List<Content> contentList
 ) {
+	public record Author(
+		Long userId,
+		String nickname,
+		String profileUrl,
+		String userRole
+	){}
+
+	public record Content(
+		Long contentId,
+		String title,
+		String thumbnailUrl,
+		boolean isBookmarked,
+		int bookmarkCount,
+		boolean isSpoiler,
+		String reason
+	){}
 }
