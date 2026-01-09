@@ -43,3 +43,4 @@ out/
 !.github/
 *.json
 logs/
+!*_template.md
