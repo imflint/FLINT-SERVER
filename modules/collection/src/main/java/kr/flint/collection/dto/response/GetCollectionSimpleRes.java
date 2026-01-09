@@ -1,19 +1,36 @@
 package kr.flint.collection.dto.response;
 
+import java.time.LocalDate;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import kr.flint.collection.domain.Collection;
 
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record GetCollectionSimpleRes(
 	Long collectionId,
 	String imageUrl,
 	String title,
-	String description
+	String description,
+	LocalDate createdAd
 ) {
 	public static GetCollectionSimpleRes of(Collection collection) {
 		return new GetCollectionSimpleRes(
 			collection.getId(),
 			collection.getImage(),
 			collection.getTitle(),
-			collection.getDescription()
+			collection.getDescription(),
+			null
+		);
+	}
+
+	public static GetCollectionSimpleRes ofWithCreatedAt(Collection collection) {
+		return new GetCollectionSimpleRes(
+			collection.getId(),
+			collection.getImage(),
+			collection.getTitle(),
+			collection.getDescription(),
+			collection.getCreatedAt().toLocalDate()
 		);
 	}
 }

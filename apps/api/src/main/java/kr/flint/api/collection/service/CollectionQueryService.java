@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import kr.flint.api.collection.dto.response.GetCollectionDetailListRes;
 import kr.flint.api.collection.repository.CollectionQueryRepository;
 import kr.flint.collection.dto.response.GetCollectionSimpleRes;
 import kr.flint.shared.dto.SliceCursor;
@@ -29,5 +30,9 @@ public class CollectionQueryService {
 		String currentCursor = cursor != null ? String.valueOf(cursor) : null;
 
 		return SliceCursor.of(collectionList, currentCursor, nextCursor);
+	}
+
+	public List<GetCollectionDetailListRes> getRecentCollectionList(final Long userId){
+		return collectionQueryRepository.getCollectionDetailList(userId);
 	}
 }
