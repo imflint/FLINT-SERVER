@@ -42,7 +42,7 @@ cloud:
 
 jwt:
   secret: ${JWT_SECRET:local-dev-secret-key-at-least-32-characters-long}
-  access-expiration: 1h
+  access-expiration: 5m
   refresh-expiration: 14d
   temp-expiration: 30m
 
@@ -50,7 +50,7 @@ oauth:
   kakao:
     client-id: ${KAKAO_CLIENT_ID}
     client-secret: ${KAKAO_CLIENT_SECRET}
-    redirect-uri: ${KAKAO_REDIRECT_URI}
+    redirect-uri: ${KAKAO_LOCAL_REDIRECT_URI}
     token-url: https://kauth.kakao.com/oauth/token
     user-info-url: https://kapi.kakao.com/v2/user/me
 

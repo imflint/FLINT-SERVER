@@ -1,4 +1,4 @@
-package kr.flint.api.auth.facade;
+package kr.flint.api.auth.service;
 
 import kr.flint.auth.dto.request.RefreshTokenRequest;
 import kr.flint.auth.dto.request.SignupRequest;
