@@ -71,6 +71,7 @@ public class CollectionService {
 	@Transactional
 	public void decreaseBookmarkCount(final Long collectionId){
 		Collection collection = getCollectionById(collectionId);
+		collection.decreaseBookmarkCount();
 	}
 
 	@Transactional
