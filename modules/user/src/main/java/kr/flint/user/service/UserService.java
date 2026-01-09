@@ -28,4 +28,9 @@ public class UserService {
     public boolean existsByNickname(String nickname) {
         return userRepository.existsByNickname(nickname);
     }
+
+    @Transactional
+    public User create(User user) {
+        return userRepository.save(user);
+    }
 }
