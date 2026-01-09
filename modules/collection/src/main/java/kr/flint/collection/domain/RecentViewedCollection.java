@@ -1,5 +1,8 @@
 package kr.flint.collection.domain;
 
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -18,6 +21,7 @@ import lombok.NoArgsConstructor;
 @Table(uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "collection_id"}))
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
+@OnDelete(action = OnDeleteAction.CASCADE)
 public class RecentViewedCollection extends BaseTime {
 	@Column(nullable = false)
 	private Long userId;

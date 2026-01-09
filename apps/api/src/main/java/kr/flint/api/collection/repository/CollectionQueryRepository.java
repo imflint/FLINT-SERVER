@@ -123,6 +123,7 @@ public class CollectionQueryRepository {
 					.and(collectionBookmark.userId.eq(userId))
 			)
 			.where(recentViewedCollection.userId.eq(userId))
+			.orderBy(recentViewedCollection.createdAt.desc())
 			.fetch();
 	}
 
