@@ -7,6 +7,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import kr.flint.auth.config.JwtProperties;
 import kr.flint.auth.domain.enums.AuthProvider;
+import kr.flint.auth.domain.enums.TokenType;
 import kr.flint.auth.exception.AuthErrorCode;
 import kr.flint.auth.exception.AuthException;
 import lombok.extern.slf4j.Slf4j;
@@ -27,9 +28,6 @@ public class JwtProvider {
     private static final String CLAIM_PROVIDER_USER_ID = "providerUserId";
     private static final String CLAIM_TOKEN_TYPE = "type";
 
-    private static final String TOKEN_TYPE_ACCESS = "ACCESS";
-    private static final String TOKEN_TYPE_TEMP = "TEMP";
-
     private final SecretKey secretKey;
     private final JwtProperties jwtProperties;
 
@@ -44,10 +42,9 @@ public class JwtProvider {
         Instant expiry = now.plus(jwtProperties.accessExpiration());
 
         return Jwts.builder()
-                .subject(String.valueOf(userId))
                 .claim(CLAIM_USER_ID, userId)
                 .claim(CLAIM_ROLE, role)
-                .claim(CLAIM_TOKEN_TYPE, TOKEN_TYPE_ACCESS)
+                .claim(CLAIM_TOKEN_TYPE, TokenType.ACCESS.name())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiry))
                 .signWith(secretKey)
@@ -62,7 +59,7 @@ public class JwtProvider {
         return Jwts.builder()
                 .claim(CLAIM_PROVIDER, provider.name())
                 .claim(CLAIM_PROVIDER_USER_ID, providerUserId)
-                .claim(CLAIM_TOKEN_TYPE, TOKEN_TYPE_TEMP)
+                .claim(CLAIM_TOKEN_TYPE, TokenType.TEMP.name())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiry))
                 .signWith(secretKey)
@@ -85,20 +82,19 @@ public class JwtProvider {
         }
     }
 
-    public Long getUserId(String token) {
-        Claims claims = parseToken(token);
-        return claims.get(CLAIM_USER_ID, Long.class);
-    }
-
-    public String getRole(String token) {
-        Claims claims = parseToken(token);
-        return claims.get(CLAIM_ROLE, String.class);
-    }
-
     public AuthProvider getProvider(String token) {
         Claims claims = parseToken(token);
         String providerName = claims.get(CLAIM_PROVIDER, String.class);
-        return AuthProvider.valueOf(providerName);
+
+        if (providerName == null) {
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+        }
+
+        try {
+            return AuthProvider.valueOf(providerName);
+        } catch (IllegalArgumentException e) {
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+        }
     }
 
     public String getProviderUserId(String token) {
@@ -111,7 +107,7 @@ public class JwtProvider {
         Claims claims = parseToken(token);
         String tokenType = claims.get(CLAIM_TOKEN_TYPE, String.class);
 
-        if (!TOKEN_TYPE_ACCESS.equals(tokenType)) {
+        if (!TokenType.ACCESS.name().equals(tokenType)) {
             return null;
         }
 
@@ -121,19 +117,12 @@ public class JwtProvider {
         );
     }
 
-    public boolean isAccessToken(String token) {
+    // 토큰 타입 검증
+    public boolean isTokenType(String token, TokenType expectedType) {
         try {
             Claims claims = parseToken(token);
-            return TOKEN_TYPE_ACCESS.equals(claims.get(CLAIM_TOKEN_TYPE, String.class));
-        } catch (AuthException e) {
-            return false;
-        }
-    }
-
-    public boolean isTempToken(String token) {
-        try {
-            Claims claims = parseToken(token);
-            return TOKEN_TYPE_TEMP.equals(claims.get(CLAIM_TOKEN_TYPE, String.class));
+            String tokenType = claims.get(CLAIM_TOKEN_TYPE, String.class);
+            return expectedType.name().equals(tokenType);
         } catch (AuthException e) {
             return false;
         }

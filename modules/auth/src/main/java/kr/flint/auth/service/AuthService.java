@@ -6,6 +6,7 @@ import kr.flint.auth.dto.SocialUserInfo;
 import kr.flint.auth.domain.UserIdentity;
 import kr.flint.auth.domain.enums.AuthProvider;
 import kr.flint.auth.domain.enums.RefreshTokenStatus;
+import kr.flint.auth.domain.enums.TokenType;
 import kr.flint.auth.dto.response.AuthTokenResponse;
 import kr.flint.auth.dto.response.SocialVerifyResult;
 import kr.flint.auth.dto.response.TempTokenPayload;
@@ -52,7 +53,7 @@ public class AuthService {
 
     // Temp Token 검증 및 정보 추출
     public TempTokenPayload verifyTempToken(String tempToken) {
-        if (!jwtProvider.isTempToken(tempToken)) {
+        if (!jwtProvider.isTokenType(tempToken, TokenType.TEMP)) {
             throw new AuthException(AuthErrorCode.INVALID_TOKEN);
         }
 
