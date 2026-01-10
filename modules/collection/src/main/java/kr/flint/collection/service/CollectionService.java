@@ -77,7 +77,13 @@ public class CollectionService {
 	@Transactional
 	public void saveRecentCollection(final Long userId, final Long collectionId) {
 		Collection collection = getCollectionById(collectionId);
-		RecentViewedCollection recentViewedCollection = RecentViewedCollection.create(userId, collection);
-		recentViewedCollectionRepository.save(recentViewedCollection);
+		recentViewedCollectionRepository
+			.findByUserIdAndCollection(userId, collection)
+			.ifPresentOrElse(
+				RecentViewedCollection::updateViewedAt,
+				() -> recentViewedCollectionRepository.save(
+					RecentViewedCollection.create(userId, collection)
+				)
+			);
 	}
 }
