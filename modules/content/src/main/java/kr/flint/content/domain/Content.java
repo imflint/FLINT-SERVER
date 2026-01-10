@@ -34,6 +34,9 @@ public class Content extends BaseTime {
 	@Column(nullable = false)
 	private String poster;
 
+	@Column(nullable = false)
+	private int bookmarkCount;
+
 	public static Content create(Long tmdbId, String title, int year, String author, String description, String poster) {
 		return Content.builder()
 			.tmdbId(tmdbId)
@@ -42,6 +45,17 @@ public class Content extends BaseTime {
 			.author(author)
 			.description(description)
 			.poster(poster)
+			.bookmarkCount(0)
 			.build();
+	}
+
+	public void increaseBookmarkCount() {
+		this.bookmarkCount++;
+	}
+
+	public void decreaseBookmarkCount() {
+		if (this.bookmarkCount > 0) {
+			this.bookmarkCount--;
+		}
 	}
 }
