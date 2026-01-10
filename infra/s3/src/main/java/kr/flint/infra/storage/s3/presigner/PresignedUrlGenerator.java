@@ -3,6 +3,7 @@ package kr.flint.infra.storage.s3.presigner;
 import kr.flint.infra.storage.s3.dto.PresignedUrlRequest;
 import kr.flint.infra.storage.s3.dto.PresignedUrlResponse;
 import kr.flint.infra.storage.s3.properties.S3Properties;
+import kr.flint.shared.storage.FileExtension;
 import kr.flint.shared.storage.StorageUploadUrl;
 import kr.flint.shared.storage.StorageUrlProvider;
 import lombok.RequiredArgsConstructor;
@@ -20,9 +21,9 @@ public class PresignedUrlGenerator implements StorageUrlProvider {
     private final S3Properties s3Properties;
 
     @Override
-    public StorageUploadUrl generateUploadUrl(String key, String contentType) {
+    public StorageUploadUrl generateUploadUrl(String key, FileExtension fileExtension) {
         PresignedUrlResponse response = generatePresignedUploadUrl(
-                PresignedUrlRequest.of(key, contentType)
+                PresignedUrlRequest.of(key, fileExtension)
         );
         return StorageUploadUrl.of(response.url(), response.key());
     }
@@ -31,7 +32,7 @@ public class PresignedUrlGenerator implements StorageUrlProvider {
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                 .bucket(s3Properties.bucket())
                 .key(request.key())
-                .contentType(request.contentType())
+                .contentType(request.getContentType())
                 .build();
 
         PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()

@@ -1,7 +1,7 @@
 package kr.flint.auth.domain;
 
 import jakarta.persistence.*;
-import kr.flint.auth.domain.enums.AuthProvider;
+import kr.flint.auth.enums.AuthProvider;
 import kr.flint.shared.domain.BaseTime;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;

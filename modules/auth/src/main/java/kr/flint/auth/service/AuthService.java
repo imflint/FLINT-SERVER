@@ -1,15 +1,14 @@
 package kr.flint.auth.service;
 
-import kr.flint.auth.client.KakaoOAuthClient;
-import kr.flint.auth.domain.RefreshTokenValue;
+import kr.flint.auth.dto.AuthTokens;
+import kr.flint.auth.dto.RefreshTokenValue;
 import kr.flint.auth.dto.SocialUserInfo;
+import kr.flint.auth.dto.SocialVerifyResult;
+import kr.flint.auth.dto.TempTokenPayload;
 import kr.flint.auth.domain.UserIdentity;
-import kr.flint.auth.domain.enums.AuthProvider;
-import kr.flint.auth.domain.enums.RefreshTokenStatus;
-import kr.flint.auth.domain.enums.TokenType;
-import kr.flint.auth.dto.response.AuthTokenResponse;
-import kr.flint.auth.dto.response.SocialVerifyResult;
-import kr.flint.auth.dto.response.TempTokenPayload;
+import kr.flint.auth.enums.AuthProvider;
+import kr.flint.auth.enums.RefreshTokenStatus;
+import kr.flint.auth.enums.TokenType;
 import kr.flint.auth.exception.AuthErrorCode;
 import kr.flint.auth.jwt.JwtProvider;
 import kr.flint.auth.jwt.AccessTokenBlacklist;
@@ -32,12 +31,9 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final AccessTokenBlacklist accessTokenBlacklist;
     private final UserIdentityService userIdentityService;
-    private final KakaoOAuthClient kakaoOAuthClient;
 
-    // Authorization Code로 소셜 로그인 처리 (Facade용 - 토큰 발급 분리)
-    public SocialVerifyResult verifySocialCode(AuthProvider provider, String code) {
-        SocialUserInfo userInfo = getSocialUserInfoByCode(provider, code);
-
+    // 소셜 사용자 정보로 로그인/회원가입 분기 처리
+    public SocialVerifyResult verifySocialUser(AuthProvider provider, SocialUserInfo userInfo) {
         Optional<UserIdentity> existingIdentity = userIdentityService
                 .findByProviderAndProviderUserId(provider, userInfo.providerUserId());
 
@@ -65,7 +61,7 @@ public class AuthService {
 
     // Access / Refresh Token 발급
     @Transactional
-    public AuthTokenResponse issueTokens(Long userId, String role) {
+    public AuthTokens issueTokens(Long userId, String role) {
         String accessToken = jwtProvider.createAccessToken(userId, role);
         String refreshToken = refreshTokenRepository.createToken();
 
@@ -73,7 +69,7 @@ public class AuthService {
         long ttlSeconds = jwtProvider.getRefreshTokenTtlSeconds();
         refreshTokenRepository.save(refreshToken, userId, ttlSeconds);
 
-        return AuthTokenResponse.of(accessToken, refreshToken, userId);
+        return AuthTokens.of(accessToken, refreshToken, userId);
     }
 
     // Refresh Token 검증 및 Rotation (원자적 상태 변경)
@@ -134,13 +130,5 @@ public class AuthService {
 
         // 모든 Refresh Token 삭제
         refreshTokenRepository.deleteAllByUserId(userId);
-    }
-
-    // 소셜 제공자별 사용자 정보 조회
-    private SocialUserInfo getSocialUserInfoByCode(AuthProvider provider, String code) {
-        if (provider != AuthProvider.KAKAO) {
-            throw new AuthException(AuthErrorCode.UNSUPPORTED_PROVIDER);
-        }
-        return kakaoOAuthClient.getUserInfoByCode(code);
     }
 }

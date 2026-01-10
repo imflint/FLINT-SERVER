@@ -1,6 +1,6 @@
 package kr.flint.auth.service;
 
-import kr.flint.auth.domain.enums.AuthProvider;
+import kr.flint.auth.enums.AuthProvider;
 import kr.flint.auth.domain.UserIdentity;
 import kr.flint.auth.exception.AuthErrorCode;
 import kr.flint.auth.exception.AuthException;
