@@ -112,6 +112,21 @@ public class JwtProvider {
         return claims.get(CLAIM_PROVIDER_USER_ID, String.class);
     }
 
+    // Access Token 파싱 및 Claims 추출 (인증 필터용)
+    public AccessTokenClaims parseAccessToken(String token) {
+        Claims claims = parseToken(token);
+        String tokenType = claims.get(CLAIM_TOKEN_TYPE, String.class);
+
+        if (!TOKEN_TYPE_ACCESS.equals(tokenType)) {
+            return null;
+        }
+
+        return new AccessTokenClaims(
+                claims.get(CLAIM_USER_ID, Long.class),
+                claims.get(CLAIM_ROLE, String.class)
+        );
+    }
+
     public boolean isAccessToken(String token) {
         try {
             Claims claims = parseToken(token);
