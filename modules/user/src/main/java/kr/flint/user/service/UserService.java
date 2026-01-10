@@ -1,6 +1,7 @@
 package kr.flint.user.service;
 
 import kr.flint.user.domain.User;
+import kr.flint.user.dto.response.UserAuthInfo;
 import kr.flint.user.exception.UserErrorCode;
 import kr.flint.user.exception.UserException;
 import kr.flint.user.repository.UserRepository;
@@ -29,8 +30,16 @@ public class UserService {
         return userRepository.existsByNickname(nickname);
     }
 
+    // 인증용 사용자 정보 조회
+    public UserAuthInfo getAuthInfo(Long userId) {
+        User user = getById(userId);
+        return UserAuthInfo.of(user.getId(), user.getUserRole().name());
+    }
+
     @Transactional
-    public User create(User user) {
-        return userRepository.save(user);
+    public UserAuthInfo create(String nickname) {
+        User user = User.createFling(nickname);
+        User saved = userRepository.save(user);
+        return UserAuthInfo.of(saved.getId(), saved.getUserRole().name());
     }
 }

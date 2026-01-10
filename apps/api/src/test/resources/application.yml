@@ -18,6 +18,12 @@ spring:
     user:
       password: test
 
+jwt:
+  secret: test-secret-key-for-testing-purpose-must-be-at-least-256-bits-long
+  access-expiration: 1h
+  refresh-expiration: 7d
+  temp-expiration: 10m
+
 cloud:
   aws:
     s3:

@@ -9,7 +9,7 @@ import kr.flint.auth.service.AuthService;
 import kr.flint.auth.service.AuthService.SocialVerifyResult;
 import kr.flint.auth.service.AuthService.TempTokenPayload;
 import kr.flint.auth.service.UserIdentityService;
-import kr.flint.user.domain.User;
+import kr.flint.user.dto.response.UserAuthInfo;
 import kr.flint.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -31,10 +31,10 @@ public class AuthFacade {
         SocialVerifyResult result = authService.verifySocialCode(request.provider(), request.code());
 
         if (result.isRegistered()) {
-            // 기존 회원 - User 조회 후 토큰 발급
-            User user = userService.getById(result.userId());
-            AuthTokenResponse tokens = authService.issueTokens(user.getId(), user.getUserRole().name());
-            return SocialVerifyResponse.registered(tokens.accessToken(), tokens.refreshToken(), user.getId());
+            // 기존 회원 - 인증 정보 조회 후 토큰 발급
+            UserAuthInfo authInfo = userService.getAuthInfo(result.userId());
+            AuthTokenResponse tokens = authService.issueTokens(authInfo.userId(), authInfo.role());
+            return SocialVerifyResponse.registered(tokens.accessToken(), tokens.refreshToken(), authInfo.userId());
         }
 
         // 신규 회원
@@ -48,9 +48,8 @@ public class AuthFacade {
     public AuthTokenResponse signup(SignupRequest request) {
         TempTokenPayload payload = authService.verifyTempToken(request.tempToken());
 
-        User user = User.createFling(request.nickname());
-        User savedUser = userService.create(user);
-        userIdentityService.create(savedUser.getId(), payload.provider(), payload.providerUserId());
+        UserAuthInfo authInfo = userService.create(request.nickname());
+        userIdentityService.create(authInfo.userId(), payload.provider(), payload.providerUserId());
 
         // 좋아하는 작품 북마크 생성
         // TODO: ContentBookmarkService 연동 (modules:bookmark)
@@ -59,7 +58,7 @@ public class AuthFacade {
         // TODO: UserOttService 연동 (modules:ott)
 
         // 토큰 발급
-        return authService.issueTokens(savedUser.getId(), savedUser.getUserRole().name());
+        return authService.issueTokens(authInfo.userId(), authInfo.role());
     }
 
     /**
@@ -70,9 +69,9 @@ public class AuthFacade {
         // 토큰 검증 및 Rotation
         Long userId = authService.validateAndRotateToken(request.refreshToken());
 
-        // User 조회 후 새 토큰 발급
-        User user = userService.getById(userId);
-        return authService.issueTokens(user.getId(), user.getUserRole().name());
+        // 인증 정보 조회 후 새 토큰 발급
+        UserAuthInfo authInfo = userService.getAuthInfo(userId);
+        return authService.issueTokens(authInfo.userId(), authInfo.role());
     }
 
     /**
