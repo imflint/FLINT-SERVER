@@ -1,6 +1,6 @@
 package kr.flint.api.global.oauth.dto;
 
-public record KakaoUserResponse(
+public record KakaoUserRes(
         Long id
 ) {
 }

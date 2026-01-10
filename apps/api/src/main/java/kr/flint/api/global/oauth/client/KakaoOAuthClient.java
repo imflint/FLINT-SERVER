@@ -1,7 +1,7 @@
 package kr.flint.api.global.oauth.client;
 
-import kr.flint.api.global.oauth.dto.KakaoTokenResponse;
-import kr.flint.api.global.oauth.dto.KakaoUserResponse;
+import kr.flint.api.global.oauth.dto.KakaoTokenRes;
+import kr.flint.api.global.oauth.dto.KakaoUserRes;
 import kr.flint.api.global.oauth.properties.KakaoProperties;
 import kr.flint.auth.dto.SocialUserInfo;
 import kr.flint.auth.exception.AuthErrorCode;
@@ -26,11 +26,11 @@ public class KakaoOAuthClient {
     private final KakaoProperties kakaoProperties;
 
     public SocialUserInfo getUserInfoByCode(String authorizationCode) {
-        KakaoTokenResponse tokenResponse = getToken(authorizationCode);
+        KakaoTokenRes tokenResponse = getToken(authorizationCode);
         return getUserInfo(tokenResponse.accessToken());
     }
 
-    private KakaoTokenResponse getToken(String authorizationCode) {
+    private KakaoTokenRes getToken(String authorizationCode) {
         try {
             MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
             params.add("grant_type", "authorization_code");
@@ -39,7 +39,7 @@ public class KakaoOAuthClient {
             params.add("redirect_uri", kakaoProperties.redirectUri());
             params.add("code", authorizationCode);
 
-            KakaoTokenResponse response = kakaoRestClient.post()
+            KakaoTokenRes response = kakaoRestClient.post()
                     .uri(kakaoProperties.tokenUrl())
                     .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                     .body(params)
@@ -52,7 +52,7 @@ public class KakaoOAuthClient {
                         log.error("카카오 서버 에러: {}", res.getStatusCode());
                         throw new AuthException(AuthErrorCode.SOCIAL_AUTH_SERVER_ERROR);
                     })
-                    .body(KakaoTokenResponse.class);
+                    .body(KakaoTokenRes.class);
 
             if (response == null || response.accessToken() == null) {
                 throw new AuthException(AuthErrorCode.SOCIAL_AUTH_FAILED);
@@ -67,7 +67,7 @@ public class KakaoOAuthClient {
 
     private SocialUserInfo getUserInfo(String accessToken) {
         try {
-            KakaoUserResponse response = kakaoRestClient.get()
+            KakaoUserRes response = kakaoRestClient.get()
                     .uri(kakaoProperties.userInfoUrl())
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                     .retrieve()
@@ -79,7 +79,7 @@ public class KakaoOAuthClient {
                         log.error("카카오 서버 에러: {}", res.getStatusCode());
                         throw new AuthException(AuthErrorCode.SOCIAL_AUTH_SERVER_ERROR);
                     })
-                    .body(KakaoUserResponse.class);
+                    .body(KakaoUserRes.class);
 
             if (response == null || response.id() == null) {
                 throw new AuthException(AuthErrorCode.SOCIAL_AUTH_FAILED);
