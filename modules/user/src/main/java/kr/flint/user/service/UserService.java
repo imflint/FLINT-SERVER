@@ -38,6 +38,10 @@ public class UserService {
 
     @Transactional
     public UserAuthInfo create(String nickname) {
+        if (existsByNickname(nickname)) {
+            throw new UserException(UserErrorCode.DUPLICATE_NICKNAME);
+        }
+
         User user = User.createFling(nickname);
         User saved = userRepository.save(user);
         return UserAuthInfo.of(saved.getId(), saved.getUserRole().name());

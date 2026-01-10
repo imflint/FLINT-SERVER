@@ -53,6 +53,8 @@ oauth:
     redirect-uri: ${KAKAO_LOCAL_REDIRECT_URI}
     token-url: https://kauth.kakao.com/oauth/token
     user-info-url: https://kapi.kakao.com/v2/user/me
+    connect-timeout: 5s
+    read-timeout: 10s
 
 logging:
   level:

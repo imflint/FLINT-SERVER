@@ -1,8 +1,8 @@
 package kr.flint.auth.service;
 
 import kr.flint.auth.client.KakaoOAuthClient;
-import kr.flint.auth.client.dto.KakaoUserInfo;
 import kr.flint.auth.domain.RefreshTokenValue;
+import kr.flint.auth.dto.SocialUserInfo;
 import kr.flint.auth.domain.UserIdentity;
 import kr.flint.auth.domain.enums.AuthProvider;
 import kr.flint.auth.domain.enums.RefreshTokenStatus;
@@ -35,7 +35,7 @@ public class AuthService {
 
     // Authorization Code로 소셜 로그인 처리 (Facade용 - 토큰 발급 분리)
     public SocialVerifyResult verifySocialCode(AuthProvider provider, String code) {
-        KakaoUserInfo userInfo = getSocialUserInfoByCode(provider, code);
+        SocialUserInfo userInfo = getSocialUserInfoByCode(provider, code);
 
         Optional<UserIdentity> existingIdentity = userIdentityService
                 .findByProviderAndProviderUserId(provider, userInfo.providerUserId());
@@ -75,39 +75,29 @@ public class AuthService {
         return AuthTokenResponse.of(accessToken, refreshToken, userId);
     }
 
-    // Refresh Token 검증 및 Rotation
+    // Refresh Token 검증 및 Rotation (원자적 상태 변경)
     @Transactional
     public Long validateAndRotateToken(String refreshToken) {
-        if (!refreshTokenRepository.tryLock(refreshToken)) {
-            throw new AuthException(AuthErrorCode.CONCURRENT_REFRESH_REQUEST);
+        // 원자적으로 VALID → USED 변경 시도 (변경 전 상태 반환)
+        RefreshTokenValue tokenValue = refreshTokenRepository.markAsUsedIfValid(refreshToken)
+                .orElseThrow(() -> new AuthException(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND));
+
+        // 원본 상태 확인 (VALID였으면 이미 USED로 변경됨)
+        switch (tokenValue.status()) {
+            case USED -> {
+                log.warn("토큰 탈취 감지 userId: {}", tokenValue.userId());
+                refreshTokenRepository.revokeAllByUserId(tokenValue.userId());
+                throw new AuthException(AuthErrorCode.REFRESH_TOKEN_REUSED);
+            }
+            case REVOKED -> throw new AuthException(AuthErrorCode.REFRESH_TOKEN_REVOKED);
+            case VALID -> {} // 정상 - 이미 USED로 변경됨
         }
 
-        try {
-            // 토큰 조회 및 상태 확인
-            RefreshTokenValue tokenValue = refreshTokenRepository.findByToken(refreshToken)
-                    .orElseThrow(() -> new AuthException(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND));
-
-            switch (tokenValue.status()) {
-                case USED -> {
-                    log.warn("토큰 탈취 감지 userId: {}", tokenValue.userId());
-                    refreshTokenRepository.revokeAllByUserId(tokenValue.userId());
-                    throw new AuthException(AuthErrorCode.REFRESH_TOKEN_REUSED);
-                }
-                case REVOKED -> throw new AuthException(AuthErrorCode.REFRESH_TOKEN_REVOKED);
-                case VALID -> {}
-            }
-
-            if (tokenValue.isExpired()) {
-                throw new AuthException(AuthErrorCode.EXPIRED_TOKEN);
-            }
-
-            // 기존 토큰 USED로 변경
-            refreshTokenRepository.updateStatus(refreshToken, RefreshTokenStatus.USED);
-
-            return tokenValue.userId();
-        } finally {
-            refreshTokenRepository.unlock(refreshToken);
+        if (tokenValue.isExpired()) {
+            throw new AuthException(AuthErrorCode.EXPIRED_TOKEN);
         }
+
+        return tokenValue.userId();
     }
 
     // 로그아웃 (Blacklist + RTR)
@@ -146,10 +136,10 @@ public class AuthService {
     }
 
     // 소셜 제공자별 사용자 정보 조회
-    private KakaoUserInfo getSocialUserInfoByCode(AuthProvider provider, String code) {
-        return switch (provider) {
-            case KAKAO -> kakaoOAuthClient.getUserInfoByCode(code);
-            case APPLE -> throw new AuthException(AuthErrorCode.UNSUPPORTED_PROVIDER);
-        };
+    private SocialUserInfo getSocialUserInfoByCode(AuthProvider provider, String code) {
+        if (provider != AuthProvider.KAKAO) {
+            throw new AuthException(AuthErrorCode.UNSUPPORTED_PROVIDER);
+        }
+        return kakaoOAuthClient.getUserInfoByCode(code);
     }
 }

@@ -30,3 +30,13 @@ cloud:
       bucket: test-bucket
       region: ap-northeast-2
       presign-expiration: 10m
+
+oauth:
+  kakao:
+    client-id: test-client-id
+    client-secret: test-client-secret
+    redirect-uri: http://localhost:8080/callback
+    token-url: https://kauth.kakao.com/oauth/token
+    user-info-url: https://kapi.kakao.com/v2/user/me
+    connect-timeout: 5s
+    read-timeout: 10s

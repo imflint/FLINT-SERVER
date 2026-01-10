@@ -1,8 +1,8 @@
 package kr.flint.auth.client;
 
 import kr.flint.auth.client.dto.KakaoTokenResponse;
-import kr.flint.auth.client.dto.KakaoUserInfo;
 import kr.flint.auth.client.dto.KakaoUserResponse;
+import kr.flint.auth.dto.SocialUserInfo;
 import kr.flint.auth.config.KakaoProperties;
 import kr.flint.auth.exception.AuthErrorCode;
 import kr.flint.auth.exception.AuthException;
@@ -62,7 +62,7 @@ public class KakaoOAuthClient {
     }
 
     // Access Token으로 사용자 정보 조회
-    public KakaoUserInfo getUserInfo(String accessToken) {
+    public SocialUserInfo getUserInfo(String accessToken) {
         try {
             KakaoUserResponse response = kakaoRestClient.get()
                     .uri(kakaoProperties.userInfoUrl())
@@ -78,11 +78,11 @@ public class KakaoOAuthClient {
                     })
                     .body(KakaoUserResponse.class);
 
-            if (response == null) {
+            if (response == null || response.id() == null) {
                 throw new AuthException(AuthErrorCode.SOCIAL_AUTH_FAILED);
             }
 
-            return KakaoUserInfo.from(response);
+            return SocialUserInfo.of(String.valueOf(response.id()));
         } catch (RestClientException e) {
             log.error("카카오 사용자 정보 조회 실패: {}", e.getMessage());
             throw new AuthException(AuthErrorCode.SOCIAL_AUTH_FAILED);
@@ -90,7 +90,7 @@ public class KakaoOAuthClient {
     }
 
     // Authorization Code로 사용자 정보 조회 (토큰 발급 + 사용자 정보 조회)
-    public KakaoUserInfo getUserInfoByCode(String authorizationCode) {
+    public SocialUserInfo getUserInfoByCode(String authorizationCode) {
         KakaoTokenResponse tokenResponse = getToken(authorizationCode);
         return getUserInfo(tokenResponse.accessToken());
     }

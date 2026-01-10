@@ -1,6 +1,7 @@
 package kr.flint.api.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import kr.flint.shared.exception.AppError;
 import kr.flint.shared.exception.ErrorCode;
 import kr.flint.shared.exception.GeneralException;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.HashMap;
@@ -77,6 +79,51 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(errorCode.getHttpStatus())
+                .body(problemDetail);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ProblemDetail> handleTypeMismatch(MethodArgumentTypeMismatchException e, HttpServletRequest request) {
+        log.warn("파라미터 타입 불일치: {} = {}", e.getName(), e.getValue());
+        AppError errorCode = ErrorCode.INVALID_INPUT;
+
+        String message = String.format("파라미터 [%s]의 값 '%s'이(가) 올바르지 않습니다.", e.getName(), e.getValue());
+
+        ProblemDetail problemDetail = ProblemDetail.of(
+                errorCode,
+                message,
+                request.getRequestURI()
+        );
+
+        return ResponseEntity
+                .badRequest()
+                .body(problemDetail);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ProblemDetail> handleConstraintViolation(ConstraintViolationException e, HttpServletRequest request) {
+        log.warn("제약 조건 위반: {}", e.getMessage());
+        AppError errorCode = ErrorCode.INVALID_INPUT;
+
+        Map<String, String> errors = new HashMap<>();
+        e.getConstraintViolations().forEach(violation -> {
+            String field = violation.getPropertyPath().toString();
+            // 메서드명 제거 (예: checkNickname.nickname -> nickname)
+            if (field.contains(".")) {
+                field = field.substring(field.lastIndexOf(".") + 1);
+            }
+            errors.put(field, violation.getMessage());
+        });
+
+        ProblemDetail problemDetail = ProblemDetail.of(
+                errorCode,
+                "입력값이 올바르지 않습니다.",
+                request.getRequestURI(),
+                errors
+        );
+
+        return ResponseEntity
+                .badRequest()
                 .body(problemDetail);
     }
 
