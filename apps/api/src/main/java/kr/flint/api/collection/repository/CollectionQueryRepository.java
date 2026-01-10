@@ -82,6 +82,7 @@ public class CollectionQueryRepository {
 				content.id,
 				content.title,
 				content.poster,
+				content.author,
 
 				contentBookmark.id.isNotNull(),
 				content.bookmarkCount,

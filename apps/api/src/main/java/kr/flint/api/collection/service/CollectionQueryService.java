@@ -33,6 +33,7 @@ public class CollectionQueryService {
 	}
 
 	public List<GetCollectionDetailListRes> getRecentCollectionList(final Long userId){
-		return collectionQueryRepository.getCollectionDetailList(userId);
+		List<GetCollectionDetailListRes> collectionList = collectionQueryRepository.getCollectionDetailList(userId);
+		return collectionList.isEmpty() ? null : collectionList;
 	}
 }

@@ -26,6 +26,7 @@ public record GetCollectionDetailRes(
 		Long contentId,
 		String title,
 		String thumbnailUrl,
+		String authorName,
 		boolean isBookmarked,
 		int bookmarkCount,
 		boolean isSpoiler,
