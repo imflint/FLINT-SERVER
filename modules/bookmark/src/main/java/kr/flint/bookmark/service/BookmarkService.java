@@ -1,5 +1,7 @@
 package kr.flint.bookmark.service;
 
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,5 +47,13 @@ public class BookmarkService {
 					return true;
 				}
 			);
+	}
+
+	public int getBookmarkCount(final Long collectionId) {
+		return collectionBookmarkRepository.countByCollectionId(collectionId);
+	}
+
+	public List<Long> getBookmarkUserId(final Long collectionId){
+		return collectionBookmarkRepository.findUserIdsByCollectionId(collectionId);
 	}
 }
