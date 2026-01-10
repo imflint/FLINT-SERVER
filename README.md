@@ -148,15 +148,15 @@ REST API 애플리케이션 모듈. 모든 도메인 모듈을 조합하여 API�
 |-----------|------|
 | `Collection` | 콘텐츠를 묶는 컬렉션 (제목, 설명, 공개 여부) |
 | `CollectionContent` | 컬렉션-콘텐츠 연결 |
+| `RecentViewedCollection` | 최근 조회한 컬렉션 |
 
 ### modules:bookmark
-북마크 및 최근 조회 기록을 담당합니다.
+북마크를 담당합니다.
 
 | Aggregate | 설명 |
 |-----------|------|
 | `CollectionBookmark` | 컬렉션 북마크 |
 | `ContentBookmark` | 콘텐츠 북마크 |
-| `RecentViewedCollection` | 최근 조회한 컬렉션 |
 
 ### modules:taste
 취향 키워드 도메인을 담당합니다.

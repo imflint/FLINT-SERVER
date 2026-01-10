@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import kr.flint.api.config.security.UserPrincipal;
 import kr.flint.auth.dto.request.LogoutRequest;
 import kr.flint.auth.dto.request.RefreshTokenRequest;
@@ -115,7 +116,7 @@ public interface AuthControllerDocs {
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))
             )
     })
-    ResponseEntity<Void> logout(UserPrincipal principal, LogoutRequest request);
+    ResponseEntity<Void> logout(UserPrincipal principal, LogoutRequest request, HttpServletRequest httpRequest);
 
     // Swagger 문서용 응답 타입 정의
     @Schema(description = "소셜 로그인 응답")

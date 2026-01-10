@@ -9,6 +9,7 @@ import kr.flint.shared.exception.GeneralException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
@@ -39,6 +40,14 @@ public class KakaoOAuthClient {
                     .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                     .body(params)
                     .retrieve()
+                    .onStatus(HttpStatusCode::is4xxClientError, (req, res) -> {
+                        log.warn("카카오 토큰 발급 4xx 에러: {}", res.getStatusCode());
+                        throw new GeneralException(AuthErrorCode.SOCIAL_AUTH_INVALID_CODE);
+                    })
+                    .onStatus(HttpStatusCode::is5xxServerError, (req, res) -> {
+                        log.error("카카오 서버 에러: {}", res.getStatusCode());
+                        throw new GeneralException(AuthErrorCode.SOCIAL_AUTH_SERVER_ERROR);
+                    })
                     .body(KakaoTokenResponse.class);
 
             if (response == null || response.accessToken() == null) {
@@ -59,6 +68,14 @@ public class KakaoOAuthClient {
                     .uri(kakaoProperties.userInfoUrl())
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                     .retrieve()
+                    .onStatus(HttpStatusCode::is4xxClientError, (req, res) -> {
+                        log.warn("카카오 사용자 정보 조회 4xx 에러: {}", res.getStatusCode());
+                        throw new GeneralException(AuthErrorCode.SOCIAL_AUTH_FAILED);
+                    })
+                    .onStatus(HttpStatusCode::is5xxServerError, (req, res) -> {
+                        log.error("카카오 서버 에러: {}", res.getStatusCode());
+                        throw new GeneralException(AuthErrorCode.SOCIAL_AUTH_SERVER_ERROR);
+                    })
                     .body(KakaoUserResponse.class);
 
             if (response == null) {

@@ -134,4 +134,41 @@ public class JwtProvider {
     public long getRefreshTokenTtlSeconds() {
         return jwtProperties.refreshExpiration().toSeconds();
     }
+
+    // Access Token 남은 TTL 계산 (Blacklist용)
+    public long getRemainingTtlSeconds(String token) {
+        try {
+            Claims claims = parseTokenAllowExpired(token);
+            Date expiration = claims.getExpiration();
+            long remainingMs = expiration.getTime() - System.currentTimeMillis();
+            return Math.max(0, remainingMs / 1000);
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    // Bearer 토큰에서 JWT 추출
+    public String extractToken(String bearerToken) {
+        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
+        }
+        return null;
+    }
+
+    // 만료된 토큰도 파싱 허용 (내부 사용 - Claims 추출용)
+    private Claims parseTokenAllowExpired(String token) {
+        try {
+            return Jwts.parser()
+                    .verifyWith(secretKey)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+        } catch (ExpiredJwtException e) {
+            // 만료된 토큰이라도 Claims는 반환
+            return e.getClaims();
+        } catch (JwtException e) {
+            log.warn("JWT 파싱 실패: {}", e.getMessage());
+            throw new GeneralException(AuthErrorCode.INVALID_TOKEN);
+        }
+    }
 }

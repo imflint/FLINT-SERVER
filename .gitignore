@@ -39,3 +39,4 @@ out/
 .*/
 *.json
 logs/
+.DS_Store

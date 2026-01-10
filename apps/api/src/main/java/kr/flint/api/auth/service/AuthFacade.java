@@ -10,7 +10,6 @@ import kr.flint.auth.service.AuthService;
 import kr.flint.auth.service.AuthService.TempTokenPayload;
 import kr.flint.auth.service.UserIdentityService;
 import kr.flint.user.domain.User;
-import kr.flint.user.domain.UserRole;
 import kr.flint.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -35,15 +34,14 @@ public class AuthFacade {
         return NicknameCheckResponse.of(!exists);
     }
 
-    // 회원가입
+    // 회원가입 (모든 사용자는 FLING으로 가입)
     @Transactional
     public AuthTokenResponse signup(SignupRequest request) {
         // 1. Temp Token 검증
         TempTokenPayload payload = authService.verifyTempToken(request.tempToken());
 
-        // 2. User 생성
-        UserRole userRole = UserRole.valueOf(request.userRole());
-        User user = createUser(request.realName(), request.nickname(), userRole);
+        // 2. User 생성 (항상 FLING으로 생성)
+        User user = User.createFling(request.realName(), request.nickname());
         User savedUser = userService.create(user);
 
         // 3. UserIdentity 생성
@@ -62,7 +60,7 @@ public class AuthFacade {
         // }
 
         // 6. 토큰 발급
-        return authService.issueTokens(savedUser.getId(), userRole.name());
+        return authService.issueTokens(savedUser.getId(), savedUser.getUserRole().name());
     }
 
     // 토큰 갱신
@@ -71,19 +69,11 @@ public class AuthFacade {
     }
 
     // 로그아웃 (refreshToken이 null이면 전체 로그아웃)
-    public void logout(Long userId, String refreshToken) {
+    public void logout(Long userId, String accessToken, String refreshToken) {
         if (refreshToken == null) {
-            authService.logoutAll(userId);
+            authService.logoutAll(userId, accessToken);
         } else {
-            authService.logout(refreshToken);
+            authService.logout(accessToken, refreshToken);
         }
-    }
-
-    private User createUser(String realName, String nickname, UserRole userRole) {
-        return switch (userRole) {
-            case FLING -> User.createFling(realName, nickname);
-            case FLINER -> User.createFliner(realName, nickname);
-            case ADMIN -> throw new IllegalArgumentException("관리자 계정은 직접 생성할 수 없습니다.");
-        };
     }
 }

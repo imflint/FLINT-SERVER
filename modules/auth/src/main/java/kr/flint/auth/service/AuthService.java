@@ -2,8 +2,10 @@ package kr.flint.auth.service;
 
 import kr.flint.auth.client.KakaoOAuthClient;
 import kr.flint.auth.client.dto.KakaoUserInfo;
+import kr.flint.auth.domain.RefreshTokenValue;
 import kr.flint.auth.domain.UserIdentity;
 import kr.flint.auth.domain.enums.AuthProvider;
+import kr.flint.auth.domain.enums.RefreshTokenStatus;
 import kr.flint.auth.dto.response.AuthTokenResponse;
 import kr.flint.auth.dto.response.SocialVerifyResponse;
 import kr.flint.auth.exception.AuthErrorCode;
@@ -24,6 +26,7 @@ public class AuthService {
 
     private final JwtProvider jwtProvider;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final TokenBlacklistService tokenBlacklistService;
     private final UserIdentityService userIdentityService;
     private final KakaoOAuthClient kakaoOAuthClient;
 
@@ -75,31 +78,80 @@ public class AuthService {
         return AuthTokenResponse.of(accessToken, refreshToken, userId);
     }
 
-    // Refresh Token으로 토큰 갱신
+    // Refresh Token으로 토큰 갱신 (RTR 적용)
     @Transactional
     public AuthTokenResponse refreshTokens(String refreshToken) {
-        // Redis에서 userId 조회
-        Long userId = refreshTokenRepository.findUserIdByToken(refreshToken)
-                .orElseThrow(() -> new GeneralException(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND));
+        // 1. 락 획득 (동시 요청 방지)
+        if (!refreshTokenRepository.tryLock(refreshToken)) {
+            throw new GeneralException(AuthErrorCode.CONCURRENT_REFRESH_REQUEST);
+        }
 
-        // 기존 Refresh Token 삭제
-        refreshTokenRepository.delete(refreshToken);
+        try {
+            // 2. 토큰 조회 및 상태 확인
+            RefreshTokenValue tokenValue = refreshTokenRepository.findByToken(refreshToken)
+                    .orElseThrow(() -> new GeneralException(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND));
 
-        // 새 토큰 발급
-        return issueTokens(userId, null);
-    }
+            // 3. 상태별 처리
+            switch (tokenValue.status()) {
+                case USED -> {
+                    // 토큰 재사용 감지! 보안 위협 → 전체 무효화
+                    log.warn("Refresh token reuse detected for userId: {}", tokenValue.userId());
+                    refreshTokenRepository.revokeAllByUserId(tokenValue.userId());
+                    throw new GeneralException(AuthErrorCode.REFRESH_TOKEN_REUSED);
+                }
+                case REVOKED -> throw new GeneralException(AuthErrorCode.REFRESH_TOKEN_REVOKED);
+                case VALID -> { /* 계속 진행 */ }
+            }
 
-    // 로그아웃 (현재 Refresh Token 삭제)
-    @Transactional
-    public void logout(String refreshToken) {
-        if (refreshToken != null) {
-            refreshTokenRepository.delete(refreshToken);
+            // 4. 만료 확인
+            if (tokenValue.isExpired()) {
+                throw new GeneralException(AuthErrorCode.EXPIRED_TOKEN);
+            }
+
+            // 5. 기존 토큰 USED로 변경
+            refreshTokenRepository.updateStatus(refreshToken, RefreshTokenStatus.USED);
+
+            // 6. 새 토큰 발급
+            return issueTokens(tokenValue.userId(), null);
+        } finally {
+            // 7. 락 해제
+            refreshTokenRepository.unlock(refreshToken);
         }
     }
 
-    // 전체 로그아웃 (모든 Refresh Token 삭제)
+    // 로그아웃 (Blacklist + RTR 적용)
     @Transactional
-    public void logoutAll(Long userId) {
+    public void logout(String accessToken, String refreshToken) {
+        // 1. Access Token Blacklist 추가
+        if (accessToken != null) {
+            long remainingTtl = jwtProvider.getRemainingTtlSeconds(accessToken);
+            if (remainingTtl > 0) {
+                tokenBlacklistService.blacklist(accessToken, remainingTtl);
+            }
+        }
+
+        // 2. Refresh Token REVOKED로 변경 및 삭제
+        if (refreshToken != null) {
+            refreshTokenRepository.findByToken(refreshToken)
+                    .ifPresent(value -> {
+                        refreshTokenRepository.updateStatus(refreshToken, RefreshTokenStatus.REVOKED);
+                        refreshTokenRepository.delete(refreshToken, value.userId());
+                    });
+        }
+    }
+
+    // 전체 로그아웃 (모든 Refresh Token 무효화)
+    @Transactional
+    public void logoutAll(Long userId, String accessToken) {
+        // Access Token Blacklist 추가
+        if (accessToken != null) {
+            long remainingTtl = jwtProvider.getRemainingTtlSeconds(accessToken);
+            if (remainingTtl > 0) {
+                tokenBlacklistService.blacklist(accessToken, remainingTtl);
+            }
+        }
+
+        // 모든 Refresh Token 삭제
         refreshTokenRepository.deleteAllByUserId(userId);
     }
 

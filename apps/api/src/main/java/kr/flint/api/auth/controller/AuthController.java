@@ -1,5 +1,6 @@
 package kr.flint.api.auth.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import kr.flint.api.auth.controller.spec.AuthControllerDocs;
 import kr.flint.api.auth.service.AuthFacade;
@@ -11,9 +12,11 @@ import kr.flint.auth.dto.request.SocialVerifyRequest;
 import kr.flint.auth.dto.response.AuthTokenResponse;
 import kr.flint.auth.dto.response.NicknameCheckResponse;
 import kr.flint.auth.dto.response.SocialVerifyResponse;
+import kr.flint.auth.service.JwtProvider;
 import kr.flint.shared.dto.response.SuccessCode;
 import kr.flint.shared.dto.response.SuccessResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -25,6 +28,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController implements AuthControllerDocs {
 
     private final AuthFacade authFacade;
+    private final JwtProvider jwtProvider;
 
     @Override
     @PostMapping("/social/verify")
@@ -41,7 +45,7 @@ public class AuthController implements AuthControllerDocs {
     @Override
     @PostMapping("/signup")
     public ResponseEntity<SuccessResponse<AuthTokenResponse>> signup(@Valid @RequestBody SignupRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(SuccessResponse.of(SuccessCode.SUCCESS_SIGNUP, authFacade.signup(request)));
+        return ResponseEntity.status(SuccessCode.SUCCESS_SIGNUP.getHttpStatus()).body(SuccessResponse.of(SuccessCode.SUCCESS_SIGNUP, authFacade.signup(request)));
     }
 
     @Override
@@ -54,10 +58,12 @@ public class AuthController implements AuthControllerDocs {
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(
             @AuthenticationPrincipal UserPrincipal principal,
-            @RequestBody(required = false) LogoutRequest request
+            @RequestBody(required = false) LogoutRequest request,
+            HttpServletRequest httpRequest
     ) {
+        String accessToken = jwtProvider.extractToken(httpRequest.getHeader(HttpHeaders.AUTHORIZATION));
         String refreshToken = request != null ? request.refreshToken() : null;
-        authFacade.logout(principal.userId(), refreshToken);
+        authFacade.logout(principal.userId(), accessToken, refreshToken);
         return ResponseEntity.noContent().build();
     }
 }
