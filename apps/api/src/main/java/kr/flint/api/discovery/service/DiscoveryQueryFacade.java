@@ -1,4 +1,4 @@
-package kr.flint.api.discovery;
+package kr.flint.api.discovery.service;
 
 import org.springframework.stereotype.Service;
 

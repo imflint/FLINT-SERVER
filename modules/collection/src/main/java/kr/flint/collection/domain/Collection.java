@@ -36,6 +36,9 @@ public class Collection extends BaseTime {
 	@Column(nullable = false)
 	private Long userId;
 
+	@Column(nullable = false)
+	private int bookmarkCount;
+
 	public static Collection create(String title, String description, String image, boolean isPublic, Long userId) {
 		return Collection.builder()
 			.title(title)
@@ -43,7 +46,18 @@ public class Collection extends BaseTime {
 			.image(image)
 			.isPublic(isPublic)
 			.userId(userId)
+			.bookmarkCount(0)
 			.build();
+	}
+
+	public void increaseBookmarkCount() {
+		this.bookmarkCount++;
+	}
+
+	public void decreaseBookmarkCount() {
+		if (this.bookmarkCount > 0) {
+			this.bookmarkCount--;
+		}
 	}
 
 
