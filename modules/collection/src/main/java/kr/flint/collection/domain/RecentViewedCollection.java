@@ -21,13 +21,13 @@ import lombok.NoArgsConstructor;
 @Table(uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "collection_id"}))
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@OnDelete(action = OnDeleteAction.CASCADE)
 public class RecentViewedCollection extends BaseTime {
 	@Column(nullable = false)
 	private Long userId;
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "collection_id", nullable = false)
+	@OnDelete(action = OnDeleteAction.CASCADE)
 	private Collection collection;
 
 	public static RecentViewedCollection create(Long userId, Collection collection) {

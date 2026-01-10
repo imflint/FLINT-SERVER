@@ -12,7 +12,7 @@ public record GetCollectionSimpleRes(
 	String imageUrl,
 	String title,
 	String description,
-	LocalDate createdAd
+	LocalDate createdAt
 ) {
 	public static GetCollectionSimpleRes of(Collection collection) {
 		return new GetCollectionSimpleRes(
