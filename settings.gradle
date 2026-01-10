@@ -13,3 +13,4 @@ include 'modules:search'
 
 include 'infra:redis'
 include 'infra:s3'
+include 'infra:tmdb'

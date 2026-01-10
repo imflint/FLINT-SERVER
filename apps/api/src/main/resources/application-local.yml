@@ -40,6 +40,10 @@ cloud:
       secret-key: ${S3_SECRET_KEY}
       presign-expiration: 10m
 
+tmdb:
+  base-url: "https://api.themoviedb.org/3"
+  api-key: ${TMDB_API_KEY}
+
 logging:
   level:
     kr.flint: debug

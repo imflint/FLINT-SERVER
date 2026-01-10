@@ -26,10 +26,16 @@ dependencies {
 
     implementation project(':infra:redis')
     implementation project(':infra:s3')
+    implementation project(':infra:tmdb')
 
     // Test
     testImplementation 'com.tngtech.archunit:archunit-junit5:1.4.0'
     testImplementation 'org.testcontainers:junit-jupiter'
     testImplementation 'org.testcontainers:mysql'
     testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+}
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.cloud:spring-cloud-dependencies:2024.0.0"
+    }
 }
