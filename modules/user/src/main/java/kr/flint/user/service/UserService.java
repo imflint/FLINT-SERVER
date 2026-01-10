@@ -1,6 +1,9 @@
 package kr.flint.user.service;
 
+import java.util.List;
+
 import kr.flint.user.domain.User;
+import kr.flint.user.dto.response.UserSimpleRes;
 import kr.flint.user.exception.UserErrorCode;
 import kr.flint.user.exception.UserException;
 import kr.flint.user.repository.UserRepository;
@@ -28,4 +31,11 @@ public class UserService {
     public boolean existsByNickname(String nickname) {
         return userRepository.existsByNickname(nickname);
     }
+
+	public List<UserSimpleRes> getUserInfoList(List<Long> userIdList) {
+		if (userIdList == null || userIdList.isEmpty()) {
+			return null;
+		}
+		return userRepository.findByIds(userIdList);
+	}
 }
