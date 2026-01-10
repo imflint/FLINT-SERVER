@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
+import kr.flint.api.collection.controller.spec.CollectionControllerDocs;
 import kr.flint.api.collection.dto.response.GetCollectionDetailListRes;
 import kr.flint.api.collection.dto.response.GetCollectionDetailRes;
 import kr.flint.api.collection.service.CollectionCommandFacade;
@@ -29,12 +30,13 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/collections")
-public class CollectionController {
+public class CollectionController implements CollectionControllerDocs {
 	private final CollectionCommandFacade collectionCommandFacade;
 	private final CollectionQueryFacade collectionQueryFacade;
 	private final CollectionQueryService collectionQueryService;
 	private final CollectionService collectionService;
 
+	@Override
 	@PostMapping
 	public ResponseEntity<SuccessResponse<?>> postCollection(
 		//@AuthenticationPrincipal Long userId,
@@ -46,6 +48,7 @@ public class CollectionController {
 			.body(SuccessResponse.of(SuccessCode.SUCCESS_CREATE));
 	}
 
+	@Override
 	@GetMapping
 	public ResponseEntity<SuccessResponse<PaginationResponse<GetCollectionSimpleRes>>> discoverCollectionList(
 		@RequestParam(required = false) Long cursor,
@@ -55,6 +58,7 @@ public class CollectionController {
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, collectionList));
 	}
 
+	@Override
 	@GetMapping("/{collectionId}")
 	public ResponseEntity<SuccessResponse<GetCollectionDetailRes>> getCollectionDetail(
 		//@AuthenticationPrincipal Long userId,
@@ -65,6 +69,7 @@ public class CollectionController {
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, collectionDetail));
 	}
 
+	@Override
 	@GetMapping("/recent")
 	public ResponseEntity<SuccessResponse<List<GetCollectionDetailListRes>>> getRecentCollectionList(
 		//@AuthenticationPrincipal Long userId
