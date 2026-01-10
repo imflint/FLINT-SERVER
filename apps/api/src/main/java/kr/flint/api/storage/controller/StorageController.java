@@ -2,6 +2,7 @@ package kr.flint.api.storage.controller;
 
 import kr.flint.api.storage.controller.spec.StorageControllerDocs;
 import kr.flint.api.storage.service.StorageFacade;
+import kr.flint.infra.storage.enums.StoragePathType;
 import kr.flint.shared.storage.StorageUploadUrl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,7 +20,7 @@ public class StorageController implements StorageControllerDocs {
     @Override
     @GetMapping("/presigned-url")
     public StorageUploadUrl getUploadUrl(
-            @RequestParam String pathType,
+            @RequestParam StoragePathType pathType,
             @RequestParam String extension
     ) {
         return storageFacade.getUploadUrl(pathType, extension);

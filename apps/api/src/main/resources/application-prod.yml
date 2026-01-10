@@ -20,6 +20,22 @@ cloud:
       region: ${S3_REGION:ap-northeast-2}
       presign-expiration: 10m
 
+jwt:
+  secret: ${JWT_SECRET}
+  access-expiration: 1h
+  refresh-expiration: 14d
+  temp-expiration: 30m
+
+oauth:
+  kakao:
+    client-id: ${KAKAO_CLIENT_ID}
+    client-secret: ${KAKAO_CLIENT_SECRET}
+    redirect-uri: ${KAKAO_PROD_REDIRECT_URI}
+    token-url: https://kauth.kakao.com/oauth/token
+    user-info-url: https://kapi.kakao.com/v2/user/me
+    connect-timeout: 5s
+    read-timeout: 10s
+
 logging:
   level:
     kr.flint: info

@@ -21,8 +21,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User extends BaseTime {
 
-    @Column(nullable = false)
-    private String realName;
+//    @Column(nullable = false)
+//    private String realName;
 
     @Column(nullable = false, length = 10, unique = true)
     private String nickname;
@@ -40,19 +40,15 @@ public class User extends BaseTime {
     private LocalDateTime deletedAt;
 
     // TODO: 프로필 이미지 어떻게 할지 고민
-    public static User createFling(String realName, String nickname) {
-        return create(realName, nickname, null, UserRole.FLING);
+    public static User createFling(String nickname) {
+        return create(nickname, null, UserRole.FLING);
     }
 
-    public static User createFliner(String realName, String nickname) {
-        return create(realName, nickname, null, UserRole.FLINER);
-    }
 
-    private static User create(String realName, String nickname, String profileImage, UserRole userRole) {
-        validateRealName(realName);
+    private static User create(String nickname, String profileImage, UserRole userRole) {
         validateNickname(nickname);
         return User.builder()
-                .realName(realName)
+//                .realName(realName)
                 .profileImage(profileImage)
                 .nickname(nickname)
                 .userRole(userRole)
@@ -74,13 +70,8 @@ public class User extends BaseTime {
         this.deletedAt = LocalDateTime.now();
     }
 
-    private static void validateRealName(String realName) {
-        if (!StringUtils.hasText(realName)) {
-            throw new UserException(UserErrorCode.INVALID_REAL_NAME);
-        }
-    }
-
     private static void validateNickname(String nickname) {
+        // TODO: 닉네임 검증 로직 추가
         if (!StringUtils.hasText(nickname)) {
             throw new UserException(UserErrorCode.INVALID_NICKNAME);
         }

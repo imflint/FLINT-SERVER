@@ -31,11 +31,9 @@ public interface StorageControllerDocs {
             )
     })
     StorageUploadUrl getUploadUrl(
-            @Parameter(
-                    description = "저장 경로 타입",
-                    example = "USER_PROFILE",
-                    schema = @Schema(implementation = StoragePathType.class)
-            ) String pathType,
-            @Parameter(description = "파일 확장자", example = "jpg") String extension
+            @Parameter(description = "저장 경로 타입", example = "USER_PROFILE")
+            StoragePathType pathType,
+            @Parameter(description = "파일 확장자", example = "jpg")
+            String extension
     );
 }

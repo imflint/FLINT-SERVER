@@ -1,6 +1,6 @@
 dependencies {
     implementation project(':modules:shared')
-    implementation project(':modules:user')
+    implementation project(':infra:redis')
 
     implementation 'io.jsonwebtoken:jjwt-api:0.13.0'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.13.0'

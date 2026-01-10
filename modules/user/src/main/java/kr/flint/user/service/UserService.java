@@ -3,6 +3,7 @@ package kr.flint.user.service;
 import java.util.List;
 
 import kr.flint.user.domain.User;
+import kr.flint.user.dto.response.UserAuthInfo;
 import kr.flint.user.dto.response.UserSimpleRes;
 import kr.flint.user.exception.UserErrorCode;
 import kr.flint.user.exception.UserException;
@@ -32,6 +33,22 @@ public class UserService {
         return userRepository.existsByNickname(nickname);
     }
 
+    // 인증용 사용자 정보 조회
+    public UserAuthInfo getAuthInfo(Long userId) {
+        User user = getById(userId);
+        return UserAuthInfo.of(user.getId(), user.getUserRole().name());
+    }
+
+    @Transactional
+    public UserAuthInfo create(String nickname) {
+        if (existsByNickname(nickname)) {
+            throw new UserException(UserErrorCode.DUPLICATE_NICKNAME);
+        }
+
+        User user = User.createFling(nickname);
+        User saved = userRepository.save(user);
+        return UserAuthInfo.of(saved.getId(), saved.getUserRole().name());
+    }
 	public List<UserSimpleRes> getUserInfoList(List<Long> userIdList) {
 		if (userIdList == null || userIdList.isEmpty()) {
 			return null;
