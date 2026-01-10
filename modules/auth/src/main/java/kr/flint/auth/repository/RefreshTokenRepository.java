@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import kr.flint.auth.domain.RefreshTokenValue;
 import kr.flint.auth.domain.enums.RefreshTokenStatus;
 import kr.flint.auth.exception.AuthErrorCode;
-import kr.flint.shared.exception.GeneralException;
+import kr.flint.auth.exception.AuthException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -42,7 +42,7 @@ public class RefreshTokenRepository {
             addToUserTokens(userId, token);
         } catch (JsonProcessingException e) {
             log.error("Failed to serialize RefreshTokenValue for userId: {}", userId, e);
-            throw new GeneralException(AuthErrorCode.INTERNAL_SERVER_ERROR);
+            throw new AuthException(AuthErrorCode.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -79,7 +79,7 @@ public class RefreshTokenRepository {
                 }
             } catch (JsonProcessingException e) {
                 log.error("Failed to update RefreshTokenValue status for token", e);
-                throw new GeneralException(AuthErrorCode.INTERNAL_SERVER_ERROR);
+                throw new AuthException(AuthErrorCode.INTERNAL_SERVER_ERROR);
             }
         });
     }

@@ -5,7 +5,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import kr.flint.auth.jwt.JwtProvider;
-import kr.flint.auth.jwt.TokenBlacklistService;
+import kr.flint.auth.jwt.AccessTokenBlacklist;
 import kr.flint.shared.exception.GeneralException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +26,7 @@ import java.util.List;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
-    private final TokenBlacklistService tokenBlacklistService;
+    private final AccessTokenBlacklist accessTokenBlacklist;
 
     @Override
     protected void doFilterInternal(
@@ -39,7 +39,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (token != null) {
             try {
                 // Blacklist 체크
-                if (tokenBlacklistService.isBlacklisted(token)) {
+                if (accessTokenBlacklist.isBlacklisted(token)) {
                     log.debug("Blacklisted token detected");
                     // 인증 없이 계속 진행 (인증 필요한 엔드포인트는 403)
                     filterChain.doFilter(request, response);

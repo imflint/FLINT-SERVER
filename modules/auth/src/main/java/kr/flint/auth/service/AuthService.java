@@ -9,9 +9,9 @@ import kr.flint.auth.domain.enums.RefreshTokenStatus;
 import kr.flint.auth.dto.response.AuthTokenResponse;
 import kr.flint.auth.exception.AuthErrorCode;
 import kr.flint.auth.jwt.JwtProvider;
-import kr.flint.auth.jwt.TokenBlacklistService;
+import kr.flint.auth.jwt.AccessTokenBlacklist;
 import kr.flint.auth.repository.RefreshTokenRepository;
-import kr.flint.shared.exception.GeneralException;
+import kr.flint.auth.exception.AuthException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,7 +27,7 @@ public class AuthService {
 
     private final JwtProvider jwtProvider;
     private final RefreshTokenRepository refreshTokenRepository;
-    private final TokenBlacklistService tokenBlacklistService;
+    private final AccessTokenBlacklist accessTokenBlacklist;
     private final UserIdentityService userIdentityService;
     private final KakaoOAuthClient kakaoOAuthClient;
 
@@ -51,7 +51,7 @@ public class AuthService {
     // Temp Token 검증 및 정보 추출
     public TempTokenPayload verifyTempToken(String tempToken) {
         if (!jwtProvider.isTempToken(tempToken)) {
-            throw new GeneralException(AuthErrorCode.INVALID_TOKEN);
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
         }
 
         AuthProvider provider = jwtProvider.getProvider(tempToken);
@@ -77,26 +77,26 @@ public class AuthService {
     @Transactional
     public Long validateAndRotateToken(String refreshToken) {
         if (!refreshTokenRepository.tryLock(refreshToken)) {
-            throw new GeneralException(AuthErrorCode.CONCURRENT_REFRESH_REQUEST);
+            throw new AuthException(AuthErrorCode.CONCURRENT_REFRESH_REQUEST);
         }
 
         try {
             // 토큰 조회 및 상태 확인
             RefreshTokenValue tokenValue = refreshTokenRepository.findByToken(refreshToken)
-                    .orElseThrow(() -> new GeneralException(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND));
+                    .orElseThrow(() -> new AuthException(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND));
 
             switch (tokenValue.status()) {
                 case USED -> {
                     log.warn("토큰 탈취 감지 userId: {}", tokenValue.userId());
                     refreshTokenRepository.revokeAllByUserId(tokenValue.userId());
-                    throw new GeneralException(AuthErrorCode.REFRESH_TOKEN_REUSED);
+                    throw new AuthException(AuthErrorCode.REFRESH_TOKEN_REUSED);
                 }
-                case REVOKED -> throw new GeneralException(AuthErrorCode.REFRESH_TOKEN_REVOKED);
+                case REVOKED -> throw new AuthException(AuthErrorCode.REFRESH_TOKEN_REVOKED);
                 case VALID -> {}
             }
 
             if (tokenValue.isExpired()) {
-                throw new GeneralException(AuthErrorCode.EXPIRED_TOKEN);
+                throw new AuthException(AuthErrorCode.EXPIRED_TOKEN);
             }
 
             // 기존 토큰 USED로 변경
@@ -114,7 +114,7 @@ public class AuthService {
         if (accessToken != null) {
             long remainingTtl = jwtProvider.getRemainingTtlSeconds(accessToken);
             if (remainingTtl > 0) {
-                tokenBlacklistService.blacklist(accessToken, remainingTtl);
+                accessTokenBlacklist.blacklist(accessToken, remainingTtl);
             }
         }
 
@@ -135,7 +135,7 @@ public class AuthService {
         if (accessToken != null) {
             long remainingTtl = jwtProvider.getRemainingTtlSeconds(accessToken);
             if (remainingTtl > 0) {
-                tokenBlacklistService.blacklist(accessToken, remainingTtl);
+                accessTokenBlacklist.blacklist(accessToken, remainingTtl);
             }
         }
 
@@ -147,7 +147,7 @@ public class AuthService {
     private KakaoUserInfo getSocialUserInfoByCode(AuthProvider provider, String code) {
         return switch (provider) {
             case KAKAO -> kakaoOAuthClient.getUserInfoByCode(code);
-            case APPLE -> throw new GeneralException(AuthErrorCode.UNSUPPORTED_PROVIDER);
+            case APPLE -> throw new AuthException(AuthErrorCode.UNSUPPORTED_PROVIDER);
         };
     }
 

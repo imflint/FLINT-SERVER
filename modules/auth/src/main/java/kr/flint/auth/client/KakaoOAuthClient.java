@@ -5,7 +5,7 @@ import kr.flint.auth.client.dto.KakaoUserInfo;
 import kr.flint.auth.client.dto.KakaoUserResponse;
 import kr.flint.auth.config.KakaoProperties;
 import kr.flint.auth.exception.AuthErrorCode;
-import kr.flint.shared.exception.GeneralException;
+import kr.flint.auth.exception.AuthException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -41,23 +41,23 @@ public class KakaoOAuthClient {
                     .body(params)
                     .retrieve()
                     .onStatus(HttpStatusCode::is4xxClientError, (req, res) -> {
-                        log.warn("카카오 토큰 발급 4xx 에러: {}", res.getStatusCode());
-                        throw new GeneralException(AuthErrorCode.SOCIAL_AUTH_INVALID_CODE);
+                        log.warn("카카오 토큰 발급 에러: {}", res.getStatusCode());
+                        throw new AuthException(AuthErrorCode.SOCIAL_AUTH_INVALID_CODE);
                     })
                     .onStatus(HttpStatusCode::is5xxServerError, (req, res) -> {
                         log.error("카카오 서버 에러: {}", res.getStatusCode());
-                        throw new GeneralException(AuthErrorCode.SOCIAL_AUTH_SERVER_ERROR);
+                        throw new AuthException(AuthErrorCode.SOCIAL_AUTH_SERVER_ERROR);
                     })
                     .body(KakaoTokenResponse.class);
 
             if (response == null || response.accessToken() == null) {
-                throw new GeneralException(AuthErrorCode.SOCIAL_AUTH_FAILED);
+                throw new AuthException(AuthErrorCode.SOCIAL_AUTH_FAILED);
             }
 
             return response;
         } catch (RestClientException e) {
             log.error("카카오 토큰 발급 실패: {}", e.getMessage());
-            throw new GeneralException(AuthErrorCode.SOCIAL_AUTH_FAILED);
+            throw new AuthException(AuthErrorCode.SOCIAL_AUTH_FAILED);
         }
     }
 
@@ -70,22 +70,22 @@ public class KakaoOAuthClient {
                     .retrieve()
                     .onStatus(HttpStatusCode::is4xxClientError, (req, res) -> {
                         log.warn("카카오 사용자 정보 조회 4xx 에러: {}", res.getStatusCode());
-                        throw new GeneralException(AuthErrorCode.SOCIAL_AUTH_FAILED);
+                        throw new AuthException(AuthErrorCode.SOCIAL_AUTH_FAILED);
                     })
                     .onStatus(HttpStatusCode::is5xxServerError, (req, res) -> {
                         log.error("카카오 서버 에러: {}", res.getStatusCode());
-                        throw new GeneralException(AuthErrorCode.SOCIAL_AUTH_SERVER_ERROR);
+                        throw new AuthException(AuthErrorCode.SOCIAL_AUTH_SERVER_ERROR);
                     })
                     .body(KakaoUserResponse.class);
 
             if (response == null) {
-                throw new GeneralException(AuthErrorCode.SOCIAL_AUTH_FAILED);
+                throw new AuthException(AuthErrorCode.SOCIAL_AUTH_FAILED);
             }
 
             return KakaoUserInfo.from(response);
         } catch (RestClientException e) {
             log.error("카카오 사용자 정보 조회 실패: {}", e.getMessage());
-            throw new GeneralException(AuthErrorCode.SOCIAL_AUTH_FAILED);
+            throw new AuthException(AuthErrorCode.SOCIAL_AUTH_FAILED);
         }
     }
 

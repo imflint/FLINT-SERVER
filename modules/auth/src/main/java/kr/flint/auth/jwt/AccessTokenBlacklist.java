@@ -8,7 +8,7 @@ import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
-public class TokenBlacklistService {
+public class AccessTokenBlacklist {
 
     private static final String PREFIX = "atBlacklist:";
 

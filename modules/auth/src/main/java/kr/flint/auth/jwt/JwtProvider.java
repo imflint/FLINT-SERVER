@@ -8,7 +8,7 @@ import io.jsonwebtoken.security.Keys;
 import kr.flint.auth.config.JwtProperties;
 import kr.flint.auth.domain.enums.AuthProvider;
 import kr.flint.auth.exception.AuthErrorCode;
-import kr.flint.shared.exception.GeneralException;
+import kr.flint.auth.exception.AuthException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -84,10 +84,10 @@ public class JwtProvider {
                     .parseSignedClaims(token)
                     .getPayload();
         } catch (ExpiredJwtException e) {
-            throw new GeneralException(AuthErrorCode.EXPIRED_TOKEN);
+            throw new AuthException(AuthErrorCode.EXPIRED_TOKEN);
         } catch (JwtException e) {
             log.warn("JWT 파싱 실패: {}", e.getMessage());
-            throw new GeneralException(AuthErrorCode.INVALID_TOKEN);
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
         }
     }
 
@@ -116,7 +116,7 @@ public class JwtProvider {
         try {
             Claims claims = parseToken(token);
             return TOKEN_TYPE_ACCESS.equals(claims.get(CLAIM_TOKEN_TYPE, String.class));
-        } catch (GeneralException e) {
+        } catch (AuthException e) {
             return false;
         }
     }
@@ -125,7 +125,7 @@ public class JwtProvider {
         try {
             Claims claims = parseToken(token);
             return TOKEN_TYPE_TEMP.equals(claims.get(CLAIM_TOKEN_TYPE, String.class));
-        } catch (GeneralException e) {
+        } catch (AuthException e) {
             return false;
         }
     }
@@ -168,7 +168,7 @@ public class JwtProvider {
             return e.getClaims();
         } catch (JwtException e) {
             log.warn("JWT 파싱 실패: {}", e.getMessage());
-            throw new GeneralException(AuthErrorCode.INVALID_TOKEN);
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
         }
     }
 }
