@@ -6,6 +6,7 @@ import kr.flint.auth.dto.request.SocialVerifyRequest;
 import kr.flint.auth.dto.response.AuthTokenResponse;
 import kr.flint.auth.dto.response.SocialVerifyResponse;
 import kr.flint.auth.service.AuthService;
+import kr.flint.auth.service.AuthService.SocialVerifyResult;
 import kr.flint.auth.service.AuthService.TempTokenPayload;
 import kr.flint.auth.service.UserIdentityService;
 import kr.flint.user.domain.User;
@@ -25,8 +26,19 @@ public class AuthFacade {
     /**
      * 소셜 로그인
      */
+    @Transactional
     public SocialVerifyResponse verifySocialCode(SocialVerifyRequest request) {
-        return authService.verifySocialCode(request.provider(), request.code());
+        SocialVerifyResult result = authService.verifySocialCode(request.provider(), request.code());
+
+        if (result.isRegistered()) {
+            // 기존 회원 - User 조회 후 토큰 발급
+            User user = userService.getById(result.userId());
+            AuthTokenResponse tokens = authService.issueTokens(user.getId(), user.getUserRole().name());
+            return SocialVerifyResponse.registered(tokens.accessToken(), tokens.refreshToken(), user.getId());
+        }
+
+        // 신규 회원
+        return SocialVerifyResponse.unregistered(result.tempToken(), result.email());
     }
 
     /**
@@ -53,8 +65,14 @@ public class AuthFacade {
     /**
      * 토큰 갱신
      */
+    @Transactional
     public AuthTokenResponse refreshTokens(RefreshTokenRequest request) {
-        return authService.refreshTokens(request.refreshToken());
+        // 토큰 검증 및 Rotation
+        Long userId = authService.validateAndRotateToken(request.refreshToken());
+
+        // User 조회 후 새 토큰 발급
+        User user = userService.getById(userId);
+        return authService.issueTokens(user.getId(), user.getUserRole().name());
     }
 
     /**

@@ -7,7 +7,6 @@ import kr.flint.auth.domain.UserIdentity;
 import kr.flint.auth.domain.enums.AuthProvider;
 import kr.flint.auth.domain.enums.RefreshTokenStatus;
 import kr.flint.auth.dto.response.AuthTokenResponse;
-import kr.flint.auth.dto.response.SocialVerifyResponse;
 import kr.flint.auth.exception.AuthErrorCode;
 import kr.flint.auth.jwt.JwtProvider;
 import kr.flint.auth.jwt.TokenBlacklistService;
@@ -32,27 +31,21 @@ public class AuthService {
     private final UserIdentityService userIdentityService;
     private final KakaoOAuthClient kakaoOAuthClient;
 
-    // Authorization Code로 소셜 로그인 처리
-    public SocialVerifyResponse verifySocialCode(AuthProvider provider, String code) {
+    // Authorization Code로 소셜 로그인 처리 (Facade용 - 토큰 발급 분리)
+    public SocialVerifyResult verifySocialCode(AuthProvider provider, String code) {
         KakaoUserInfo userInfo = getSocialUserInfoByCode(provider, code);
 
         Optional<UserIdentity> existingIdentity = userIdentityService
                 .findByProviderAndProviderUserId(provider, userInfo.providerUserId());
 
         if (existingIdentity.isPresent()) {
-            // 기존 회원 - 토큰 발급
-            UserIdentity identity = existingIdentity.get();
-            AuthTokenResponse tokens = issueTokens(identity.getUserId(), null);
-            return SocialVerifyResponse.registered(
-                    tokens.accessToken(),
-                    tokens.refreshToken(),
-                    identity.getUserId()
-            );
+            // 기존 회원 - userId 반환 (토큰 발급은 Facade에서)
+            return SocialVerifyResult.registered(existingIdentity.get().getUserId());
         }
 
         // 신규 회원 - 임시 토큰 발급
         String tempToken = jwtProvider.createTempToken(provider, userInfo.providerUserId());
-        return SocialVerifyResponse.unregistered(tempToken, userInfo.email());
+        return SocialVerifyResult.unregistered(tempToken, userInfo.email());
     }
 
     // Temp Token 검증 및 정보 추출
@@ -80,10 +73,9 @@ public class AuthService {
         return AuthTokenResponse.of(accessToken, refreshToken, userId);
     }
 
-    // Refresh Token으로 토큰 갱신 (RTR 적용)
+    // Refresh Token 검증 및 Rotation
     @Transactional
-    public AuthTokenResponse refreshTokens(String refreshToken) {
-        // 락 획득 (동시 요청 방지)
+    public Long validateAndRotateToken(String refreshToken) {
         if (!refreshTokenRepository.tryLock(refreshToken)) {
             throw new GeneralException(AuthErrorCode.CONCURRENT_REFRESH_REQUEST);
         }
@@ -110,7 +102,7 @@ public class AuthService {
             // 기존 토큰 USED로 변경
             refreshTokenRepository.updateStatus(refreshToken, RefreshTokenStatus.USED);
 
-            return issueTokens(tokenValue.userId(), null);
+            return tokenValue.userId();
         } finally {
             refreshTokenRepository.unlock(refreshToken);
         }
@@ -164,4 +156,20 @@ public class AuthService {
             AuthProvider provider,
             String providerUserId
     ) {}
+
+    // 소셜 인증 결과 (Facade에서 사용)
+    public record SocialVerifyResult(
+            boolean isRegistered,
+            Long userId,
+            String tempToken,
+            String email
+    ) {
+        public static SocialVerifyResult registered(Long userId) {
+            return new SocialVerifyResult(true, userId, null, null);
+        }
+
+        public static SocialVerifyResult unregistered(String tempToken, String email) {
+            return new SocialVerifyResult(false, null, tempToken, email);
+        }
+    }
 }
