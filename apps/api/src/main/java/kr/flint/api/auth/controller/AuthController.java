@@ -10,7 +10,6 @@ import kr.flint.auth.dto.request.RefreshTokenRequest;
 import kr.flint.auth.dto.request.SignupRequest;
 import kr.flint.auth.dto.request.SocialVerifyRequest;
 import kr.flint.auth.dto.response.AuthTokenResponse;
-import kr.flint.auth.dto.response.NicknameCheckResponse;
 import kr.flint.auth.dto.response.SocialVerifyResponse;
 import kr.flint.auth.jwt.JwtProvider;
 import kr.flint.shared.dto.response.SuccessCode;
@@ -32,25 +31,23 @@ public class AuthController implements AuthControllerDocs {
     @Override
     @PostMapping("/social/verify")
     public ResponseEntity<SuccessResponse<SocialVerifyResponse>> verifySocialCode(@Valid @RequestBody SocialVerifyRequest request) {
-        return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_LOGIN, authFacade.verifySocialCode(request)));
-    }
-
-    @Override
-    @GetMapping("/nickname/check")
-    public ResponseEntity<SuccessResponse<NicknameCheckResponse>> checkNickname(@RequestParam String nickname) {
-        return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_NICKNAME_CHECK, authFacade.checkNickname(nickname)));
+        return ResponseEntity
+                .ok(SuccessResponse.of(SuccessCode.SUCCESS_LOGIN, authFacade.verifySocialCode(request)));
     }
 
     @Override
     @PostMapping("/signup")
     public ResponseEntity<SuccessResponse<AuthTokenResponse>> signup(@Valid @RequestBody SignupRequest request) {
-        return ResponseEntity.status(SuccessCode.SUCCESS_SIGNUP.getHttpStatus()).body(SuccessResponse.of(SuccessCode.SUCCESS_SIGNUP, authFacade.signup(request)));
+        return ResponseEntity
+                .status(SuccessCode.SUCCESS_SIGNUP.getHttpStatus())
+                .body(SuccessResponse.of(SuccessCode.SUCCESS_SIGNUP, authFacade.signup(request)));
     }
 
     @Override
     @PostMapping("/refresh")
     public ResponseEntity<SuccessResponse<AuthTokenResponse>> refreshTokens(@Valid @RequestBody RefreshTokenRequest request) {
-        return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_TOKEN_REFRESH, authFacade.refreshTokens(request)));
+        return ResponseEntity
+                .ok(SuccessResponse.of(SuccessCode.SUCCESS_TOKEN_REFRESH, authFacade.refreshTokens(request)));
     }
 
     @Override

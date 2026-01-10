@@ -1,7 +1,6 @@
 package kr.flint.api.auth.controller.spec;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -15,7 +14,6 @@ import kr.flint.auth.dto.request.RefreshTokenRequest;
 import kr.flint.auth.dto.request.SignupRequest;
 import kr.flint.auth.dto.request.SocialVerifyRequest;
 import kr.flint.auth.dto.response.AuthTokenResponse;
-import kr.flint.auth.dto.response.NicknameCheckResponse;
 import kr.flint.auth.dto.response.SocialVerifyResponse;
 import kr.flint.shared.dto.response.SuccessResponse;
 import kr.flint.shared.exception.ProblemDetail;
@@ -40,20 +38,6 @@ public interface AuthControllerDocs {
             )
     })
     ResponseEntity<SuccessResponse<SocialVerifyResponse>> verifySocialCode(SocialVerifyRequest request);
-
-    @Operation(
-            summary = "닉네임 중복 체크",
-            description = "닉네임 사용 가능 여부를 확인합니다."
-    )
-    @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "닉네임 체크 성공"
-            )
-    })
-    ResponseEntity<SuccessResponse<NicknameCheckResponse>> checkNickname(
-            @Parameter(description = "확인할 닉네임", example = "my_nickname") String nickname
-    );
 
     @Operation(
             summary = "회원가입",

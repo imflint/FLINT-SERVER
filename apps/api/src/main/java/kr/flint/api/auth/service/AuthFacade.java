@@ -4,7 +4,6 @@ import kr.flint.auth.dto.request.RefreshTokenRequest;
 import kr.flint.auth.dto.request.SignupRequest;
 import kr.flint.auth.dto.request.SocialVerifyRequest;
 import kr.flint.auth.dto.response.AuthTokenResponse;
-import kr.flint.auth.dto.response.NicknameCheckResponse;
 import kr.flint.auth.dto.response.SocialVerifyResponse;
 import kr.flint.auth.service.AuthService;
 import kr.flint.auth.service.AuthService.TempTokenPayload;
@@ -28,12 +27,6 @@ public class AuthFacade {
      */
     public SocialVerifyResponse verifySocialCode(SocialVerifyRequest request) {
         return authService.verifySocialCode(request.provider(), request.code());
-    }
-
-    // 닉네임 중복 체크
-    public NicknameCheckResponse checkNickname(String nickname) {
-        boolean exists = userService.existsByNickname(nickname);
-        return NicknameCheckResponse.of(!exists);
     }
 
     /**
