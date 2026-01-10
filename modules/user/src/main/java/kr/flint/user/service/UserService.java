@@ -33,6 +33,9 @@ public class UserService {
     }
 
 	public List<UserSimpleRes> getUserInfoList(List<Long> userIdList) {
+		if (userIdList == null || userIdList.isEmpty()) {
+			return null;
+		}
 		return userRepository.findByIds(userIdList);
 	}
 }
