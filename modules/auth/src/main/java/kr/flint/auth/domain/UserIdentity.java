@@ -17,14 +17,14 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class UserIdentity extends BaseTime {
 
-    @Column(name = "user_id", nullable = false)
+    @Column(nullable = false)
     private Long userId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private AuthProvider provider;
 
-    @Column(name = "provider_user_id", nullable = false)
+    @Column(nullable = false)
     private String providerUserId;
 
     public static UserIdentity create(Long userId, AuthProvider provider, String providerUserId) {
