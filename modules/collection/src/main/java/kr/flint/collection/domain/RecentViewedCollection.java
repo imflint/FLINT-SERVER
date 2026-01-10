@@ -1,5 +1,7 @@
 package kr.flint.collection.domain;
 
+import java.time.LocalDateTime;
+
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
@@ -30,8 +32,15 @@ public class RecentViewedCollection extends BaseTime {
 	@OnDelete(action = OnDeleteAction.CASCADE)
 	private Collection collection;
 
+	@Column(nullable = false)
+	private LocalDateTime viewedAt;
+
 	public static RecentViewedCollection create(Long userId, Collection collection) {
-		return new RecentViewedCollection(userId, collection);
+		return new RecentViewedCollection(userId, collection, LocalDateTime.now());
+	}
+
+	public void updateViewedAt() {
+		this.viewedAt = LocalDateTime.now();
 	}
 
 }
