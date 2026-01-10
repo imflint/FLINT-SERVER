@@ -29,7 +29,7 @@ public class RefreshTokenRepository {
     private final StringRedisTemplate stringRedisTemplate;
     private final ObjectMapper objectMapper;
 
-    // 토큰 저장 (VALID 상태)
+    // 토큰 저장
     public void save(String token, Long userId, long ttlSeconds) {
         RefreshTokenValue value = RefreshTokenValue.createValid(userId, ttlSeconds);
         String key = buildTokenKey(token);
@@ -89,11 +89,10 @@ public class RefreshTokenRepository {
         String tokenKey = buildTokenKey(token);
         stringRedisTemplate.delete(tokenKey);
 
-        // 사용자별 토큰 목록에서 제거
         removeFromUserTokens(userId, token);
     }
 
-    // 사용자의 모든 토큰 무효화 (REVOKED)
+    // 사용자의 모든 토큰 무효화
     public void revokeAllByUserId(Long userId) {
         String userKey = buildUserKey(userId);
         Set<String> tokens = stringRedisTemplate.opsForSet().members(userKey);

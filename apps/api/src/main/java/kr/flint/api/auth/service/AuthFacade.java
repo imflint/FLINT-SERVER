@@ -5,9 +5,9 @@ import kr.flint.auth.dto.request.SignupRequest;
 import kr.flint.auth.dto.request.SocialVerifyRequest;
 import kr.flint.auth.dto.response.AuthTokenResponse;
 import kr.flint.auth.dto.response.SocialVerifyResponse;
+import kr.flint.auth.dto.response.SocialVerifyResult;
+import kr.flint.auth.dto.response.TempTokenPayload;
 import kr.flint.auth.service.AuthService;
-import kr.flint.auth.service.AuthService.SocialVerifyResult;
-import kr.flint.auth.service.AuthService.TempTokenPayload;
 import kr.flint.auth.service.UserIdentityService;
 import kr.flint.user.dto.response.UserAuthInfo;
 import kr.flint.user.service.UserService;
@@ -38,7 +38,7 @@ public class AuthFacade {
         }
 
         // 신규 회원
-        return SocialVerifyResponse.unregistered(result.tempToken(), result.email());
+        return SocialVerifyResponse.unregistered(result.tempToken());
     }
 
     /**

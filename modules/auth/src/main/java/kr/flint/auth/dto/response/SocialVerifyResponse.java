@@ -10,8 +10,7 @@ public record SocialVerifyResponse(
         String accessToken,
         String refreshToken,
         Long userId,
-        String tempToken,
-        String email
+        String tempToken
 ) {
     // 기존 회원 로그인 응답
     public static SocialVerifyResponse registered(String accessToken, String refreshToken, Long userId) {
@@ -24,11 +23,10 @@ public record SocialVerifyResponse(
     }
 
     // 신규 회원 (회원가입 필요) 응답
-    public static SocialVerifyResponse unregistered(String tempToken, String email) {
+    public static SocialVerifyResponse unregistered(String tempToken) {
         return SocialVerifyResponse.builder()
                 .isRegistered(false)
                 .tempToken(tempToken)
-                .email(email)
                 .build();
     }
 }

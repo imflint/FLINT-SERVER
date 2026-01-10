@@ -7,6 +7,8 @@ import kr.flint.auth.domain.UserIdentity;
 import kr.flint.auth.domain.enums.AuthProvider;
 import kr.flint.auth.domain.enums.RefreshTokenStatus;
 import kr.flint.auth.dto.response.AuthTokenResponse;
+import kr.flint.auth.dto.response.SocialVerifyResult;
+import kr.flint.auth.dto.response.TempTokenPayload;
 import kr.flint.auth.exception.AuthErrorCode;
 import kr.flint.auth.jwt.JwtProvider;
 import kr.flint.auth.jwt.AccessTokenBlacklist;
@@ -45,7 +47,7 @@ public class AuthService {
 
         // 신규 회원 - 임시 토큰 발급
         String tempToken = jwtProvider.createTempToken(provider, userInfo.providerUserId());
-        return SocialVerifyResult.unregistered(tempToken, userInfo.email());
+        return SocialVerifyResult.unregistered(tempToken);
     }
 
     // Temp Token 검증 및 정보 추출
@@ -108,7 +110,7 @@ public class AuthService {
         }
     }
 
-    // 로그아웃 (Blacklist + RTR 적용)
+    // 로그아웃 (Blacklist + RTR)
     @Transactional
     public void logout(String accessToken, String refreshToken) {
         if (accessToken != null) {
@@ -149,27 +151,5 @@ public class AuthService {
             case KAKAO -> kakaoOAuthClient.getUserInfoByCode(code);
             case APPLE -> throw new AuthException(AuthErrorCode.UNSUPPORTED_PROVIDER);
         };
-    }
-
-    // Temp Token 페이로드
-    public record TempTokenPayload(
-            AuthProvider provider,
-            String providerUserId
-    ) {}
-
-    // 소셜 인증 결과 (Facade에서 사용)
-    public record SocialVerifyResult(
-            boolean isRegistered,
-            Long userId,
-            String tempToken,
-            String email
-    ) {
-        public static SocialVerifyResult registered(Long userId) {
-            return new SocialVerifyResult(true, userId, null, null);
-        }
-
-        public static SocialVerifyResult unregistered(String tempToken, String email) {
-            return new SocialVerifyResult(false, null, tempToken, email);
-        }
     }
 }
