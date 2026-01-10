@@ -8,6 +8,7 @@ import kr.flint.shared.exception.ProblemDetail;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -87,6 +88,22 @@ public class GlobalExceptionHandler {
         ProblemDetail problemDetail = ProblemDetail.of(
                 errorCode,
                 "요청한 리소스를 찾을 수 없습니다.",
+                request.getRequestURI()
+        );
+
+        return ResponseEntity
+                .status(errorCode.getHttpStatus())
+                .body(problemDetail);
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ProblemDetail> handleHttpMediaTypeNotSupported(HttpMediaTypeNotSupportedException e, HttpServletRequest request) {
+        log.warn("지원하지 않는 Media-Type: {}", e.getContentType());
+        AppError errorCode = ErrorCode.UNSUPPORTED_MEDIA_TYPE;
+
+        ProblemDetail problemDetail = ProblemDetail.of(
+                errorCode,
+                "지원하지 않는 Media-Type입니다",
                 request.getRequestURI()
         );
 
