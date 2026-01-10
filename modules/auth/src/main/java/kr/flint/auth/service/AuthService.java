@@ -9,6 +9,8 @@ import kr.flint.auth.domain.enums.RefreshTokenStatus;
 import kr.flint.auth.dto.response.AuthTokenResponse;
 import kr.flint.auth.dto.response.SocialVerifyResponse;
 import kr.flint.auth.exception.AuthErrorCode;
+import kr.flint.auth.jwt.JwtProvider;
+import kr.flint.auth.jwt.TokenBlacklistService;
 import kr.flint.auth.repository.RefreshTokenRepository;
 import kr.flint.shared.exception.GeneralException;
 import lombok.RequiredArgsConstructor;
@@ -81,40 +83,35 @@ public class AuthService {
     // Refresh Token으로 토큰 갱신 (RTR 적용)
     @Transactional
     public AuthTokenResponse refreshTokens(String refreshToken) {
-        // 1. 락 획득 (동시 요청 방지)
+        // 락 획득 (동시 요청 방지)
         if (!refreshTokenRepository.tryLock(refreshToken)) {
             throw new GeneralException(AuthErrorCode.CONCURRENT_REFRESH_REQUEST);
         }
 
         try {
-            // 2. 토큰 조회 및 상태 확인
+            // 토큰 조회 및 상태 확인
             RefreshTokenValue tokenValue = refreshTokenRepository.findByToken(refreshToken)
                     .orElseThrow(() -> new GeneralException(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND));
 
-            // 3. 상태별 처리
             switch (tokenValue.status()) {
                 case USED -> {
-                    // 토큰 재사용 감지! 보안 위협 → 전체 무효화
-                    log.warn("Refresh token reuse detected for userId: {}", tokenValue.userId());
+                    log.warn("토큰 탈취 감지 userId: {}", tokenValue.userId());
                     refreshTokenRepository.revokeAllByUserId(tokenValue.userId());
                     throw new GeneralException(AuthErrorCode.REFRESH_TOKEN_REUSED);
                 }
                 case REVOKED -> throw new GeneralException(AuthErrorCode.REFRESH_TOKEN_REVOKED);
-                case VALID -> { /* 계속 진행 */ }
+                case VALID -> {}
             }
 
-            // 4. 만료 확인
             if (tokenValue.isExpired()) {
                 throw new GeneralException(AuthErrorCode.EXPIRED_TOKEN);
             }
 
-            // 5. 기존 토큰 USED로 변경
+            // 기존 토큰 USED로 변경
             refreshTokenRepository.updateStatus(refreshToken, RefreshTokenStatus.USED);
 
-            // 6. 새 토큰 발급
             return issueTokens(tokenValue.userId(), null);
         } finally {
-            // 7. 락 해제
             refreshTokenRepository.unlock(refreshToken);
         }
     }
@@ -122,7 +119,6 @@ public class AuthService {
     // 로그아웃 (Blacklist + RTR 적용)
     @Transactional
     public void logout(String accessToken, String refreshToken) {
-        // 1. Access Token Blacklist 추가
         if (accessToken != null) {
             long remainingTtl = jwtProvider.getRemainingTtlSeconds(accessToken);
             if (remainingTtl > 0) {
@@ -130,7 +126,7 @@ public class AuthService {
             }
         }
 
-        // 2. Refresh Token REVOKED로 변경 및 삭제
+        // Refresh Token REVOKED로 변경 및 삭제
         if (refreshToken != null) {
             refreshTokenRepository.findByToken(refreshToken)
                     .ifPresent(value -> {
@@ -155,7 +151,7 @@ public class AuthService {
         refreshTokenRepository.deleteAllByUserId(userId);
     }
 
-    // 소셜 제공자별 사용자 정보 조회 (Authorization Code 사용)
+    // 소셜 제공자별 사용자 정보 조회
     private KakaoUserInfo getSocialUserInfoByCode(AuthProvider provider, String code) {
         return switch (provider) {
             case KAKAO -> kakaoOAuthClient.getUserInfoByCode(code);

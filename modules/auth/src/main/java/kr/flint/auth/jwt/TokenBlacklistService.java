@@ -1,4 +1,4 @@
-package kr.flint.auth.service;
+package kr.flint.auth.jwt;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;

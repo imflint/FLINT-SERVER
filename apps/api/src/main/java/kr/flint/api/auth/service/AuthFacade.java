@@ -23,7 +23,9 @@ public class AuthFacade {
     private final UserService userService;
     private final UserIdentityService userIdentityService;
 
-    // 소셜 로그인
+    /**
+     * 소셜 로그인
+     */
     public SocialVerifyResponse verifySocialCode(SocialVerifyRequest request) {
         return authService.verifySocialCode(request.provider(), request.code());
     }
@@ -34,7 +36,9 @@ public class AuthFacade {
         return NicknameCheckResponse.of(!exists);
     }
 
-    // 회원가입
+    /**
+     * 회원가입
+     */
     @Transactional
     public AuthTokenResponse signup(SignupRequest request) {
         TempTokenPayload payload = authService.verifyTempToken(request.tempToken());
@@ -53,17 +57,24 @@ public class AuthFacade {
         return authService.issueTokens(savedUser.getId(), savedUser.getUserRole().name());
     }
 
-    // 토큰 갱신
+    /**
+     * 토큰 갱신
+     */
     public AuthTokenResponse refreshTokens(RefreshTokenRequest request) {
         return authService.refreshTokens(request.refreshToken());
     }
 
-    // 로그아웃 (refreshToken이 null이면 전체 로그아웃)
-    public void logout(Long userId, String accessToken, String refreshToken) {
-        if (refreshToken == null) {
-            authService.logoutAll(userId, accessToken);
-        } else {
-            authService.logout(accessToken, refreshToken);
-        }
+    /**
+     * 현재 세션 로그아웃
+     */
+    public void logout(String accessToken, String refreshToken) {
+        authService.logout(accessToken, refreshToken);
+    }
+
+    /**
+     * 모든 세션 로그아웃
+     */
+    public void logoutAll(Long userId, String accessToken) {
+        authService.logoutAll(userId, accessToken);
     }
 }

@@ -31,8 +31,7 @@ public interface AuthControllerDocs {
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
-                    description = "소셜 로그인 성공",
-                    content = @Content(schema = @Schema(implementation = SocialVerifySuccessResponse.class))
+                    description = "소셜 로그인 성공"
             ),
             @ApiResponse(
                     responseCode = "401",
@@ -49,8 +48,7 @@ public interface AuthControllerDocs {
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
-                    description = "닉네임 체크 성공",
-                    content = @Content(schema = @Schema(implementation = NicknameCheckSuccessResponse.class))
+                    description = "닉네임 체크 성공"
             )
     })
     ResponseEntity<SuccessResponse<NicknameCheckResponse>> checkNickname(
@@ -64,8 +62,7 @@ public interface AuthControllerDocs {
     @ApiResponses({
             @ApiResponse(
                     responseCode = "201",
-                    description = "회원가입 성공",
-                    content = @Content(schema = @Schema(implementation = AuthTokenSuccessResponse.class))
+                    description = "회원가입 성공"
             ),
             @ApiResponse(
                     responseCode = "400",
@@ -92,8 +89,7 @@ public interface AuthControllerDocs {
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
-                    description = "토큰 갱신 성공",
-                    content = @Content(schema = @Schema(implementation = AuthTokenSuccessResponse.class))
+                    description = "토큰 갱신 성공"
             ),
             @ApiResponse(
                     responseCode = "401",
@@ -105,38 +101,36 @@ public interface AuthControllerDocs {
 
     @Operation(
             summary = "로그아웃",
-            description = "현재 Refresh Token을 무효화합니다. Refresh Token을 전달하면 해당 토큰만 삭제하고, 전달하지 않으면 모든 세션에서 로그아웃됩니다."
+            description = "현재 세션(기기)에서 로그아웃합니다. Refresh Token을 무효화합니다."
     )
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "로그아웃 성공"),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Refresh Token 누락",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))
+            ),
             @ApiResponse(
                     responseCode = "401",
                     description = "인증 필요",
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))
             )
     })
-    ResponseEntity<Void> logout(UserPrincipal principal, LogoutRequest request, HttpServletRequest httpRequest);
+    ResponseEntity<Void> logout(LogoutRequest request, HttpServletRequest httpRequest);
 
-    // Swagger 문서용 응답 타입 정의
-    @Schema(description = "소셜 로그인 응답")
-    record SocialVerifySuccessResponse(
-            @Schema(description = "HTTP 상태 코드", example = "200") int status,
-            @Schema(description = "응답 메시지", example = "로그인이 완료되었습니다") String message,
-            @Schema(description = "응답 데이터") SocialVerifyResponse data
-    ) {}
-
-    @Schema(description = "닉네임 체크 응답")
-    record NicknameCheckSuccessResponse(
-            @Schema(description = "HTTP 상태 코드", example = "200") int status,
-            @Schema(description = "응답 메시지", example = "닉네임 확인이 완료되었습니다") String message,
-            @Schema(description = "응답 데이터") NicknameCheckResponse data
-    ) {}
-
-    @Schema(description = "인증 토큰 응답")
-    record AuthTokenSuccessResponse(
-            @Schema(description = "HTTP 상태 코드", example = "200") int status,
-            @Schema(description = "응답 메시지", example = "토큰이 갱신되었습니다") String message,
-            @Schema(description = "응답 데이터") AuthTokenResponse data
-    ) {}
+    @Operation(
+            summary = "모든 세션 로그아웃",
+            description = "모든 세션(기기)에서 로그아웃합니다. 사용자의 모든 Refresh Token을 무효화합니다."
+    )
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "모든 세션 로그아웃 성공"),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증 필요",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))
+            )
+    })
+    ResponseEntity<Void> logoutAll(UserPrincipal principal, HttpServletRequest httpRequest);
 }

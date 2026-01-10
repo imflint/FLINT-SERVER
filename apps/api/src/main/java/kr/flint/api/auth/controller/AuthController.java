@@ -12,12 +12,11 @@ import kr.flint.auth.dto.request.SocialVerifyRequest;
 import kr.flint.auth.dto.response.AuthTokenResponse;
 import kr.flint.auth.dto.response.NicknameCheckResponse;
 import kr.flint.auth.dto.response.SocialVerifyResponse;
-import kr.flint.auth.service.JwtProvider;
+import kr.flint.auth.jwt.JwtProvider;
 import kr.flint.shared.dto.response.SuccessCode;
 import kr.flint.shared.dto.response.SuccessResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -57,13 +56,22 @@ public class AuthController implements AuthControllerDocs {
     @Override
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(
-            @AuthenticationPrincipal UserPrincipal principal,
-            @RequestBody(required = false) LogoutRequest request,
+            @Valid @RequestBody LogoutRequest request,
             HttpServletRequest httpRequest
     ) {
         String accessToken = jwtProvider.extractToken(httpRequest.getHeader(HttpHeaders.AUTHORIZATION));
-        String refreshToken = request != null ? request.refreshToken() : null;
-        authFacade.logout(principal.userId(), accessToken, refreshToken);
+        authFacade.logout(accessToken, request.refreshToken());
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    @PostMapping("/logout/all")
+    public ResponseEntity<Void> logoutAll(
+            @AuthenticationPrincipal UserPrincipal principal,
+            HttpServletRequest httpRequest
+    ) {
+        String accessToken = jwtProvider.extractToken(httpRequest.getHeader(HttpHeaders.AUTHORIZATION));
+        authFacade.logoutAll(principal.userId(), accessToken);
         return ResponseEntity.noContent().build();
     }
 }
