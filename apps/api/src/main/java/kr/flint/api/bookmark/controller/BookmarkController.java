@@ -40,7 +40,7 @@ public class BookmarkController {
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_UPDATE, isBookmarked));
 	}
 
-	@GetMapping("{collectionId}")
+	@GetMapping("/{collectionId}")
 	public ResponseEntity<SuccessResponse<GetBookmarkUserRes>> getBookmarkedUser(
 		@PathVariable("collectionId") Long collectionId
 	){
