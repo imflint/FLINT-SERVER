@@ -16,7 +16,6 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
-import java.util.UUID;
 
 @Slf4j
 @Component
@@ -53,11 +52,6 @@ public class JwtProvider {
                 .expiration(Date.from(expiry))
                 .signWith(secretKey)
                 .compact();
-    }
-
-    // Refresh Token
-    public String createRefreshToken() {
-        return UUID.randomUUID().toString();
     }
 
     // Temp Token 생성 (소셜 정보 포함, 회원가입용)

@@ -14,6 +14,7 @@ import org.springframework.util.CollectionUtils;
 
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -28,6 +29,11 @@ public class RefreshTokenRepository {
 
     private final StringRedisTemplate stringRedisTemplate;
     private final ObjectMapper objectMapper;
+
+    // 토큰 생성 (UUID)
+    public String createToken() {
+        return UUID.randomUUID().toString();
+    }
 
     // 토큰 저장
     public void save(String token, Long userId, long ttlSeconds) {

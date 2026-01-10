@@ -66,7 +66,7 @@ public class AuthService {
     @Transactional
     public AuthTokenResponse issueTokens(Long userId, String role) {
         String accessToken = jwtProvider.createAccessToken(userId, role);
-        String refreshToken = jwtProvider.createRefreshToken();
+        String refreshToken = refreshTokenRepository.createToken();
 
         // Redis에 Refresh Token 저장 (token → userId)
         long ttlSeconds = jwtProvider.getRefreshTokenTtlSeconds();
