@@ -1,6 +1,7 @@
 package kr.flint.api.config;
 
 import kr.flint.infra.storage.s3.properties.S3Properties;
+import kr.flint.shared.storage.FileExtension;
 import kr.flint.shared.storage.StorageUploadUrl;
 import kr.flint.shared.storage.StorageUrlProvider;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -53,7 +54,7 @@ public class S3TestConfig {
     static class FakeStorageUrlProvider implements StorageUrlProvider {
 
         @Override
-        public StorageUploadUrl generateUploadUrl(String key, String contentType) {
+        public StorageUploadUrl generateUploadUrl(String key, FileExtension fileExtension) {
             String fakeUrl = String.format(
                     "https://%s.s3.%s.amazonaws.com/%s?X-Amz-Algorithm=AWS4-HMAC-SHA256",
                     TEST_BUCKET,
