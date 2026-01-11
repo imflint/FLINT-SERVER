@@ -18,7 +18,8 @@ public enum ErrorCode implements AppError {
 
     UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "COMMON.UNAUTHORIZED", "Unauthorized", "인증이 필요합니다."),
     FORBIDDEN(HttpStatus.FORBIDDEN, "COMMON.FORBIDDEN", "Forbidden", "접근 권한이 없습니다."),
-    NOT_FOUND(HttpStatus.METHOD_NOT_ALLOWED, "COMMON.METHOD_NOT_ALLOWED", "Not Found", "요청한 리소스를 찾을 수 없습니다."),
+    NOT_FOUND(HttpStatus.NOT_FOUND, "COMMON.NOT_FOUND", "Not Found", "요청한 리소스를 찾을 수 없습니다."),
+    METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "COMMON.METHOD_NOT_ALLOWED", "METHOD NOT ALLOWED", "허용되지 않은 HTTP 메서드입니다."),
     UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "COMMON.UNSUPPORTED_MEDIA_TYPE", "Unsupported Media Type", "지원하지 않는 Content-Type입니다."),
     CONFLICT(HttpStatus.CONFLICT, "COMMON.CONFLICT", "Conflict", "리소스 충돌이 발생했습니다."),
     TOO_MANY_REQUESTS(HttpStatus.TOO_MANY_REQUESTS, "COMMON.TOO_MANY_REQUESTS", "Too Many Requests", "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.");
