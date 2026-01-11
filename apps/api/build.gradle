@@ -23,6 +23,7 @@ dependencies {
     implementation project(':modules:bookmark')
     implementation project(':modules:taste')
     implementation project(':modules:search')
+    implementation project(':modules:ott')
 
     implementation project(':infra:redis')
     implementation project(':infra:s3')
