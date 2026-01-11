@@ -2,8 +2,8 @@ package kr.flint.auth.repository;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import kr.flint.auth.domain.RefreshTokenValue;
-import kr.flint.auth.domain.enums.RefreshTokenStatus;
+import kr.flint.auth.dto.RefreshTokenValue;
+import kr.flint.auth.enums.RefreshTokenStatus;
 import kr.flint.auth.exception.AuthErrorCode;
 import kr.flint.auth.exception.AuthException;
 import lombok.RequiredArgsConstructor;

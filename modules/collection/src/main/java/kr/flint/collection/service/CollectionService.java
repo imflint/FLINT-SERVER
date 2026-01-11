@@ -8,8 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import kr.flint.collection.domain.Collection;
 import kr.flint.collection.domain.CollectionContent;
 import kr.flint.collection.domain.RecentViewedCollection;
-import kr.flint.collection.dto.request.CreateCollectionReq;
-import kr.flint.collection.dto.response.GetCollectionSimpleRes;
+import kr.flint.collection.dto.CollectionCreateCommand;
 import kr.flint.collection.exception.CollectionErrorCode;
 import kr.flint.collection.exception.CollectionException;
 import kr.flint.collection.repository.CollectionContentRepository;
@@ -26,35 +25,27 @@ public class CollectionService {
 	private final RecentViewedCollectionRepository recentViewedCollectionRepository;
 
 	@Transactional
-	public void createCollection(final Long userId, final CreateCollectionReq createCollectionReq) {
-		//Collection 생성
+	public void createCollection(final Long userId, final CollectionCreateCommand command) {
 		Collection newCollection = Collection.create(
-			createCollectionReq.title(),
-			createCollectionReq.description(),
-			createCollectionReq.imageUrl(),
-			createCollectionReq.isPublic(),
+			command.title(),
+			command.description(),
+			command.imageUrl(),
+			command.isPublic(),
 			userId
 		);
 
-		//Collection 저장
 		Collection savedCollection = collectionRepository.save(newCollection);
 
-		//CollectionContent 중간매핑 엔티티 저장
-		List<CollectionContent> collectionContentList = createCollectionReq.contentList().stream()
-			.map(req -> CollectionContent.create(
+		List<CollectionContent> collectionContentList = command.contents().stream()
+			.map(content -> CollectionContent.create(
 				savedCollection,
-				req.contentId(),
-				req.isSpoiler(),
-				req.reason()
+				content.contentId(),
+				content.isSpoiler(),
+				content.reason()
 			))
 			.toList();
 
 		collectionContentRepository.saveAll(collectionContentList);
-	}
-
-	public GetCollectionSimpleRes getCollectionSimple(final Long collectionId) {
-		Collection collection = getCollectionById(collectionId);
-		return GetCollectionSimpleRes.of(collection);
 	}
 
 	public Collection getCollectionById(final Long collectionId) {

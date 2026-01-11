@@ -5,11 +5,12 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
-import kr.flint.auth.config.JwtProperties;
-import kr.flint.auth.domain.enums.AuthProvider;
-import kr.flint.auth.domain.enums.TokenType;
+import kr.flint.auth.enums.AuthProvider;
+import kr.flint.auth.enums.TokenType;
 import kr.flint.auth.exception.AuthErrorCode;
 import kr.flint.auth.exception.AuthException;
+import kr.flint.auth.jwt.dto.AccessTokenInfo;
+import kr.flint.auth.jwt.properties.JwtProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -103,7 +104,7 @@ public class JwtProvider {
     }
 
     // Access Token 파싱 및 Claims 추출 (인증 필터용)
-    public AccessTokenClaims parseAccessToken(String token) {
+    public AccessTokenInfo parseAccessToken(String token) {
         Claims claims = parseToken(token);
         String tokenType = claims.get(CLAIM_TOKEN_TYPE, String.class);
 
@@ -111,7 +112,7 @@ public class JwtProvider {
             return null;
         }
 
-        return new AccessTokenClaims(
+        return new AccessTokenInfo(
                 claims.get(CLAIM_USER_ID, Long.class),
                 claims.get(CLAIM_ROLE, String.class)
         );

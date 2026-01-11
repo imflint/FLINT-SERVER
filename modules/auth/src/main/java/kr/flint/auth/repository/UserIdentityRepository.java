@@ -1,6 +1,6 @@
 package kr.flint.auth.repository;
 
-import kr.flint.auth.domain.enums.AuthProvider;
+import kr.flint.auth.enums.AuthProvider;
 import kr.flint.auth.domain.UserIdentity;
 import org.springframework.data.jpa.repository.JpaRepository;
 

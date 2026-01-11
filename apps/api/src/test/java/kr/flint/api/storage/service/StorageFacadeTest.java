@@ -1,8 +1,9 @@
 package kr.flint.api.storage.service;
 
 import kr.flint.api.config.S3TestConfig;
-import kr.flint.api.storage.exception.StorageErrorCode;
-import kr.flint.api.storage.exception.StorageException;
+import kr.flint.api.global.storage.exception.StorageErrorCode;
+import kr.flint.api.global.storage.exception.StorageException;
+import kr.flint.api.global.storage.service.StorageFacade;
 import kr.flint.infra.storage.enums.StoragePathType;
 import kr.flint.shared.storage.StorageUploadUrl;
 import org.junit.jupiter.api.DisplayName;
