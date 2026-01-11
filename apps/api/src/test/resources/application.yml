@@ -3,6 +3,11 @@ spring:
     import:
       - optional:file:../../.env[.properties]
 
+  cloud:
+    aws:
+      parameterstore:
+        enabled: false
+
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}
