@@ -37,7 +37,8 @@ flint-api/
 │   └── search/              # 검색 도메인
 └── infra/
     ├── redis/               # Redis 인프라
-    └── s3/                  # S3 파일 저장소 인프라
+    ├── aws/               # AWS 인프라
+    └── storage/             # 파일 저장소 인프라
 ```
 
 ### 1.2 모듈 의존성 규칙
