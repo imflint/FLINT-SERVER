@@ -114,8 +114,10 @@ class ArchitectureTest {
     class ModuleEncapsulationRules {
 
         @Test
-        @DisplayName("다른 모듈의 domain 패키지에 직접 접근하지 않는다")
+        @DisplayName("도메인 모듈 간 다른 모듈의 domain 패키지에 직접 접근하지 않는다")
         void should_not_access_other_modules_domain_directly() {
+            // apps/api는 상위 계층이므로 모든 모듈의 domain 접근 가능
+            // 도메인 모듈 간에만 직접 접근 금지
             for (String module : DOMAIN_MODULES) {
                 String moduleName = extractModuleName(module);
                 String domainPackage = module + ".domain..";
@@ -123,9 +125,10 @@ class ArchitectureTest {
                 ArchRule rule = noClasses()
                         .that().resideOutsideOfPackage(module + "..")
                         .and().resideOutsideOfPackage(SHARED_PACKAGE + "..")
+                        .and().resideOutsideOfPackage(API_PACKAGE + "..")
                         .should().dependOnClassesThat()
                         .resideInAPackage(domainPackage)
-                        .as(String.format("모듈 외부에서 %s 모듈의 domain 패키지에 직접 접근하면 안 된다", moduleName));
+                        .as(String.format("도메인 모듈 간 %s 모듈의 domain 패키지에 직접 접근하면 안 된다", moduleName));
 
                 rule.check(allClasses);
             }

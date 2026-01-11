@@ -130,7 +130,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ProblemDetail> handleNoResourceFound(NoResourceFoundException e, HttpServletRequest request) {
         log.debug("리소스 없음: {}", request.getRequestURI());
-        AppError errorCode = ErrorCode.NOT_FOUND;
+        AppError errorCode = ErrorCode.METHOD_NOT_ALLOWED;
 
         ProblemDetail problemDetail = ProblemDetail.of(
                 errorCode,

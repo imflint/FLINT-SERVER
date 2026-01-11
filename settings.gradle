@@ -13,4 +13,5 @@ include 'modules:ott'
 include 'modules:search'
 
 include 'infra:redis'
-include 'infra:s3'
+include 'infra:storage'
+include 'infra:aws'

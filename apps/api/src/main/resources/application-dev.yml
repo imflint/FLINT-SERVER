@@ -2,7 +2,7 @@ spring:
   config:
     import:
       - aws-parameterstore:/config/flint-api/
-      - aws-parameterstore:/config/flint-api/prod/
+      - aws-parameterstore:/config/flint-api/dev/
 
   datasource:
     url: ${database.url}
@@ -11,6 +11,8 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
+    hibernate:
+      ddl-auto: update
     show-sql: false
 
   data:
@@ -23,7 +25,9 @@ spring:
 decorator:
   datasource:
     p6spy:
-      enable-logging: false
+      enable-logging: true
+      multiline: true
+      logging: slf4j
 
 cloud:
   aws:
@@ -50,4 +54,4 @@ oauth:
 
 logging:
   level:
-    kr.flint: info
+    kr.flint: debug

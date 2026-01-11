@@ -5,6 +5,7 @@ import kr.flint.api.global.storage.exception.StorageErrorCode;
 import kr.flint.api.global.storage.exception.StorageException;
 import kr.flint.api.global.storage.service.StorageFacade;
 import kr.flint.infra.storage.enums.StoragePathType;
+import kr.flint.shared.storage.FileExtension;
 import kr.flint.shared.storage.StorageUploadUrl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -31,7 +32,7 @@ class StorageFacadeTest {
         @DisplayName("정상적인 pathType과 extension으로 URL 발급")
         void success() {
             // when
-            StorageUploadUrl response = storageFacade.getUploadUrl(StoragePathType.USER_PROFILE, "jpg");
+            StorageUploadUrl response = storageFacade.getUploadUrl(StoragePathType.USER_PROFILE, FileExtension.JPG);
 
             // then
             assertThat(response.uploadUrl()).isNotBlank();
@@ -40,20 +41,10 @@ class StorageFacadeTest {
         }
 
         @Test
-        @DisplayName("대소문자 구분 없이 extension 처리")
-        void extensionCaseInsensitive() {
-            // when
-            StorageUploadUrl response = storageFacade.getUploadUrl(StoragePathType.USER_PROFILE, "JPG");
-
-            // then
-            assertThat(response.key()).endsWith(".jpg");
-        }
-
-        @Test
         @DisplayName("허용되지 않은 확장자 - INVALID_FILE_EXTENSION")
         void invalidExtension() {
-            // when & then
-            assertThatThrownBy(() -> storageFacade.getUploadUrl(StoragePathType.USER_PROFILE, "exe"))
+            // when & then (USER_PROFILE은 JPG, JPEG, PNG만 허용)
+            assertThatThrownBy(() -> storageFacade.getUploadUrl(StoragePathType.USER_PROFILE, FileExtension.PDF))
                     .isInstanceOf(StorageException.class)
                     .extracting("errorCode")
                     .isEqualTo(StorageErrorCode.INVALID_FILE_EXTENSION);

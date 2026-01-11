@@ -1,0 +1,12 @@
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    // AWS Parameter Store
+    api 'io.awspring.cloud:spring-cloud-aws-starter-parameter-store:3.4.2'
+
+    implementation 'org.springframework.boot:spring-boot-starter'
+
+    compileOnly 'org.jspecify:jspecify:1.0.0'
+}
