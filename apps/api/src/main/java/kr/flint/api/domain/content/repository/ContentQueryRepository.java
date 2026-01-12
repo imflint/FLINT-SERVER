@@ -8,6 +8,7 @@ import static kr.flint.ott.domain.QOttUser.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -52,8 +53,8 @@ public class ContentQueryRepository {
 			.limit(10)
 			.fetch();
 
-		Map<Long, GetContentDetailRes> contentMap = new HashMap<>();
-		Map<Long, List<GetContentDetailRes.GetOttSimpleRes>> ottMap = new HashMap<>();
+		Map<Long, GetContentDetailRes> contentMap = new LinkedHashMap<>();
+		Map<Long, List<GetContentDetailRes.GetOttSimpleRes>> ottMap = new LinkedHashMap<>();
 		for (Tuple row : rows) {
 			Long contentId = row.get(content.id);
 			if (contentId == null) continue;
