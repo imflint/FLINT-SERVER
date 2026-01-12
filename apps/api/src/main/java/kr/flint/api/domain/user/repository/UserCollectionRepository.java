@@ -19,6 +19,7 @@ public interface UserCollectionRepository extends JpaRepository<Collection, Long
         FROM Collection c
         JOIN User u ON c.userId = u.id
         WHERE c.userId = :userId
+        ORDER BY c.id DESC
     """)
     List<CollectionWithUserProjection> findAllCollectionsWithUserByUserId(@Param("userId") Long userId);
 
@@ -28,6 +29,7 @@ public interface UserCollectionRepository extends JpaRepository<Collection, Long
         FROM Collection c
         JOIN User u ON c.userId = u.id
         WHERE c.userId = :userId AND c.isPublic = true
+        ORDER BY c.id DESC
     """)
     List<CollectionWithUserProjection> findPublicCollectionsWithUserByUserId(@Param("userId") Long userId);
 
@@ -37,6 +39,7 @@ public interface UserCollectionRepository extends JpaRepository<Collection, Long
         FROM Collection c
         JOIN User u ON c.userId = u.id
         WHERE c.id IN :collectionIds
+        ORDER BY c.id DESC
     """)
     List<CollectionWithUserProjection> findAllCollectionsWithUserByIdIn(@Param("collectionIds") List<Long> collectionIds);
 
@@ -46,6 +49,7 @@ public interface UserCollectionRepository extends JpaRepository<Collection, Long
         FROM Collection c
         JOIN User u ON c.userId = u.id
         WHERE c.id IN :collectionIds AND c.isPublic = true
+        ORDER BY c.id DESC
     """)
     List<CollectionWithUserProjection> findPublicCollectionsWithUserByIdIn(@Param("collectionIds") List<Long> collectionIds);
 }

@@ -6,15 +6,15 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import kr.flint.taste.dto.response.UserKeywordProjection;
 
 @Schema(description = "사용자 취향 키워드 응답")
-public record UserKeywordsResponse(
+public record UserKeywordsRes(
     @Schema(description = "키워드 목록")
     List<KeywordItem> keywords
 ) {
-    public static UserKeywordsResponse from(List<UserKeywordProjection> projections) {
+    public static UserKeywordsRes from(List<UserKeywordProjection> projections) {
         List<KeywordItem> items = projections.stream()
             .map(KeywordItem::from)
             .toList();
-        return new UserKeywordsResponse(items);
+        return new UserKeywordsRes(items);
     }
 
     @Schema(description = "키워드 항목")

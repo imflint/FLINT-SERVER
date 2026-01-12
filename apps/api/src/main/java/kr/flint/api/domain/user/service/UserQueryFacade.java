@@ -7,10 +7,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import kr.flint.api.domain.user.dto.response.CollectionWithUserProjection;
-import kr.flint.api.domain.user.dto.response.UserBookmarkedCollectionsResponse;
-import kr.flint.api.domain.user.dto.response.UserCollectionsResponse;
-import kr.flint.api.domain.user.dto.response.UserKeywordsResponse;
-import kr.flint.api.domain.user.dto.response.UserProfileResponse;
+import kr.flint.api.domain.user.dto.response.UserBookmarkedCollectionsRes;
+import kr.flint.api.domain.user.dto.response.UserCollectionsRes;
+import kr.flint.api.domain.user.dto.response.UserKeywordsRes;
+import kr.flint.api.domain.user.dto.response.UserProfileRes;
 import kr.flint.user.domain.User;
 import kr.flint.api.domain.user.repository.UserCollectionRepository;
 import kr.flint.bookmark.service.BookmarkService;
@@ -35,33 +35,33 @@ public class UserQueryFacade {
         return NicknameCheckResponse.of(!exists);
     }
 
-    public UserProfileResponse getUserProfile(Long userId) {
+    public UserProfileRes getUserProfile(Long userId) {
         User user = userService.getById(userId);
-        return UserProfileResponse.from(user);
+        return UserProfileRes.from(user);
     }
 
-    public UserKeywordsResponse getUserKeywords(Long userId) {
+    public UserKeywordsRes getUserKeywords(Long userId) {
         List<UserKeywordProjection> keywords = tasteService.getUserKeywords(userId);
-        return UserKeywordsResponse.from(keywords);
+        return UserKeywordsRes.from(keywords);
     }
 
     // 사용자가 생성한 컬렉션 조회 (본인이면 전체, 타인이면 공개만)
-    public UserCollectionsResponse getUserCollections(Long userId, boolean isOwner) {
+    public UserCollectionsRes getUserCollections(Long userId, boolean isOwner) {
         List<CollectionWithUserProjection> collections = isOwner
             ? userCollectionRepository.findAllCollectionsWithUserByUserId(userId)
             : userCollectionRepository.findPublicCollectionsWithUserByUserId(userId);
-        return UserCollectionsResponse.from(collections);
+        return UserCollectionsRes.from(collections);
     }
 
     // 사용자가 북마크한 컬렉션 조회 (본인이면 전체, 타인이면 공개만)
-    public UserBookmarkedCollectionsResponse getUserBookmarkedCollections(Long userId, boolean isOwner) {
+    public UserBookmarkedCollectionsRes getUserBookmarkedCollections(Long userId, boolean isOwner) {
         List<Long> collectionIds = bookmarkService.getBookmarkedCollectionIds(userId);
         if (collectionIds.isEmpty()) {
-            return UserBookmarkedCollectionsResponse.from(Collections.emptyList());
+            return UserBookmarkedCollectionsRes.from(Collections.emptyList());
         }
         List<CollectionWithUserProjection> collections = isOwner
             ? userCollectionRepository.findAllCollectionsWithUserByIdIn(collectionIds)
             : userCollectionRepository.findPublicCollectionsWithUserByIdIn(collectionIds);
-        return UserBookmarkedCollectionsResponse.from(collections);
+        return UserBookmarkedCollectionsRes.from(collections);
     }
 }

@@ -5,15 +5,15 @@ import java.util.List;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "사용자가 북마크한 컬렉션 목록 응답")
-public record UserBookmarkedCollectionsResponse(
+public record UserBookmarkedCollectionsRes(
     @Schema(description = "컬렉션 목록")
     List<BookmarkedCollectionItem> collections
 ) {
-    public static UserBookmarkedCollectionsResponse from(List<CollectionWithUserProjection> projections) {
+    public static UserBookmarkedCollectionsRes from(List<CollectionWithUserProjection> projections) {
         List<BookmarkedCollectionItem> items = projections.stream()
             .map(BookmarkedCollectionItem::from)
             .toList();
-        return new UserBookmarkedCollectionsResponse(items);
+        return new UserBookmarkedCollectionsRes(items);
     }
 
     @Schema(description = "북마크한 컬렉션 항목")

@@ -5,10 +5,10 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import kr.flint.api.domain.user.dto.response.UserBookmarkedCollectionsResponse;
-import kr.flint.api.domain.user.dto.response.UserCollectionsResponse;
-import kr.flint.api.domain.user.dto.response.UserKeywordsResponse;
-import kr.flint.api.domain.user.dto.response.UserProfileResponse;
+import kr.flint.api.domain.user.dto.response.UserBookmarkedCollectionsRes;
+import kr.flint.api.domain.user.dto.response.UserCollectionsRes;
+import kr.flint.api.domain.user.dto.response.UserKeywordsRes;
+import kr.flint.api.domain.user.dto.response.UserProfileRes;
 import kr.flint.api.global.security.UserPrincipal;
 import kr.flint.shared.dto.response.SuccessResponse;
 import kr.flint.user.dto.response.NicknameCheckResponse;
@@ -41,7 +41,7 @@ public interface UserControllerDocs {
                     description = "프로필 조회 성공"
             )
     })
-    ResponseEntity<SuccessResponse<UserProfileResponse>> getUserProfile(
+    ResponseEntity<SuccessResponse<UserProfileRes>> getUserProfile(
             @Parameter(description = "사용자 ID", example = "123456789") Long userId
     );
 
@@ -55,7 +55,7 @@ public interface UserControllerDocs {
                     description = "취향 키워드 조회 성공"
             )
     })
-    ResponseEntity<SuccessResponse<UserKeywordsResponse>> getUserKeywords(
+    ResponseEntity<SuccessResponse<UserKeywordsRes>> getUserKeywords(
             @Parameter(description = "사용자 ID", example = "123456789") Long userId
     );
 
@@ -69,7 +69,7 @@ public interface UserControllerDocs {
                     description = "컬렉션 조회 성공"
             )
     })
-    ResponseEntity<SuccessResponse<UserCollectionsResponse>> getUserCollections(
+    ResponseEntity<SuccessResponse<UserCollectionsRes>> getUserCollections(
             @Parameter(hidden = true) UserPrincipal principal,
             @Parameter(description = "사용자 ID", example = "123456789") Long userId
     );
@@ -84,7 +84,7 @@ public interface UserControllerDocs {
                     description = "북마크 컬렉션 조회 성공"
             )
     })
-    ResponseEntity<SuccessResponse<UserBookmarkedCollectionsResponse>> getUserBookmarkedCollections(
+    ResponseEntity<SuccessResponse<UserBookmarkedCollectionsRes>> getUserBookmarkedCollections(
             @Parameter(hidden = true) UserPrincipal principal,
             @Parameter(description = "사용자 ID", example = "123456789") Long userId
     );

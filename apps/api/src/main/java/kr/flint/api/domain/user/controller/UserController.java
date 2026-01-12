@@ -2,13 +2,12 @@ package kr.flint.api.domain.user.controller;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import kr.flint.api.domain.user.controller.spec.UserControllerDocs;
-import kr.flint.api.domain.user.dto.response.UserBookmarkedCollectionsResponse;
-import kr.flint.api.domain.user.dto.response.UserCollectionsResponse;
-import kr.flint.api.domain.user.dto.response.UserKeywordsResponse;
-import kr.flint.api.domain.user.dto.response.UserProfileResponse;
+import kr.flint.api.domain.user.dto.response.UserBookmarkedCollectionsRes;
+import kr.flint.api.domain.user.dto.response.UserCollectionsRes;
+import kr.flint.api.domain.user.dto.response.UserKeywordsRes;
+import kr.flint.api.domain.user.dto.response.UserProfileRes;
 import kr.flint.api.domain.user.service.UserQueryFacade;
 import kr.flint.api.global.security.UserPrincipal;
 import kr.flint.shared.dto.response.SuccessCode;
@@ -48,7 +47,7 @@ public class UserController implements UserControllerDocs {
 
     @Override
     @GetMapping("/{userId}")
-    public ResponseEntity<SuccessResponse<UserProfileResponse>> getUserProfile(
+    public ResponseEntity<SuccessResponse<UserProfileRes>> getUserProfile(
             @PathVariable Long userId
     ) {
         return ResponseEntity.ok(
@@ -58,7 +57,7 @@ public class UserController implements UserControllerDocs {
 
     @Override
     @GetMapping("/{userId}/keywords")
-    public ResponseEntity<SuccessResponse<UserKeywordsResponse>> getUserKeywords(
+    public ResponseEntity<SuccessResponse<UserKeywordsRes>> getUserKeywords(
             @PathVariable Long userId
     ) {
         return ResponseEntity.ok(
@@ -68,7 +67,7 @@ public class UserController implements UserControllerDocs {
 
     @Override
     @GetMapping("/{userId}/collections")
-    public ResponseEntity<SuccessResponse<UserCollectionsResponse>> getUserCollections(
+    public ResponseEntity<SuccessResponse<UserCollectionsRes>> getUserCollections(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long userId
     ) {
@@ -80,7 +79,7 @@ public class UserController implements UserControllerDocs {
 
     @Override
     @GetMapping("/{userId}/bookmarked-collections")
-    public ResponseEntity<SuccessResponse<UserBookmarkedCollectionsResponse>> getUserBookmarkedCollections(
+    public ResponseEntity<SuccessResponse<UserBookmarkedCollectionsRes>> getUserBookmarkedCollections(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable Long userId
     ) {

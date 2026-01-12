@@ -5,15 +5,15 @@ import java.util.List;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "사용자가 생성한 컬렉션 목록 응답")
-public record UserCollectionsResponse(
+public record UserCollectionsRes(
     @Schema(description = "컬렉션 목록")
     List<CollectionItem> collections
 ) {
-    public static UserCollectionsResponse from(List<CollectionWithUserProjection> projections) {
+    public static UserCollectionsRes from(List<CollectionWithUserProjection> projections) {
         List<CollectionItem> items = projections.stream()
             .map(CollectionItem::from)
             .toList();
-        return new UserCollectionsResponse(items);
+        return new UserCollectionsRes(items);
     }
 
     @Schema(description = "컬렉션 항목")
