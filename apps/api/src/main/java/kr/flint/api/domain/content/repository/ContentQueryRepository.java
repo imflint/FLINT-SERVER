@@ -55,7 +55,7 @@ public class ContentQueryRepository {
 			Long contentId = row.get(content.id);
 			GetContentDetailRes dto = grouped.get(contentId);
 
-			if (content == null) {
+			if (dto == null) {
 				String title = row.get(content.title);
 				int year = row.get(content.year);
 
@@ -63,7 +63,7 @@ public class ContentQueryRepository {
 					contentId,
 					title,
 					year,
-					null
+					new ArrayList<>()
 				);
 				grouped.put(contentId, dto);
 			}
