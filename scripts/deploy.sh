@@ -174,8 +174,9 @@ deploy() {
     # 7. 활성 포트 기록
     echo $inactive_port > "$DEPLOY_PATH/active_port"
 
-    # 8. 이전 버전 종료 (잠시 대기 후)
-    sleep 5
+    # 8. 이전 버전 종료 (connection draining 대기)
+    log "Waiting for connection draining (30s)..."
+    sleep 30
     kill_app_on_port $active_port
 
     # 9. deploy 폴더 정리
