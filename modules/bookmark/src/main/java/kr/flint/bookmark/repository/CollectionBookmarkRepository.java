@@ -19,7 +19,14 @@ public interface CollectionBookmarkRepository extends JpaRepository<CollectionBo
 		from CollectionBookmark cb
 		where cb.collectionId = :collectionId
 	""")
-	List<Long> findUserIdsByCollectionId(@Param("collectionId")Long collectionId);
+	List<Long> findUserIdsByCollectionId(@Param("collectionId") Long collectionId);
+
+	@Query("""
+		select cb.collectionId
+		from CollectionBookmark cb
+		where cb.userId = :userId
+	""")
+	List<Long> findCollectionIdsByUserId(@Param("userId") Long userId);
 
 	int countByCollectionId(Long collectionId);
 }

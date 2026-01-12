@@ -56,4 +56,8 @@ public class BookmarkService {
 	public List<Long> getBookmarkUserId(final Long collectionId){
 		return collectionBookmarkRepository.findUserIdsByCollectionId(collectionId);
 	}
+
+	public List<Long> getBookmarkedCollectionIds(final Long userId) {
+		return collectionBookmarkRepository.findCollectionIdsByUserId(userId);
+	}
 }

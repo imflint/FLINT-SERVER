@@ -399,8 +399,11 @@ public class CollectionBookmark extends Base {
 
 **Entity 규칙:**
 - `Base` 또는 `BaseTime` 상속 (TSID ID, equals/hashCode 자동 적용)
-  - `Base`: ID만 필요한 경우
-  - `BaseTime`: ID + createdAt/updatedAt 필요한 경우
+  - `Base`: ID만 필요한 경우 (대부분의 엔티티)
+  - `BaseTime`: ID + createdAt/updatedAt이 **필요한 경우에만** 사용
+- **모든 엔티티가 `BaseTime`을 상속받을 필요 없음** - 실제로 생성/수정 시간 추적이 필요한 엔티티에만 적용
+- **Soft Delete도 필요한 엔티티에만 적용** - 모든 엔티티에 일괄 적용하지 않음
+  - 예: `User`는 Soft Delete 필요, `CollectionBookmark`는 Hard Delete
 - `@Setter` 금지 → 도메인 메서드로 상태 변경
 - `Builder` private → 정적 팩토리 메서드로만 생성
 - `@SQLRestriction("deleted_at IS NULL")` → Soft Delete 적용 (필요한 엔티티만)
@@ -751,11 +754,11 @@ public class CollectionQueryService {
 | 외부 DTO 네이밍 | `*Req`, `*Res` |
 | 내부 DTO 위치 | `modules/*/dto/` (하위 디렉토리 없음) |
 | 내부 DTO 네이밍 | `*Command`, `*Info`, `*Result` |
-| Entity 상속 | `Base` (ID만) 또는 `BaseTime` (ID + 시간) |
+| Entity 상속 | `Base` (기본) 또는 `BaseTime` (필요한 경우만) |
 | Entity 생성 | 정적 팩토리 메서드 (Builder private) |
 | Entity 변경 | 도메인 메서드 (@Setter 금지) |
 | equals/hashCode | Base 클래스에서 ID 기반으로 구현됨 |
-| Soft Delete | `@SQLRestriction("deleted_at IS NULL")` |
+| BaseTime/Soft Delete | 필요한 엔티티에만 선택적 적용 |
 | 복합 유니크 | `@Table(uniqueConstraints = ...)` |
 | 예외 처리 | RFC 9457 ProblemDetail + AppError enum |
 | 테스트 DB | Testcontainers (MySQL) |
