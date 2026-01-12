@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import kr.flint.api.domain.user.dto.response.UserBookmarkedCollectionsResponse;
 import kr.flint.api.domain.user.dto.response.UserCollectionsResponse;
 import kr.flint.api.domain.user.dto.response.UserKeywordsResponse;
+import kr.flint.api.domain.user.dto.response.UserProfileResponse;
 import kr.flint.api.global.security.UserPrincipal;
 import kr.flint.shared.dto.response.SuccessResponse;
 import kr.flint.user.dto.response.NicknameCheckResponse;
@@ -28,6 +29,20 @@ public interface UserControllerDocs {
     })
     ResponseEntity<SuccessResponse<NicknameCheckResponse>> checkNickname(
             @Parameter(description = "확인할 닉네임", example = "my_nickname") String nickname
+    );
+
+    @Operation(
+            summary = "사용자 프로필 조회",
+            description = "특정 사용자의 기본 프로필 정보(닉네임, 프로필 이미지, 플리너 여부)를 조회합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "프로필 조회 성공"
+            )
+    })
+    ResponseEntity<SuccessResponse<UserProfileResponse>> getUserProfile(
+            @Parameter(description = "사용자 ID", example = "123456789") Long userId
     );
 
     @Operation(

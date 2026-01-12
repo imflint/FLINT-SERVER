@@ -248,16 +248,24 @@ REST API 애플리케이션 모듈. 모든 도메인 모듈을 조합하여 API�
 
 취향 키워드/프로파일 SoT
 
+> **Note**: Genre(장르)와 Keyword(취향 키워드)는 별도 개념으로 분리됩니다.
+> - **Genre**: 작품의 객관적 분류 (로맨스, 액션 등) - `content` 모듈에서 관리
+> - **Keyword**: 사용자 취향/감상 키워드 (힐링, 반전, 성장 등) - `taste` 모듈에서 관리
+
 | Aggregate | 테이블 | 설명 |
 |-----------|--------|------|
 | `Keyword` | `keywords` | 취향 키워드 마스터 |
 | `ContentKeyword` | `content_keywords` | 작품-키워드 매핑 |
-| `UserKeywordScore` | `user_keyword_scores` | 사용자별 키워드 점수 |
+| `UserKeyword` | `user_keywords` | 사용자별 키워드 비율 |
 
 **주요 필드 (Keyword):**
-- `keyword_type` (GENRE, THEME, MOOD, PERSON, FEATURE)
-- `name`
-- **UNIQUE**: `(keyword_type, name)`
+- `name` (힐링, 반전, 성장, 감동 등)
+- **UNIQUE**: `(name)`
+
+**주요 필드 (UserKeyword):**
+- `user_id`, `keyword_id`
+- `percentage` (0~100, 사용자의 해당 키워드 비율)
+- **UNIQUE**: `(user_id, keyword_id)`
 
 ---
 
@@ -374,10 +382,14 @@ public class User extends BaseTime {
 ```
 
 **Entity 규칙:**
-- `BaseTime` 상속 (TSID ID + createdAt/updatedAt)
+- `Base` 또는 `BaseTime` 상속 (TSID ID, equals/hashCode 자동 적용)
+  - `Base`: ID만 필요한 경우 (대부분의 엔티티)
+  - `BaseTime`: ID + createdAt/updatedAt이 필요한 경우에만 사용
+- 모든 엔티티가 `BaseTime`을 상속받을 필요 없음
+- Soft Delete도 필요한 엔티티에만 선택적 적용
 - `@Setter` 금지 → 도메인 메서드로 상태 변경
 - `Builder` private → 정적 팩토리 메서드로만 생성
-- `@SQLRestriction` → Soft Delete 적용
+- `@SQLRestriction` → Soft Delete 적용 (필요한 엔티티만)
 
 ### FK 처리 방식
 

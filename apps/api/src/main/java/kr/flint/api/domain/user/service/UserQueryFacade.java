@@ -10,6 +10,8 @@ import kr.flint.api.domain.user.dto.response.CollectionWithUserProjection;
 import kr.flint.api.domain.user.dto.response.UserBookmarkedCollectionsResponse;
 import kr.flint.api.domain.user.dto.response.UserCollectionsResponse;
 import kr.flint.api.domain.user.dto.response.UserKeywordsResponse;
+import kr.flint.api.domain.user.dto.response.UserProfileResponse;
+import kr.flint.user.domain.User;
 import kr.flint.api.domain.user.repository.UserCollectionRepository;
 import kr.flint.bookmark.service.BookmarkService;
 import kr.flint.taste.dto.response.UserKeywordProjection;
@@ -31,6 +33,11 @@ public class UserQueryFacade {
     public NicknameCheckResponse checkNickname(String nickname) {
         boolean exists = userService.existsByNickname(nickname);
         return NicknameCheckResponse.of(!exists);
+    }
+
+    public UserProfileResponse getUserProfile(Long userId) {
+        User user = userService.getById(userId);
+        return UserProfileResponse.from(user);
     }
 
     public UserKeywordsResponse getUserKeywords(Long userId) {

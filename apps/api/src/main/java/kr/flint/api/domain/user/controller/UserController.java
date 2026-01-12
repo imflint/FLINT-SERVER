@@ -8,6 +8,7 @@ import kr.flint.api.domain.user.controller.spec.UserControllerDocs;
 import kr.flint.api.domain.user.dto.response.UserBookmarkedCollectionsResponse;
 import kr.flint.api.domain.user.dto.response.UserCollectionsResponse;
 import kr.flint.api.domain.user.dto.response.UserKeywordsResponse;
+import kr.flint.api.domain.user.dto.response.UserProfileResponse;
 import kr.flint.api.domain.user.service.UserQueryFacade;
 import kr.flint.api.global.security.UserPrincipal;
 import kr.flint.shared.dto.response.SuccessCode;
@@ -46,9 +47,19 @@ public class UserController implements UserControllerDocs {
     }
 
     @Override
+    @GetMapping("/{userId}")
+    public ResponseEntity<SuccessResponse<UserProfileResponse>> getUserProfile(
+            @PathVariable Long userId
+    ) {
+        return ResponseEntity.ok(
+                SuccessResponse.of(SuccessCode.SUCCESS_FETCH, userQueryFacade.getUserProfile(userId))
+        );
+    }
+
+    @Override
     @GetMapping("/{userId}/keywords")
     public ResponseEntity<SuccessResponse<UserKeywordsResponse>> getUserKeywords(
-            @PathVariable @Positive Long userId
+            @PathVariable Long userId
     ) {
         return ResponseEntity.ok(
                 SuccessResponse.of(SuccessCode.SUCCESS_KEYWORDS_FETCH, userQueryFacade.getUserKeywords(userId))
@@ -59,7 +70,7 @@ public class UserController implements UserControllerDocs {
     @GetMapping("/{userId}/collections")
     public ResponseEntity<SuccessResponse<UserCollectionsResponse>> getUserCollections(
             @AuthenticationPrincipal UserPrincipal principal,
-            @PathVariable @Positive Long userId
+            @PathVariable Long userId
     ) {
         boolean isOwner = isOwner(principal, userId);
         return ResponseEntity.ok(
@@ -71,7 +82,7 @@ public class UserController implements UserControllerDocs {
     @GetMapping("/{userId}/bookmarked-collections")
     public ResponseEntity<SuccessResponse<UserBookmarkedCollectionsResponse>> getUserBookmarkedCollections(
             @AuthenticationPrincipal UserPrincipal principal,
-            @PathVariable @Positive Long userId
+            @PathVariable Long userId
     ) {
         boolean isOwner = isOwner(principal, userId);
         return ResponseEntity.ok(
