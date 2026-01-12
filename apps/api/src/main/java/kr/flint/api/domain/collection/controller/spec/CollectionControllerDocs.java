@@ -30,7 +30,7 @@ public interface CollectionControllerDocs {
 		@ApiResponse(
 			responseCode = "201",
 			description = "생성 성공",
-			content = @Content(schema = @Schema(implementation = SuccessResponse.class))
+			content = @Content(schema = @Schema(implementation = CollectionSwaggerResponses.SuccessResponseVoid.class))
 		),
 		@ApiResponse(
 			responseCode = "400",
@@ -51,7 +51,7 @@ public interface CollectionControllerDocs {
 		@ApiResponse(
 			responseCode = "200",
 			description = "조회 성공",
-			content = @Content(schema = @Schema(implementation = GetCollectionSimpleRes.class))
+			content = @Content(schema = @Schema(implementation = CollectionSwaggerResponses.SuccessResponsePaginationGetCollectionSimpleRes.class))
 		),
 		@ApiResponse(
 			responseCode = "400",
@@ -74,7 +74,7 @@ public interface CollectionControllerDocs {
 		@ApiResponse(
 			responseCode = "200",
 			description = "조회 성공",
-			content = @Content(schema = @Schema(implementation = GetCollectionDetailRes.class))
+			content = @Content(schema = @Schema(implementation = CollectionSwaggerResponses.SuccessResponseGetCollectionDetailRes.class))
 		),
 		@ApiResponse(
 			responseCode = "404",
@@ -95,7 +95,7 @@ public interface CollectionControllerDocs {
 		@ApiResponse(
 			responseCode = "200",
 			description = "조회 성공",
-			content = @Content(schema = @Schema(implementation = SuccessResponse.class))
+			content = @Content(schema = @Schema(implementation = CollectionSwaggerResponses.SuccessResponseListGetCollectionDetailListRes.class))
 		)
 	})
 	ResponseEntity<SuccessResponse<List<GetCollectionDetailListRes>>> getRecentCollectionList();
