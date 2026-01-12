@@ -37,6 +37,7 @@ out/
 
 .env*
 .*/
+!.github/
 *.json
 logs/
 .DS_Store

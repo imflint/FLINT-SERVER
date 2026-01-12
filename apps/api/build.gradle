@@ -28,6 +28,7 @@ dependencies {
     implementation project(':infra:redis')
     implementation project(':infra:storage')
     implementation project(':infra:aws')
+    implementation project(':infra:tmdb')
 
     // Test
     testImplementation 'com.tngtech.archunit:archunit-junit5:1.4.0'
