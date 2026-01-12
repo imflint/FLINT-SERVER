@@ -41,14 +41,16 @@ get_inactive_port() {
 # 특정 포트의 프로세스 종료
 kill_app_on_port() {
     local port=$1
-    local pid=$(lsof -ti:$port)
+    local pid
+    pid=$(lsof -ti:"$port")
     if [ -n "$pid" ]; then
         log "Stopping application on port $port (PID: $pid)"
-        kill $pid
-        sleep 2
+        kill "$pid"
+        # 그레이스풀 셧다운 대기 (Spring Boot 기본 30초)
+        sleep 10
         # 강제 종료
-        if lsof -ti:$port > /dev/null 2>&1; then
-            kill -9 $(lsof -ti:$port)
+        if lsof -ti:"$port" > /dev/null 2>&1; then
+            kill -9 "$(lsof -ti:"$port")"
         fi
     fi
 }
@@ -58,8 +60,8 @@ start_app() {
     local port=$1
     log "Starting application on port $port"
 
-    cd $DEPLOY_PATH
-    nohup java -jar $JAR_NAME \
+    cd "$DEPLOY_PATH" || { log "ERROR: Failed to cd to $DEPLOY_PATH"; exit 1; }
+    nohup java -jar "$JAR_NAME" \
         --spring.profiles.active=$PROFILE \
         --server.port=$port \
         > app-$port.log 2>&1 &

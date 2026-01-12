@@ -79,7 +79,7 @@ jobs:
           sparse-checkout: scripts
 
       - name: Deploy JAR to EC2
-        uses: appleboy/scp-action@v0.1.7
+        uses: appleboy/scp-action@v1.0.0
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
@@ -88,7 +88,7 @@ jobs:
           target: "/home/ubuntu/deploy"
 
       - name: Deploy script to EC2
-        uses: appleboy/scp-action@v0.1.7
+        uses: appleboy/scp-action@v1.0.0
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
@@ -98,7 +98,7 @@ jobs:
           strip_components: 1
 
       - name: Run Blue-Green deployment
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.4
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
