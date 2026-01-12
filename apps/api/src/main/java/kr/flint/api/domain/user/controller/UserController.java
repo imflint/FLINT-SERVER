@@ -4,6 +4,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import kr.flint.api.domain.user.controller.spec.UserControllerDocs;
+import kr.flint.api.domain.user.dto.response.UserBookmarkedCollectionsResponse;
+import kr.flint.api.domain.user.dto.response.UserCollectionsResponse;
+import kr.flint.api.domain.user.dto.response.UserKeywordsResponse;
 import kr.flint.api.domain.user.service.UserQueryFacade;
 import kr.flint.shared.dto.response.SuccessCode;
 import kr.flint.shared.dto.response.SuccessResponse;
@@ -12,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -35,6 +39,36 @@ public class UserController implements UserControllerDocs {
     ) {
         return ResponseEntity.ok(
                 SuccessResponse.of(SuccessCode.SUCCESS_NICKNAME_CHECK, userQueryFacade.checkNickname(nickname))
+        );
+    }
+
+    @Override
+    @GetMapping("/{userId}/keywords")
+    public ResponseEntity<SuccessResponse<UserKeywordsResponse>> getUserKeywords(
+            @PathVariable Long userId
+    ) {
+        return ResponseEntity.ok(
+                SuccessResponse.of(SuccessCode.SUCCESS_KEYWORDS_FETCH, userQueryFacade.getUserKeywords(userId))
+        );
+    }
+
+    @Override
+    @GetMapping("/{userId}/collections")
+    public ResponseEntity<SuccessResponse<UserCollectionsResponse>> getUserCollections(
+            @PathVariable Long userId
+    ) {
+        return ResponseEntity.ok(
+                SuccessResponse.of(SuccessCode.SUCCESS_COLLECTIONS_FETCH, userQueryFacade.getUserCollections(userId))
+        );
+    }
+
+    @Override
+    @GetMapping("/{userId}/bookmarked-collections")
+    public ResponseEntity<SuccessResponse<UserBookmarkedCollectionsResponse>> getUserBookmarkedCollections(
+            @PathVariable Long userId
+    ) {
+        return ResponseEntity.ok(
+                SuccessResponse.of(SuccessCode.SUCCESS_COLLECTIONS_FETCH, userQueryFacade.getUserBookmarkedCollections(userId))
         );
     }
 }

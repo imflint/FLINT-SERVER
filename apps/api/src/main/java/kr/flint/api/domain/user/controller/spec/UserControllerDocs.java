@@ -5,6 +5,9 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import kr.flint.api.domain.user.dto.response.UserBookmarkedCollectionsResponse;
+import kr.flint.api.domain.user.dto.response.UserCollectionsResponse;
+import kr.flint.api.domain.user.dto.response.UserKeywordsResponse;
 import kr.flint.shared.dto.response.SuccessResponse;
 import kr.flint.user.dto.response.NicknameCheckResponse;
 import org.springframework.http.ResponseEntity;
@@ -24,5 +27,47 @@ public interface UserControllerDocs {
     })
     ResponseEntity<SuccessResponse<NicknameCheckResponse>> checkNickname(
             @Parameter(description = "확인할 닉네임", example = "my_nickname") String nickname
+    );
+
+    @Operation(
+            summary = "사용자 취향 키워드 조회",
+            description = "특정 사용자의 취향 키워드 목록을 조회합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "취향 키워드 조회 성공"
+            )
+    })
+    ResponseEntity<SuccessResponse<UserKeywordsResponse>> getUserKeywords(
+            @Parameter(description = "사용자 ID", example = "123456789") Long userId
+    );
+
+    @Operation(
+            summary = "사용자 생성 컬렉션 조회",
+            description = "특정 사용자가 생성한 컬렉션 목록을 조회합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "컬렉션 조회 성공"
+            )
+    })
+    ResponseEntity<SuccessResponse<UserCollectionsResponse>> getUserCollections(
+            @Parameter(description = "사용자 ID", example = "123456789") Long userId
+    );
+
+    @Operation(
+            summary = "사용자 북마크 컬렉션 조회",
+            description = "특정 사용자가 북마크한 컬렉션 목록을 조회합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "북마크 컬렉션 조회 성공"
+            )
+    })
+    ResponseEntity<SuccessResponse<UserBookmarkedCollectionsResponse>> getUserBookmarkedCollections(
+            @Parameter(description = "사용자 ID", example = "123456789") Long userId
     );
 }
