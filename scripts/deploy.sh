@@ -60,7 +60,7 @@ start_app() {
     local port=$1
     log "Starting application on port $port"
 
-    cd "$DEPLOY_PATH" || { log "ERROR: Failed to cd to $DEPLOY_PATH"; exit 1; }
+    cd "$DEPLOY_PATH" || { log "ERROR: Failed to cd to $DEPLOY_PATH"; return 1; }
     nohup java -jar "$JAR_NAME" \
         --spring.profiles.active=$PROFILE \
         --server.port=$port \
@@ -137,7 +137,15 @@ deploy() {
     kill_app_on_port $inactive_port
 
     # 4. 새 버전 시작
-    start_app $inactive_port
+    if ! start_app "$inactive_port"; then
+        log "Failed to start application"
+        # 백업에서 복원
+        if [ -f "$BACKUP_JAR" ]; then
+            cp "$BACKUP_JAR" "$DEPLOY_PATH/$JAR_NAME"
+            log "Restored JAR from backup"
+        fi
+        exit 1
+    fi
 
     # 5. 헬스체크
     if ! health_check $inactive_port; then
