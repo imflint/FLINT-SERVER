@@ -48,6 +48,8 @@ public class ContentQueryRepository {
 				ottUser.userId.eq(userId),
 				ottUser.ottProvider.eq(ottProvider)
 			)
+			.orderBy(contentBookmark.createdAt.desc())
+			.limit(10)
 			.fetch();
 
 		Map<Long, GetContentDetailRes> contentMap = new HashMap<>();

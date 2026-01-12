@@ -1,5 +1,6 @@
 package kr.flint.api.domain.content.service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Component;
@@ -24,6 +25,10 @@ public class ContentQueryFacade {
 	}
 
 	public List<GetContentDetailRes> getContentDetailList(final Long userId) {
-		return contentQueryRepository.getContentDetailList(userId);
+		List<GetContentDetailRes> contentList = contentQueryRepository.getContentDetailList(userId);
+		if (contentList.isEmpty()) {
+			return new ArrayList<>();
+		}
+		return contentList;
 	}
 }
