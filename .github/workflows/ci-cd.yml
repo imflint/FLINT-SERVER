@@ -68,15 +68,23 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
 
     steps:
-      - name: Download JAR artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: app-jar
-
       - name: Checkout for deploy script
         uses: actions/checkout@v4
         with:
           sparse-checkout: scripts
+
+      - name: Download JAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-jar
+          path: artifact
+
+      - name: Verify files
+        run: |
+          echo "=== Artifact directory ==="
+          ls -la artifact/
+          echo "=== Scripts directory ==="
+          ls -la scripts/
 
       - name: Deploy JAR to EC2
         uses: appleboy/scp-action@v1.0.0
@@ -84,8 +92,9 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "flint-api-0.0.1-SNAPSHOT.jar"
+          source: "artifact/flint-api-0.0.1-SNAPSHOT.jar"
           target: "/home/ubuntu/deploy"
+          strip_components: 1
 
       - name: Deploy script to EC2
         uses: appleboy/scp-action@v1.0.0
