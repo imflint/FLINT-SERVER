@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import kr.flint.api.domain.content.dto.GetContentDetailRes;
 import kr.flint.api.domain.content.service.ContentQueryFacade;
 import kr.flint.ott.dto.GetOttResponse;
 import kr.flint.shared.dto.response.SuccessCode;
@@ -28,5 +29,13 @@ public class ContentController {
 	){
 		List<GetOttResponse> getOttResponseList = contentQueryFacade.getOttList(1L, contentId);
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, getOttResponseList));
+	}
+
+	@GetMapping
+	public ResponseEntity<SuccessResponse<?>> getBookmarkContent(
+		//@AuthenticationPrincipal Long userId
+	){
+		List<GetContentDetailRes> getContentDetailResList = contentQueryFacade.getContentDetailList(1L);
+		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, getContentDetailResList));
 	}
 }

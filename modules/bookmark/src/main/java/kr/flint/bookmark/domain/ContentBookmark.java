@@ -4,7 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-import kr.flint.shared.domain.Base;
+import kr.flint.shared.domain.BaseTime;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -22,7 +22,7 @@ import lombok.NoArgsConstructor;
 		)
 	}
 )
-public class ContentBookmark extends Base {
+public class ContentBookmark extends BaseTime {
 	@Column(nullable = false)
 	private Long userId;
 
