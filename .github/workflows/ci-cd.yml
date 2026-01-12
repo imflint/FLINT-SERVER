@@ -41,7 +41,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build with Gradle
-        run: ./gradlew build -x test
+        run: ./gradlew :apps:api:build -x test
 
       - name: Run tests
         run: ./gradlew test
@@ -49,6 +49,10 @@ jobs:
           DB_URL: jdbc:mysql://localhost:3306/flint_test
           DB_USERNAME: test
           DB_PASSWORD: test
+
+      - name: Build bootJar
+        if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+        run: ./gradlew :apps:api:bootJar
 
       - name: Upload JAR artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
