@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import kr.flint.api.domain.user.dto.response.UserBookmarkedCollectionsResponse;
 import kr.flint.api.domain.user.dto.response.UserCollectionsResponse;
 import kr.flint.api.domain.user.dto.response.UserKeywordsResponse;
+import kr.flint.api.global.security.UserPrincipal;
 import kr.flint.shared.dto.response.SuccessResponse;
 import kr.flint.user.dto.response.NicknameCheckResponse;
 import org.springframework.http.ResponseEntity;
@@ -45,7 +46,7 @@ public interface UserControllerDocs {
 
     @Operation(
             summary = "사용자 생성 컬렉션 조회",
-            description = "특정 사용자가 생성한 컬렉션 목록을 조회합니다."
+            description = "특정 사용자가 생성한 컬렉션 목록을 조회합니다. 본인 조회 시 전체 컬렉션, 타인 조회 시 공개 컬렉션만 반환됩니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -54,12 +55,13 @@ public interface UserControllerDocs {
             )
     })
     ResponseEntity<SuccessResponse<UserCollectionsResponse>> getUserCollections(
+            @Parameter(hidden = true) UserPrincipal principal,
             @Parameter(description = "사용자 ID", example = "123456789") Long userId
     );
 
     @Operation(
             summary = "사용자 북마크 컬렉션 조회",
-            description = "특정 사용자가 북마크한 컬렉션 목록을 조회합니다."
+            description = "특정 사용자가 북마크한 컬렉션 목록을 조회합니다. 본인 조회 시 전체 컬렉션, 타인 조회 시 공개 컬렉션만 반환됩니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -68,6 +70,7 @@ public interface UserControllerDocs {
             )
     })
     ResponseEntity<SuccessResponse<UserBookmarkedCollectionsResponse>> getUserBookmarkedCollections(
+            @Parameter(hidden = true) UserPrincipal principal,
             @Parameter(description = "사용자 ID", example = "123456789") Long userId
     );
 }

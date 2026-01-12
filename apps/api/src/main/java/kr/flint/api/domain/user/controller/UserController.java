@@ -2,17 +2,20 @@ package kr.flint.api.domain.user.controller;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import kr.flint.api.domain.user.controller.spec.UserControllerDocs;
 import kr.flint.api.domain.user.dto.response.UserBookmarkedCollectionsResponse;
 import kr.flint.api.domain.user.dto.response.UserCollectionsResponse;
 import kr.flint.api.domain.user.dto.response.UserKeywordsResponse;
 import kr.flint.api.domain.user.service.UserQueryFacade;
+import kr.flint.api.global.security.UserPrincipal;
 import kr.flint.shared.dto.response.SuccessCode;
 import kr.flint.shared.dto.response.SuccessResponse;
 import kr.flint.user.dto.response.NicknameCheckResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -45,7 +48,7 @@ public class UserController implements UserControllerDocs {
     @Override
     @GetMapping("/{userId}/keywords")
     public ResponseEntity<SuccessResponse<UserKeywordsResponse>> getUserKeywords(
-            @PathVariable Long userId
+            @PathVariable @Positive Long userId
     ) {
         return ResponseEntity.ok(
                 SuccessResponse.of(SuccessCode.SUCCESS_KEYWORDS_FETCH, userQueryFacade.getUserKeywords(userId))
@@ -55,20 +58,29 @@ public class UserController implements UserControllerDocs {
     @Override
     @GetMapping("/{userId}/collections")
     public ResponseEntity<SuccessResponse<UserCollectionsResponse>> getUserCollections(
-            @PathVariable Long userId
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable @Positive Long userId
     ) {
+        boolean isOwner = isOwner(principal, userId);
         return ResponseEntity.ok(
-                SuccessResponse.of(SuccessCode.SUCCESS_COLLECTIONS_FETCH, userQueryFacade.getUserCollections(userId))
+                SuccessResponse.of(SuccessCode.SUCCESS_COLLECTIONS_FETCH, userQueryFacade.getUserCollections(userId, isOwner))
         );
     }
 
     @Override
     @GetMapping("/{userId}/bookmarked-collections")
     public ResponseEntity<SuccessResponse<UserBookmarkedCollectionsResponse>> getUserBookmarkedCollections(
-            @PathVariable Long userId
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable @Positive Long userId
     ) {
+        boolean isOwner = isOwner(principal, userId);
         return ResponseEntity.ok(
-                SuccessResponse.of(SuccessCode.SUCCESS_COLLECTIONS_FETCH, userQueryFacade.getUserBookmarkedCollections(userId))
+                SuccessResponse.of(SuccessCode.SUCCESS_COLLECTIONS_FETCH, userQueryFacade.getUserBookmarkedCollections(userId, isOwner))
         );
+    }
+
+    // 본인 여부 확인 (비로그인 시 false)
+    private boolean isOwner(UserPrincipal principal, Long userId) {
+        return principal != null && principal.userId().equals(userId);
     }
 }

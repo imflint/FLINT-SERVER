@@ -38,17 +38,23 @@ public class UserQueryFacade {
         return UserKeywordsResponse.from(keywords);
     }
 
-    public UserCollectionsResponse getUserCollections(Long userId) {
-        List<CollectionWithUserProjection> collections = userCollectionRepository.findCollectionsWithUserByUserId(userId);
+    // 사용자가 생성한 컬렉션 조회 (본인이면 전체, 타인이면 공개만)
+    public UserCollectionsResponse getUserCollections(Long userId, boolean isOwner) {
+        List<CollectionWithUserProjection> collections = isOwner
+            ? userCollectionRepository.findAllCollectionsWithUserByUserId(userId)
+            : userCollectionRepository.findPublicCollectionsWithUserByUserId(userId);
         return UserCollectionsResponse.from(collections);
     }
 
-    public UserBookmarkedCollectionsResponse getUserBookmarkedCollections(Long userId) {
+    // 사용자가 북마크한 컬렉션 조회 (본인이면 전체, 타인이면 공개만)
+    public UserBookmarkedCollectionsResponse getUserBookmarkedCollections(Long userId, boolean isOwner) {
         List<Long> collectionIds = bookmarkService.getBookmarkedCollectionIds(userId);
         if (collectionIds.isEmpty()) {
             return UserBookmarkedCollectionsResponse.from(Collections.emptyList());
         }
-        List<CollectionWithUserProjection> collections = userCollectionRepository.findCollectionsWithUserByIdIn(collectionIds);
+        List<CollectionWithUserProjection> collections = isOwner
+            ? userCollectionRepository.findAllCollectionsWithUserByIdIn(collectionIds)
+            : userCollectionRepository.findPublicCollectionsWithUserByIdIn(collectionIds);
         return UserBookmarkedCollectionsResponse.from(collections);
     }
 }
