@@ -50,30 +50,33 @@ public class ContentQueryRepository {
 			)
 			.fetch();
 
-		Map<Long, GetContentDetailRes> grouped = new HashMap<>();
+		Map<Long, GetContentDetailRes> contentMap = new HashMap<>();
+		Map<Long, List<GetContentDetailRes.GetOttSimpleRes>> ottMap = new HashMap<>();
 		for (Tuple row : rows) {
 			Long contentId = row.get(content.id);
-			GetContentDetailRes dto = grouped.get(contentId);
-
-			if (dto == null) {
-				String title = row.get(content.title);
-				int year = row.get(content.year);
-
-				dto = new GetContentDetailRes(
-					contentId,
-					title,
-					year,
-					new ArrayList<>()
-				);
-				grouped.put(contentId, dto);
-			}
+			if (contentId == null) continue;
+			String title = row.get(content.title);
+			int year = row.get(content.year);
 
 			Long ottId = row.get(ottProvider.id);
 			String logoUrl = row.get(ottProvider.logoUrl);
 
-			dto.getOttSimpleList().add(new GetContentDetailRes.GetOttSimpleRes(ottId, logoUrl));
+			contentMap.computeIfAbsent(contentId, id ->
+				new GetContentDetailRes(
+					id,
+					title,
+					year,
+					new ArrayList<>()
+				)
+			);
+
+			GetContentDetailRes dto = contentMap.get(contentId);
+			if (ottId != null) {
+				dto.getOttSimpleList().add(new GetContentDetailRes.GetOttSimpleRes(ottId, logoUrl));
+			}
+
 		}
 
-		return new ArrayList<>(grouped.values());
+		return new ArrayList<>(contentMap.values());
 	}
 }
