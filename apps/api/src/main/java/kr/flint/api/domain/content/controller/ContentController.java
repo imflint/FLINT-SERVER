@@ -33,9 +33,9 @@ public class ContentController {
 
 	@GetMapping
 	public ResponseEntity<SuccessResponse<?>> getBookmarkContent(
-		@AuthenticationPrincipal Long userId
+		//@AuthenticationPrincipal Long userId
 	){
-		List<GetContentDetailRes> getContentDetailResList = contentQueryFacade.getContentDetailList(userId);
+		List<GetContentDetailRes> getContentDetailResList = contentQueryFacade.getContentDetailList(1L);
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, getContentDetailResList));
 	}
 }

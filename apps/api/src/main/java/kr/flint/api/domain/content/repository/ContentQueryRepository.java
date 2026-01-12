@@ -6,10 +6,14 @@ import static kr.flint.ott.domain.QOttContent.*;
 import static kr.flint.ott.domain.QOttProvider.*;
 import static kr.flint.ott.domain.QOttUser.*;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.stereotype.Repository;
 
+import com.querydsl.core.Tuple;
 import com.querydsl.core.group.GroupBy;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -23,7 +27,14 @@ public class ContentQueryRepository {
 	private final JPAQueryFactory jpaQueryFactory;
 
 	public List<GetContentDetailRes> getContentDetailList(Long userId){
-		return jpaQueryFactory
+		List<Tuple> rows= jpaQueryFactory
+			.select(
+				content.id,
+				content.title,
+				content.year,
+				ottProvider.id,
+				ottProvider.logoUrl
+			)
 			.from(content)
 			.join(contentBookmark).on(
 				contentBookmark.contentId.eq(content.id),
@@ -35,25 +46,34 @@ public class ContentQueryRepository {
 			.join(ottContent.ottProvider, ottProvider)
 			.join(ottUser).on(
 				ottUser.userId.eq(userId),
-				ottUser.ottProvider.eq(ottContent.ottProvider)
+				ottUser.ottProvider.eq(ottProvider)
 			)
-			.transform(
-				GroupBy.groupBy(content.id).list(
-					Projections.constructor(
-						GetContentDetailRes.class,
-						content.id,
-						content.title,
-						content.year,
-						GroupBy.list(
-							Projections.constructor(
-								GetContentDetailRes.GetOttSimpleRes.class,
-								ottProvider.id,
-								ottProvider.logoUrl
-							)
-						)
-					)
-				)
-			);
+			.fetch();
 
+		Map<Long, GetContentDetailRes> grouped = new HashMap<>();
+		for (Tuple row : rows) {
+			Long contentId = row.get(content.id);
+			GetContentDetailRes dto = grouped.get(contentId);
+
+			if (content == null) {
+				String title = row.get(content.title);
+				int year = row.get(content.year);
+
+				dto = new GetContentDetailRes(
+					contentId,
+					title,
+					year,
+					null
+				);
+				grouped.put(contentId, dto);
+			}
+
+			Long ottId = row.get(ottProvider.id);
+			String logoUrl = row.get(ottProvider.logoUrl);
+
+			dto.getOttSimpleList().add(new GetContentDetailRes.GetOttSimpleRes(ottId, logoUrl));
+		}
+
+		return new ArrayList<>(grouped.values());
 	}
 }

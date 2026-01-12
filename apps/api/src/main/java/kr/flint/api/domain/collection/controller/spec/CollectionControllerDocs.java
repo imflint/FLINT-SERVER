@@ -51,7 +51,7 @@ public interface CollectionControllerDocs {
 		@ApiResponse(
 			responseCode = "200",
 			description = "조회 성공",
-			content = @Content(schema = @Schema(implementation = SuccessResponse.class))
+			content = @Content(schema = @Schema(implementation = GetCollectionSimpleRes.class))
 		),
 		@ApiResponse(
 			responseCode = "400",
@@ -74,7 +74,7 @@ public interface CollectionControllerDocs {
 		@ApiResponse(
 			responseCode = "200",
 			description = "조회 성공",
-			content = @Content(schema = @Schema(implementation = SuccessResponse.class))
+			content = @Content(schema = @Schema(implementation = GetCollectionDetailRes.class))
 		),
 		@ApiResponse(
 			responseCode = "404",

@@ -3,6 +3,7 @@ package kr.flint.api.domain.content.service;
 import java.util.List;
 
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import kr.flint.api.domain.content.dto.GetContentDetailRes;
 import kr.flint.api.domain.content.repository.ContentQueryRepository;
@@ -13,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class ContentQueryFacade {
 	private final OttService ottService;
 	private final ContentQueryRepository contentQueryRepository;
