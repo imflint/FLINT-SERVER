@@ -73,7 +73,12 @@ jobs:
         with:
           name: app-jar
 
-      - name: Deploy to EC2
+      - name: Checkout for deploy script
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+
+      - name: Deploy JAR to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -82,48 +87,22 @@ jobs:
           source: "flint-api-0.0.1-SNAPSHOT.jar"
           target: "/home/ubuntu"
 
-      - name: Restart application
+      - name: Deploy script to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "scripts/deploy.sh"
+          target: "/home/ubuntu"
+          strip_components: 1
+
+      - name: Run Blue-Green deployment
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd /home/ubuntu
-
-            # 기존 JAR 백업
-            if [ -f flint-api-0.0.1-SNAPSHOT.jar ]; then
-              cp flint-api-0.0.1-SNAPSHOT.jar flint-api-backup.jar
-            fi
-
-            # 새 JAR로 교체 (SCP로 업로드된 파일)
-            # 기존 프로세스 종료
-            pkill -f 'flint-api.*\.jar' || true
-            sleep 2
-
-            # 새 애플리케이션 실행
-            nohup java -jar flint-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=dev > app.log 2>&1 &
-
-            # 시작 확인 (최대 30초 대기)
-            for i in {1..6}; do
-              sleep 5
-              if curl -sf http://localhost:8080/actuator/health > /dev/null 2>&1; then
-                echo "Application started successfully"
-                exit 0
-              fi
-              echo "Waiting for application to start... ($i/6)"
-            done
-
-            # 실패 시 롤백
-            echo "Deployment failed, rolling back..."
-            pkill -f 'flint-api.*\.jar' || true
-            sleep 2
-
-            if [ -f flint-api-backup.jar ]; then
-              cp flint-api-backup.jar flint-api-0.0.1-SNAPSHOT.jar
-              nohup java -jar flint-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=dev > app.log 2>&1 &
-              echo "Rolled back to previous version"
-            fi
-
-            tail -50 app.log
-            exit 1
+            chmod +x /home/ubuntu/deploy.sh
+            /home/ubuntu/deploy.sh
