@@ -14,7 +14,7 @@ import kr.flint.infra.tmdb.dto.TmdbTvDetailRes;
 
 @FeignClient(
 	name = "tmdbClient",
-	url = "${tmdb.base-url}",
+	url = "https://api.themoviedb.org",
 	configuration = TmdbFeignConfig.class
 )
 public interface TmdbClient {

@@ -10,6 +10,6 @@ import kr.flint.infra.tmdb.properties.TmdbProperties;
 public class TmdbFeignConfig {
 	@Bean
 	public RequestInterceptor tmdbApiKeyInterceptor(TmdbProperties tmdbProperties) {
-		return template -> {template.query("api_key", tmdbProperties.apiKey());};
+		return template -> {template.query("api_key", "f387697b9286c01924dd94010b0acf8d");};
 	}
 }
