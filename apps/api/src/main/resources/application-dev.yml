@@ -36,8 +36,8 @@ cloud:
 
 jwt:
   secret: ${jwt.secret}
-  access-expiration: 1h
-  refresh-expiration: 14d
+  access-expiration: 14d
+  refresh-expiration: 30d
   temp-expiration: 30m
 
 oauth:
