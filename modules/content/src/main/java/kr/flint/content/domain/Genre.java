@@ -18,4 +18,8 @@ import lombok.NoArgsConstructor;
 public class Genre extends Base {
 	@Column(nullable = false, unique = true)
 	private String name;
+
+	public static Genre create(String name){
+		return new Genre(name);
+	}
 }
