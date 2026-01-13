@@ -36,7 +36,7 @@ public class OttCommandFacade {
 			if (ottContentRepository.existsByOttProviderAndContentId(provider, tmdbId)) {
 				continue;
 			}
-			ottContentRepository.save(OttContent.create(provider, tmdbId));
+			ottContentRepository.save(OttContent.create(provider, contentId));
 		}
 	}
 }
