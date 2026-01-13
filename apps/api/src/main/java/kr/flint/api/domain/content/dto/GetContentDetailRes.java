@@ -2,6 +2,9 @@ package kr.flint.api.domain.content.dto;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record GetContentDetailRes(
 	Long contentId,
 	String title,
@@ -11,5 +14,6 @@ public record GetContentDetailRes(
 	public record GetOttSimpleRes(
 		Long ottId,
 		String logoUrl
-	){}
+	) {
+	}
 }
