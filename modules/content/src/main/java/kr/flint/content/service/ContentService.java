@@ -41,7 +41,7 @@ public class ContentService {
 	}
 
 	@Transactional
-	public void tmdbToDb(final Content content, List<Genre> genreList) {
+	public Content tmdbToDb(final Content content, List<Genre> genreList) {
 		Content savedContent = contentRepository.save(content);
 		List<Genre> savedGenreList = genreList != null ? genreRepository.saveAll(genreList) : List.of();
 		List<ContentGenre> contentGenreList = savedGenreList.stream()
@@ -49,6 +49,8 @@ public class ContentService {
 			.toList();
 
 		contentGenreRepository.saveAll(contentGenreList);
+
+		return savedContent;
 	}
 	public boolean checkGenre(final String genre) {
 		return genreRepository.existsByName(genre);
