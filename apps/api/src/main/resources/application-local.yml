@@ -68,3 +68,7 @@ oauth:
 logging:
   level:
     kr.flint: debug
+
+tmdb:
+  base-url: https://api.themoviedb.org
+  api-key: ${TMDB_API_KEY}
