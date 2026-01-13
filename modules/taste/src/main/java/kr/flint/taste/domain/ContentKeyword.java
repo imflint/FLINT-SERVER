@@ -33,10 +33,6 @@ public class ContentKeyword extends Base {
     @Column(name = "keyword_id", nullable = false)
     private Long keywordId;
 
-    @Column
-    private Double weight;
-
-    @Column
     private Double confidence;
 
     public static ContentKeyword create(Long contentId, Long keywordId) {
@@ -46,11 +42,10 @@ public class ContentKeyword extends Base {
             .build();
     }
 
-    public static ContentKeyword create(Long contentId, Long keywordId, Double weight, Double confidence) {
+    public static ContentKeyword create(Long contentId, Long keywordId, Double confidence) {
         return ContentKeyword.builder()
             .contentId(contentId)
             .keywordId(keywordId)
-            .weight(weight)
             .confidence(confidence)
             .build();
     }

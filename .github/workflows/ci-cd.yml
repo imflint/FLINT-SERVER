@@ -37,14 +37,23 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: ${{ runner.os }}-gradle-
+
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
       - name: Build with Gradle
-        run: ./gradlew :apps:api:build -x test
+        run: ./gradlew :apps:api:build -x test --parallel --build-cache
 
       - name: Run tests
-        run: ./gradlew test
+        run: ./gradlew test --parallel --build-cache
         env:
           DB_URL: jdbc:mysql://localhost:3306/flint_test
           DB_USERNAME: test
@@ -52,7 +61,7 @@ jobs:
 
       - name: Build bootJar
         if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
-        run: ./gradlew :apps:api:bootJar
+        run: ./gradlew :apps:api:bootJar --parallel --build-cache
 
       - name: Upload JAR artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
