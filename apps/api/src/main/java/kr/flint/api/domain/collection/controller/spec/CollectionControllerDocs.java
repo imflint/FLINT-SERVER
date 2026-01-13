@@ -39,6 +39,7 @@ public interface CollectionControllerDocs {
 		)
 	})
 	ResponseEntity<SuccessResponse<?>> postCollection(
+		Long userId,
 		@Parameter(description = "컬렉션 생성 요청 바디")
 		CreateCollectionReq createCollectionReq
 	);
@@ -83,6 +84,7 @@ public interface CollectionControllerDocs {
 		)
 	})
 	ResponseEntity<SuccessResponse<GetCollectionDetailRes>> getCollectionDetail(
+		Long userId,
 		@Parameter(description = "컬렉션 ID", example = "1")
 		Long collectionId
 	);
@@ -98,5 +100,5 @@ public interface CollectionControllerDocs {
 			content = @Content(schema = @Schema(implementation = CollectionSwaggerResponses.SuccessResponseListGetCollectionDetailListRes.class))
 		)
 	})
-	ResponseEntity<SuccessResponse<List<GetCollectionDetailListRes>>> getRecentCollectionList();
+	ResponseEntity<SuccessResponse<List<GetCollectionDetailListRes>>> getRecentCollectionList(Long userId);
 }

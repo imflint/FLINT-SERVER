@@ -33,6 +33,7 @@ public interface BookmarkControllerDocs {
 		)
 	})
 	ResponseEntity<SuccessResponse<Boolean>> postContentBookmark(
+		Long userId,
 		@Parameter(description = "콘텐츠 ID", example = "1")
 		Long contentId
 	);
@@ -54,6 +55,7 @@ public interface BookmarkControllerDocs {
 		)
 	})
 	ResponseEntity<SuccessResponse<Boolean>> postCollectionBookmark(
+		Long userId,
 		@Parameter(description = "컬렉션 ID", example = "1")
 		Long collectionId
 	);

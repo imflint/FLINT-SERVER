@@ -9,7 +9,6 @@ import kr.flint.api.domain.user.dto.response.UserBookmarkedCollectionsRes;
 import kr.flint.api.domain.user.dto.response.UserCollectionsRes;
 import kr.flint.api.domain.user.dto.response.UserKeywordsRes;
 import kr.flint.api.domain.user.dto.response.UserProfileRes;
-import kr.flint.api.global.security.UserPrincipal;
 import kr.flint.shared.dto.response.SuccessResponse;
 import kr.flint.user.dto.response.NicknameCheckResponse;
 import org.springframework.http.ResponseEntity;
@@ -70,7 +69,7 @@ public interface UserControllerDocs {
             )
     })
     ResponseEntity<SuccessResponse<UserCollectionsRes>> getUserCollections(
-            @Parameter(hidden = true) UserPrincipal principal,
+            Long currentUserId,
             @Parameter(description = "사용자 ID", example = "123456789") Long userId
     );
 
@@ -85,7 +84,7 @@ public interface UserControllerDocs {
             )
     })
     ResponseEntity<SuccessResponse<UserBookmarkedCollectionsRes>> getUserBookmarkedCollections(
-            @Parameter(hidden = true) UserPrincipal principal,
+            Long currentUserId,
             @Parameter(description = "사용자 ID", example = "123456789") Long userId
     );
 }
