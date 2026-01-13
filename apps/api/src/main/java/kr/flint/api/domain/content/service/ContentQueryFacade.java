@@ -31,4 +31,5 @@ public class ContentQueryFacade {
 		}
 		return contentList;
 	}
+
 }
