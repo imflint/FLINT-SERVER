@@ -4,20 +4,19 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import kr.flint.api.domain.auth.controller.spec.AuthControllerDocs;
 import kr.flint.api.domain.auth.service.AuthFacade;
-import kr.flint.api.global.security.UserPrincipal;
 import kr.flint.api.domain.auth.dto.request.LogoutReq;
 import kr.flint.api.domain.auth.dto.request.RefreshTokenReq;
 import kr.flint.api.domain.auth.dto.request.SignupReq;
 import kr.flint.api.domain.auth.dto.request.SocialVerifyReq;
 import kr.flint.api.domain.auth.dto.response.AuthTokenRes;
 import kr.flint.api.domain.auth.dto.response.SocialVerifyRes;
+import kr.flint.api.global.security.annotation.CurrentUser;
 import kr.flint.auth.jwt.JwtProvider;
 import kr.flint.shared.dto.response.SuccessCode;
 import kr.flint.shared.dto.response.SuccessResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -64,11 +63,11 @@ public class AuthController implements AuthControllerDocs {
     @Override
     @PostMapping("/logout/all")
     public ResponseEntity<Void> logoutAll(
-            @AuthenticationPrincipal UserPrincipal principal,
+            @CurrentUser Long userId,
             HttpServletRequest httpRequest
     ) {
         String accessToken = jwtProvider.extractToken(httpRequest.getHeader(HttpHeaders.AUTHORIZATION));
-        authFacade.logoutAll(principal.userId(), accessToken);
+        authFacade.logoutAll(userId, accessToken);
         return ResponseEntity.noContent().build();
     }
 }

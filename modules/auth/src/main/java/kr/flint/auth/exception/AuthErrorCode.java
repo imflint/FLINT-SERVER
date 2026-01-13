@@ -9,6 +9,9 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum AuthErrorCode implements AppError {
 
+    // 인증 관련
+    UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "AUTH.UNAUTHORIZED", "Unauthorized", "인증이 필요합니다."),
+
     // 토큰 관련
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH.INVALID_TOKEN", "Invalid Token", "유효하지 않은 토큰입니다."),
     EXPIRED_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH.EXPIRED_TOKEN", "Expired Token", "만료된 토큰입니다."),

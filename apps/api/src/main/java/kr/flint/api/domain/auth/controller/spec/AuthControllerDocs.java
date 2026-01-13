@@ -8,7 +8,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
-import kr.flint.api.global.security.UserPrincipal;
 import kr.flint.api.domain.auth.dto.request.LogoutReq;
 import kr.flint.api.domain.auth.dto.request.RefreshTokenReq;
 import kr.flint.api.domain.auth.dto.request.SignupReq;
@@ -116,5 +115,5 @@ public interface AuthControllerDocs {
                     content = @Content(schema = @Schema(implementation = ProblemDetail.class))
             )
     })
-    ResponseEntity<Void> logoutAll(UserPrincipal principal, HttpServletRequest httpRequest);
+    ResponseEntity<Void> logoutAll(Long userId, HttpServletRequest httpRequest);
 }
