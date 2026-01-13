@@ -2,6 +2,7 @@ package kr.flint.api.domain.content.controller;
 
 import java.util.List;
 
+import kr.flint.api.domain.content.controller.spec.ContentControllerDocs;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,7 +24,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/contents")
-public class ContentController {
+public class ContentController implements ContentControllerDocs {
 	private final ContentQueryFacade contentQueryFacade;
 	private final ContentCommandFacade contentCommandFacade;
 
