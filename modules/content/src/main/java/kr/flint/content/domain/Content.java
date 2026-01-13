@@ -2,6 +2,7 @@ package kr.flint.content.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Lob;
 import kr.flint.shared.domain.BaseTime;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -19,22 +20,23 @@ public class Content extends BaseTime {
 	@Column(nullable = false, unique = true)
 	private Long tmdbId;
 
-	@Column(nullable = false)
+	@Column(nullable = true)
 	private String title;
 
-	@Column(nullable = false)
+	@Column(nullable = true)
 	private int year;
 
-	@Column(nullable = false)
+	@Column(nullable = true)
 	private String author;
 
-	@Column(nullable = false)
+	@Lob
+	@Column(columnDefinition = "TEXT", nullable = true)
 	private String description;
 
-	@Column(nullable = false)
+	@Column(nullable = true)
 	private String poster;
 
-	@Column(nullable = false)
+	@Column(nullable = true)
 	private int bookmarkCount;
 
 	public static Content create(Long tmdbId, String title, int year, String author, String description, String poster) {
