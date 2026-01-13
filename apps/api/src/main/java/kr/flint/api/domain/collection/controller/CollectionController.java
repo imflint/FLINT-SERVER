@@ -20,6 +20,7 @@ import kr.flint.api.domain.collection.service.CollectionQueryFacade;
 import kr.flint.api.domain.collection.service.CollectionQueryService;
 import kr.flint.api.domain.collection.dto.request.CreateCollectionReq;
 import kr.flint.api.domain.collection.dto.response.GetCollectionSimpleRes;
+import kr.flint.api.global.security.annotation.CurrentUser;
 import kr.flint.collection.service.CollectionService;
 import kr.flint.shared.dto.PaginationResponse;
 import kr.flint.shared.dto.response.SuccessCode;
@@ -38,10 +39,10 @@ public class CollectionController implements CollectionControllerDocs {
 	@Override
 	@PostMapping
 	public ResponseEntity<SuccessResponse<?>> postCollection(
-		//@AuthenticationPrincipal Long userId,
+		@CurrentUser Long userId,
 		@Valid @RequestBody CreateCollectionReq createCollectionReq
 	){
-		collectionCommandFacade.createCollection(1L, createCollectionReq);
+		collectionCommandFacade.createCollection(userId, createCollectionReq);
 		return ResponseEntity
 			.status(SuccessCode.SUCCESS_CREATE.getHttpStatus())
 			.body(SuccessResponse.of(SuccessCode.SUCCESS_CREATE));
@@ -60,20 +61,20 @@ public class CollectionController implements CollectionControllerDocs {
 	@Override
 	@GetMapping("/{collectionId}")
 	public ResponseEntity<SuccessResponse<GetCollectionDetailRes>> getCollectionDetail(
-		//@AuthenticationPrincipal Long userId,
+		@CurrentUser Long userId,
 		@PathVariable Long collectionId
 	){
-		GetCollectionDetailRes collectionDetail = collectionQueryFacade.getCollectionDetail(collectionId, 1L);
-		collectionService.saveRecentCollection(1L, collectionId);
+		GetCollectionDetailRes collectionDetail = collectionQueryFacade.getCollectionDetail(collectionId, userId);
+		collectionService.saveRecentCollection(userId, collectionId);
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, collectionDetail));
 	}
 
 	@Override
 	@GetMapping("/recent")
 	public ResponseEntity<SuccessResponse<List<GetCollectionDetailListRes>>> getRecentCollectionList(
-		//@AuthenticationPrincipal Long userId
+		@CurrentUser Long userId
 	){
-		List<GetCollectionDetailListRes> getCollectionDetailListRes = collectionQueryService.getRecentCollectionList(1L);
+		List<GetCollectionDetailListRes> getCollectionDetailListRes = collectionQueryService.getRecentCollectionList(userId);
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, getCollectionDetailListRes));
 	}
 

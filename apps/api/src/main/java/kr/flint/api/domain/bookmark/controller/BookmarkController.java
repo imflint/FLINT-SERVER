@@ -11,6 +11,7 @@ import kr.flint.api.domain.bookmark.controller.spec.BookmarkControllerDocs;
 import kr.flint.api.domain.bookmark.dto.response.GetBookmarkUserRes;
 import kr.flint.api.domain.bookmark.service.BookmarkCommandFacade;
 import kr.flint.api.domain.bookmark.service.BookmarkQueryFacade;
+import kr.flint.api.global.security.annotation.CurrentUser;
 import kr.flint.shared.dto.response.SuccessCode;
 import kr.flint.shared.dto.response.SuccessResponse;
 import lombok.RequiredArgsConstructor;
@@ -25,20 +26,20 @@ public class BookmarkController implements BookmarkControllerDocs {
 	@Override
 	@PostMapping("/contents/{contentId}")
 	public ResponseEntity<SuccessResponse<Boolean>> postContentBookmark(
-		//@AuthenticationPrincipal Long userId,
+		@CurrentUser Long userId,
 		@PathVariable("contentId") Long contentId
 	){
-		boolean isBookmarked = bookmarkCommandFacade.toggleContent(1L, contentId);
+		boolean isBookmarked = bookmarkCommandFacade.toggleContent(userId, contentId);
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_UPDATE, isBookmarked));
 	}
 
 	@Override
 	@PostMapping("/collections/{collectionId}")
 	public ResponseEntity<SuccessResponse<Boolean>> postCollectionBookmark(
-		//@AuthenticationPrincipal Long userId,
+		@CurrentUser Long userId,
 		@PathVariable("collectionId") Long collectionId
 	){
-		boolean isBookmarked = bookmarkCommandFacade.toggleCollection(1L, collectionId);
+		boolean isBookmarked = bookmarkCommandFacade.toggleCollection(userId, collectionId);
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_UPDATE, isBookmarked));
 	}
 
