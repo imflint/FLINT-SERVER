@@ -33,7 +33,7 @@ public class OttCommandFacade {
 				.orElse(null);
 			if (provider == null) continue;
 
-			if (ottContentRepository.existsByOttProviderAndContentId(provider, tmdbId)) {
+			if (ottContentRepository.existsByOttProviderAndContentId(provider, contentId)) {
 				continue;
 			}
 			ottContentRepository.save(OttContent.create(provider, contentId));
