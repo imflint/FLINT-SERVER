@@ -11,8 +11,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import kr.flint.ott.dto.GetOttResponse;
-import kr.flint.shared.dto.response.SuccessResponse;
 import kr.flint.shared.exception.ProblemDetail;
 
 @Tag(name = "Content", description = "콘텐츠 API")
@@ -26,7 +24,7 @@ public interface ContentControllerDocs {
 		@ApiResponse(
 			responseCode = "200",
 			description = "조회 성공",
-			content = @Content(schema = @Schema(implementation = SuccessResponse.class))
+			content = @Content(schema = @Schema(implementation = GetOttListSuccessResponse.class))
 		),
 		@ApiResponse(
 			responseCode = "404",
@@ -34,7 +32,7 @@ public interface ContentControllerDocs {
 			content = @Content(schema = @Schema(implementation = ProblemDetail.class))
 		)
 	})
-	ResponseEntity<SuccessResponse<List<GetOttResponse>>> getOttList(
+	ResponseEntity<?> getOttList(
 		Long userId,
 		@Parameter(description = "콘텐츠 ID", example = "1")
 		Long contentId
@@ -48,10 +46,10 @@ public interface ContentControllerDocs {
 		@ApiResponse(
 			responseCode = "200",
 			description = "조회 성공",
-			content = @Content(schema = @Schema(implementation = SuccessResponse.class))
+			content = @Content(schema = @Schema(implementation = GetBookmarkContentSuccessResponse.class))
 		)
 	})
-	ResponseEntity<SuccessResponse<?>> getBookmarkContent(Long userId);
+	ResponseEntity<?> getBookmarkContent(Long userId);
 
 	@Operation(
 		summary = "콘텐츠 검색",
@@ -61,10 +59,10 @@ public interface ContentControllerDocs {
 		@ApiResponse(
 			responseCode = "200",
 			description = "검색 성공",
-			content = @Content(schema = @Schema(implementation = SuccessResponse.class))
+			content = @Content(schema = @Schema(implementation = SearchContentSuccessResponse.class))
 		)
 	})
-	ResponseEntity<SuccessResponse<?>> searchContent(
+	ResponseEntity<?> searchContent(
 		@Parameter(description = "검색 키워드", example = "눈물의 여왕")
 		String keyword,
 		@Parameter(description = "페이지 번호 (1부터 시작)", example = "1")
