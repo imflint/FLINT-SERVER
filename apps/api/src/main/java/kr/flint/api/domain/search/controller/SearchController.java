@@ -11,9 +11,6 @@ import org.springframework.web.bind.annotation.RestController;
 import kr.flint.api.domain.search.controller.spec.SearchControllerDocs;
 import kr.flint.api.domain.search.dto.response.BookmarkedCollectionSearchRes;
 import kr.flint.api.domain.search.dto.response.BookmarkedContentSearchRes;
-import kr.flint.api.domain.content.service.ContentQueryFacade;
-import kr.flint.api.domain.search.dto.GetContentSearchRes;
-import kr.flint.api.domain.search.dto.GetSearchBookmarkContentRes;
 import kr.flint.api.domain.search.dto.GetContentSearchRes;
 import kr.flint.api.domain.search.service.SearchQueryFacade;
 import kr.flint.api.global.security.annotation.CurrentUser;
@@ -40,6 +37,7 @@ public class SearchController implements SearchControllerDocs {
 	@Override
 	@GetMapping("/bookmarked-collections")
 	public ResponseEntity<SuccessResponse<PaginationResponse<BookmarkedCollectionSearchRes>>> searchBookmarkedCollections(
+		@CurrentUser Long userId,
 		@RequestParam("keyword") String keyword,
 		@RequestParam(value = "cursor", required = false) Long cursor,
 		@RequestParam(value = "size", defaultValue = "20") int size
@@ -61,5 +59,6 @@ public class SearchController implements SearchControllerDocs {
 		PaginationResponse<BookmarkedContentSearchRes> response =
 			searchQueryFacade.searchBookmarkedContents(userId, keyword, cursor, size);
 
-		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, response));}
+		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, response));
+	}
 }
