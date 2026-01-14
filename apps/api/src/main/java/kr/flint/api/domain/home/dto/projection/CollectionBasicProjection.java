@@ -7,3 +7,4 @@ public interface CollectionBasicProjection {
     Long getUserId();
     LocalDateTime getCreatedAt();
 }
+
