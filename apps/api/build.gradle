@@ -30,6 +30,7 @@ dependencies {
     implementation project(':infra:storage')
     implementation project(':infra:aws')
     implementation project(':infra:tmdb')
+    implementation project(':infra:gpt')
 
     // Test
     testImplementation 'com.tngtech.archunit:archunit-junit5:1.4.0'
