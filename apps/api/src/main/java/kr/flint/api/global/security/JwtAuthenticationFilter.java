@@ -10,7 +10,6 @@ import kr.flint.auth.jwt.AccessTokenBlacklist;
 import kr.flint.auth.jwt.dto.AccessTokenInfo;
 import kr.flint.auth.jwt.JwtProvider;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -22,7 +21,6 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
-@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -36,7 +34,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-        String token = jwtProvider.extractToken(request.getHeader(HttpHeaders.AUTHORIZATION));
+        String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+        String token = jwtProvider.extractToken(authHeader);
 
         if (token != null) {
             if (accessTokenBlacklist.isBlacklisted(token)) {
