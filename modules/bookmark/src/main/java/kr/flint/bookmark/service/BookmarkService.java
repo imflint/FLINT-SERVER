@@ -60,4 +60,17 @@ public class BookmarkService {
 	public List<Long> getBookmarkedCollectionIds(final Long userId) {
 		return collectionBookmarkRepository.findCollectionIdsByUserId(userId);
 	}
+
+	@Transactional
+	public void createContentBookmarks(final Long userId, final List<Long> contentIds) {
+		if (contentIds == null || contentIds.isEmpty()) {
+			return;
+		}
+
+		List<ContentBookmark> bookmarks = contentIds.stream()
+			.map(contentId -> ContentBookmark.create(userId, contentId))
+			.toList();
+
+		contentBookmarkRepository.saveAll(bookmarks);
+	}
 }

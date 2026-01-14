@@ -16,6 +16,8 @@ import kr.flint.api.domain.auth.dto.response.AuthTokenRes;
 import kr.flint.api.domain.auth.dto.response.SocialVerifyRes;
 import kr.flint.auth.service.AuthService;
 import kr.flint.auth.service.UserIdentityService;
+import kr.flint.bookmark.service.BookmarkService;
+import kr.flint.ott.service.OttService;
 import kr.flint.user.dto.response.UserAuthInfo;
 import kr.flint.user.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +32,8 @@ public class AuthFacade {
     private final UserService userService;
     private final UserIdentityService userIdentityService;
     private final KakaoOAuthClient kakaoOAuthClient;
+    private final BookmarkService bookmarkService;
+    private final OttService ottService;
 
     /**
      * 소셜 로그인
@@ -60,13 +64,9 @@ public class AuthFacade {
         UserAuthInfo authInfo = userService.create(request.nickname());
         userIdentityService.create(authInfo.userId(), payload.provider(), payload.providerUserId());
 
-        // 좋아하는 작품 북마크 생성
-        // TODO: ContentBookmarkService 연동 (modules:bookmark)
+        bookmarkService.createContentBookmarks(authInfo.userId(), request.favoriteContentIds());
 
-
-        // 구독 OTT 생성
-        // TODO: UserOttService 연동 (modules:ott)
-
+        ottService.createUserOtts(authInfo.userId(), request.subscribedOttIds());
 
         // 토큰 발급
         AuthTokens tokens = authService.issueTokens(authInfo.userId(), authInfo.role());
@@ -87,7 +87,6 @@ public class AuthFacade {
         return toAuthTokenResponse(tokens);
     }
 
-    // 도메인 객체 → API DTO 변환
     private AuthTokenRes toAuthTokenResponse(AuthTokens tokens) {
         return AuthTokenRes.of(tokens.accessToken(), tokens.refreshToken(), tokens.userId());
     }

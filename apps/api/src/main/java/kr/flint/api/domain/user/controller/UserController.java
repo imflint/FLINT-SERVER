@@ -25,7 +25,6 @@ public class UserController implements UserControllerDocs {
     private final UserQueryFacade userQueryFacade;
 	private final UserCommandFacade userCommandFacade;
 
-   // @Override
     @GetMapping("/nickname/check")
     public ResponseEntity<SuccessResponse<NicknameCheckResponse>> checkNickname(
             @Valid @ModelAttribute NicknameCheckReq request
@@ -35,7 +34,6 @@ public class UserController implements UserControllerDocs {
         );
     }
 
-    //@Override
     @GetMapping("/{userId}")
     public ResponseEntity<SuccessResponse<UserProfileRes>> getUserProfile(
             @PathVariable Long userId
@@ -45,7 +43,6 @@ public class UserController implements UserControllerDocs {
         );
     }
 
-    //@Override
     @GetMapping("/{userId}/keywords")
     public ResponseEntity<SuccessResponse<UserKeywordsRes>> getUserKeywords(
             @PathVariable Long userId
