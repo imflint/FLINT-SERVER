@@ -1,7 +1,7 @@
 package kr.flint.api.domain.content.controller.spec;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import kr.flint.api.domain.content.dto.GetContentSearchRes;
+import kr.flint.api.domain.search.dto.GetContentSearchRes;
 import kr.flint.shared.dto.PaginationResponse;
 
 @Schema(description = "콘텐츠 검색 성공 응답")
