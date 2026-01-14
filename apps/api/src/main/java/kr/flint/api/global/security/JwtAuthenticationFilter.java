@@ -10,25 +10,47 @@ import kr.flint.auth.jwt.AccessTokenBlacklist;
 import kr.flint.auth.jwt.dto.AccessTokenInfo;
 import kr.flint.auth.jwt.JwtProvider;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
-@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private static final String[] EXCLUDED_PATHS = {
+            "/swagger-ui/**",
+            "/v3/api-docs/**",
+            "/api/v1/auth/social/verify",
+            "/api/v1/auth/signup",
+            "/api/v1/auth/refresh",
+            "/api/v1/users/nickname/check",
+            "/actuator/**"
+    };
+
+    private final AntPathMatcher pathMatcher = new AntPathMatcher();
+
     private final JwtProvider jwtProvider;
     private final AccessTokenBlacklist accessTokenBlacklist;
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        for (String pattern : EXCLUDED_PATHS) {
+            if (pathMatcher.match(pattern, path)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     @Override
     protected void doFilterInternal(
@@ -36,7 +58,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-        String token = jwtProvider.extractToken(request.getHeader(HttpHeaders.AUTHORIZATION));
+        String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+        String token = jwtProvider.extractToken(authHeader);
 
         if (token != null) {
             if (accessTokenBlacklist.isBlacklisted(token)) {

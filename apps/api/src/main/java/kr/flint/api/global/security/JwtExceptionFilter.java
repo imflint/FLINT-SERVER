@@ -33,7 +33,7 @@ public class JwtExceptionFilter extends OncePerRequestFilter {
         try {
             filterChain.doFilter(request, response);
         } catch (AuthException e) {
-            log.debug("JWT 인증 실패: {}", e.getMessage());
+            log.warn("JWT 인증 실패: {} - {}", e.getErrorCode(), e.getMessage());
             setErrorResponse(response, request.getRequestURI(), e.getErrorCode());
         }
     }

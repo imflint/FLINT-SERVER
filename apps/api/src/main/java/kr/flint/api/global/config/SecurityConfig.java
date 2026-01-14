@@ -32,9 +32,7 @@ public class SecurityConfig {
             "/api/v1/auth/signup",
             "/api/v1/auth/refresh",
             "/api/v1/users/nickname/check",
-            "/actuator/health",
-            "/actuator/info",
-		"/api/v1/**"
+            "/actuator/**"
     };
 
     @Bean
