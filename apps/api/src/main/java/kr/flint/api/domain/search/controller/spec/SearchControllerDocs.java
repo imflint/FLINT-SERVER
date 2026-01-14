@@ -1,0 +1,65 @@
+package kr.flint.api.domain.search.controller.spec;
+
+import org.springframework.http.ResponseEntity;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import kr.flint.api.domain.search.dto.response.BookmarkedCollectionSearchRes;
+import kr.flint.api.domain.search.dto.response.BookmarkedContentSearchRes;
+import kr.flint.shared.dto.PaginationResponse;
+import kr.flint.shared.dto.response.SuccessResponse;
+
+@Tag(name = "Search", description = "검색 API")
+public interface SearchControllerDocs {
+
+	@Operation(
+		summary = "북마크한 컬렉션 검색",
+		description = "사용자가 북마크한 컬렉션 중에서 키워드로 검색합니다. 제목과 설명에서 검색합니다."
+	)
+	@ApiResponses({
+		@ApiResponse(
+			responseCode = "200",
+			description = "검색 성공",
+			content = @Content(
+				schema = @Schema(implementation = SearchBookmarkedCollectionSwaggerResponse.class)
+			)
+		)
+	})
+	ResponseEntity<SuccessResponse<PaginationResponse<BookmarkedCollectionSearchRes>>> searchBookmarkedCollections(
+		Long userId,
+		@Parameter(description = "검색 키워드", example = "넷플릭스", required = true)
+		String keyword,
+		@Parameter(description = "다음 페이지 커서", example = "12345")
+		Long cursor,
+		@Parameter(description = "페이지 크기", example = "20")
+		int size
+	);
+
+	@Operation(
+		summary = "북마크한 작품 검색",
+		description = "사용자가 북마크한 작품 중에서 키워드로 검색합니다. 제목과 감독/작가에서 검색합니다."
+	)
+	@ApiResponses({
+		@ApiResponse(
+			responseCode = "200",
+			description = "검색 성공",
+			content = @Content(
+				schema = @Schema(implementation = SearchBookmarkedContentSwaggerResponse.class)
+			)
+		)
+	})
+	ResponseEntity<SuccessResponse<PaginationResponse<BookmarkedContentSearchRes>>> searchBookmarkedContents(
+		Long userId,
+		@Parameter(description = "검색 키워드", example = "눈물의 여왕", required = true)
+		String keyword,
+		@Parameter(description = "다음 페이지 커서", example = "12345")
+		Long cursor,
+		@Parameter(description = "페이지 크기", example = "20")
+		int size
+	);
+}
