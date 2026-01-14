@@ -12,6 +12,8 @@ import kr.flint.api.domain.search.controller.spec.SearchControllerDocs;
 import kr.flint.api.domain.search.dto.response.BookmarkedCollectionSearchRes;
 import kr.flint.api.domain.search.dto.response.BookmarkedContentSearchRes;
 import kr.flint.api.domain.search.dto.GetContentSearchRes;
+import kr.flint.api.domain.search.dto.GetSearchBookmarkContentRes;
+import kr.flint.api.domain.search.dto.GetContentSearchRes;
 import kr.flint.api.domain.search.service.SearchQueryFacade;
 import kr.flint.api.global.security.annotation.CurrentUser;
 import kr.flint.shared.dto.PaginationResponse;
