@@ -52,8 +52,6 @@ public class SearchQueryFacade {
 		return PaginationResponse.ofCursor(SliceCursor.of(data, null, nextCursor));
 		}
 
-
-
 	public PaginationResponse<BookmarkedContentSearchRes> searchBookmarkedContents(
 		final Long userId,
 		final String keyword,
