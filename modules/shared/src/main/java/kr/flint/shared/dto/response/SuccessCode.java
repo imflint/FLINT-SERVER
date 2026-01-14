@@ -21,6 +21,7 @@ public enum SuccessCode {
 	SUCCESS_NICKNAME_CHECK(HttpStatus.OK, "닉네임 확인이 완료되었습니다"),
 	SUCCESS_KEYWORDS_FETCH(HttpStatus.OK, "취향 키워드 조회가 완료되었습니다"),
 	SUCCESS_COLLECTIONS_FETCH(HttpStatus.OK, "컬렉션 조회가 완료되었습니다"),
+	SUCCESS_RECOMMENDED_COLLECTIONS_FETCH(HttpStatus.OK, "추천 컬렉션 조회가 완료되었습니다"),
 
 	/* 204 NO CONTENT */
 	SUCCESS_LOGOUT(HttpStatus.NO_CONTENT, "로그아웃이 완료되었습니다");

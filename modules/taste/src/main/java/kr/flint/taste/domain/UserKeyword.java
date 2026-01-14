@@ -27,10 +27,10 @@ import lombok.NoArgsConstructor;
 )
 public class UserKeyword extends BaseTime {
 
-    @Column(name = "user_id", nullable = false)
+    @Column(nullable = false)
     private Long userId;
 
-    @Column(name = "keyword_id", nullable = false)
+    @Column(nullable = false)
     private Long keywordId;
 
     @Column(nullable = false)
