@@ -27,10 +27,10 @@ import lombok.NoArgsConstructor;
 )
 public class ContentKeyword extends Base {
 
-    @Column(name = "content_id", nullable = false)
+    @Column(nullable = false)
     private Long contentId;
 
-    @Column(name = "keyword_id", nullable = false)
+    @Column(nullable = false)
     private Long keywordId;
 
     private Double confidence;

@@ -26,4 +26,12 @@ public interface UserKeywordRepository extends JpaRepository<UserKeyword, Long> 
         ORDER BY uk.percentage DESC
     """)
     List<UserKeywordProjection> findUserKeywordsWithDetails(@Param("userId") Long userId);
+
+    // Fliner들의 키워드 조회 (userId 목록으로)
+    @Query("SELECT uk FROM UserKeyword uk WHERE uk.userId IN :userIds")
+    List<UserKeyword> findByUserIdIn(@Param("userIds") List<Long> userIds);
+
+    // 사용자의 키워드 ID 목록만 조회
+    @Query("SELECT uk.keywordId FROM UserKeyword uk WHERE uk.userId = :userId")
+    List<Long> findKeywordIdsByUserId(@Param("userId") Long userId);
 }

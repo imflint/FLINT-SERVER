@@ -33,7 +33,7 @@ public class Keyword extends Base {
     private String name;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 2)
+    @Column(nullable = false)
     private KeywordLevel level;
 
     @Column
