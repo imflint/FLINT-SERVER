@@ -1,12 +1,14 @@
 package kr.flint.api.domain.home.service;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
+import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
@@ -70,9 +72,20 @@ public class RecommendationCacheService {
     // 전체 캐시 무효화
     public void invalidateAllCache() {
         try {
-            Set<String> keys = redisTemplate.keys(CACHE_PREFIX + "*");
-            if (keys != null && !keys.isEmpty()) {
-                Long deleted = redisTemplate.delete(keys);
+            ScanOptions scanOptions = ScanOptions.scanOptions()
+                .match(CACHE_PREFIX + "*")
+                .count(100)
+                .build();
+
+            List<String> keysToDelete = new ArrayList<>();
+            try (Cursor<String> cursor = redisTemplate.scan(scanOptions)) {
+                while (cursor.hasNext()) {
+                    keysToDelete.add(cursor.next());
+                }
+            }
+
+            if (!keysToDelete.isEmpty()) {
+                Long deleted = redisTemplate.delete(keysToDelete);
                 log.info("전체 캐시 무효화. deleted={}", deleted);
             }
         } catch (Exception e) {
