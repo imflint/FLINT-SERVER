@@ -18,7 +18,7 @@ public interface OttUserRepository extends JpaRepository<OttUser, Long> {
 			op.id,
 			op.name,
 			op.logoUrl,
-			oc.contentUrl
+			op.url
 			)
 			from OttUser ou
 			join ou.ottProvider op

@@ -38,7 +38,7 @@ public class ContentController implements ContentControllerDocs {
 	}
 
 	@GetMapping
-	public ResponseEntity<SuccessResponse<?>> getBookmarkContent(
+	public ResponseEntity<SuccessResponse<List<GetContentDetailRes>>> getBookmarkContent(
 		@CurrentUser Long userId
 	){
 		List<GetContentDetailRes> getContentDetailResList = contentQueryFacade.getContentDetailList(userId);
@@ -46,7 +46,7 @@ public class ContentController implements ContentControllerDocs {
 	}
 
 	@GetMapping("/search")
-	public ResponseEntity<SuccessResponse<?>> searchContent(
+	public ResponseEntity<SuccessResponse<PaginationResponse<GetContentSearchRes>>> searchContent(
 		@RequestParam(required = false, name = "keyword") String keyword,
 		@RequestParam(required = false, defaultValue = "1") int cursor,
 		@RequestParam(required = false, defaultValue = "20") int size

@@ -10,6 +10,7 @@ import kr.flint.infra.tmdb.dto.TmdbCommonRes;
 import kr.flint.infra.tmdb.dto.TmdbContentRes;
 import kr.flint.infra.tmdb.dto.TmdbGenreListRes;
 import kr.flint.infra.tmdb.dto.TmdbMovieCreditRes;
+import kr.flint.infra.tmdb.dto.TmdbOttRes;
 import kr.flint.infra.tmdb.dto.TmdbTvDetailRes;
 
 @FeignClient(
@@ -48,4 +49,11 @@ public interface TmdbClient {
 		@PathVariable("id") Long id,
 		@RequestParam(value = "language", defaultValue = "ko-KR") String language
 	);
+
+	@GetMapping("/3/movie/{id}/watch/providers")
+	TmdbOttRes getMovieWatchProviders(@PathVariable("id") Long id);
+
+	@GetMapping("/3/tv/{id}/watch/providers")
+	TmdbOttRes getTvWatchProviders(@PathVariable("id") Long id);
+
 }

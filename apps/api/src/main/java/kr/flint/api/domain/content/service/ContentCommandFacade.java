@@ -28,11 +28,13 @@ import lombok.extern.slf4j.Slf4j;
 public class ContentCommandFacade {
 	private final ContentService contentService;
 	private final TmdbClient tmdbClient;
+	private final OttCommandFacade ottCommandFacade;
 
 	private static final String TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
 
 	@Transactional
 	public PaginationResponse<GetContentSearchRes> getContentSearchList(final String keyword, final int cursor, int size){
+		log.info("keyword: {}", keyword);
 		if (keyword != null && !keyword.isEmpty()) {
 			List<GetContentSearchRes> searchRes = getTmdbContentList(keyword, cursor);
 			return PaginationResponse.ofCursor(SliceCursor.of(searchRes, "0", "0"));
@@ -50,18 +52,39 @@ public class ContentCommandFacade {
 	private GetPopularContentRes getPopularContent(int page) {
 		TmdbCommonRes tmdbList = tmdbClient.getPopularMovieList("ko-KR", page);
 		List<GetContentSearchRes> popularList = tmdbList.contentList().stream()
-			.map(content -> {
-				String author = extractMovieAuthor(content.id());
-				String posterUrl = content.poster() == null
+			.map(result -> {
+				Content existing = contentService.getContentByTmdbId(result.id());
+				if (existing != null) {
+					return GetContentSearchRes.of(
+						existing.getTmdbId(),
+						existing.getTitle(),
+						existing.getAuthor(),
+						existing.getPoster(),
+						existing.getYear()
+					);
+				}
+
+				String author = extractMovieAuthor(result.id());
+				String posterUrl = result.poster() == null
 					? null
-					: TMDB_IMAGE_BASE + content.poster();
+					: TMDB_IMAGE_BASE + result.poster();
+
+				int year = extractYear(result.mediaType(), result.releaseDate(), result.firstAirDate());
+				Content content = Content.create(
+					result.id(),
+					result.title(),
+					year,
+					author,
+					result.overview(),
+					posterUrl
+				);
 
 				return GetContentSearchRes.of(
-					content.id(),
-					content.title(),
+					result.id(),
+					result.title(),
 					author,
 					posterUrl,
-					Integer.parseInt(content.releaseDate())
+					year
 				);
 			})
 			.toList();
@@ -118,7 +141,8 @@ public class ContentCommandFacade {
 					.map(Genre::create)
 					.toList();
 
-				contentService.tmdbToDb(content, genreList);
+				Content savedContent = contentService.tmdbToDb(content, genreList);
+				ottCommandFacade.mapContentOtt(savedContent.getId(), result.id(), result.mediaType());
 
 				return GetContentSearchRes.of(
 					result.id(),
@@ -174,6 +198,5 @@ public class ContentCommandFacade {
 		if (date == null || date.isBlank() || date.length() < 4) return 0;
 		return Integer.parseInt(date.substring(0, 4));
 	}
-
 
 }

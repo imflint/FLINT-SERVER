@@ -36,11 +36,15 @@ public class UserKeyword extends BaseTime {
     @Column(nullable = false)
     private Integer percentage;
 
-    public static UserKeyword create(Long userId, Long keywordId, Integer percentage) {
+	@Column(name = "ranking", nullable = false)
+	private int ranking;
+
+    public static UserKeyword create(Long userId, Long keywordId, Integer percentage, int rank) {
         return UserKeyword.builder()
             .userId(userId)
             .keywordId(keywordId)
             .percentage(percentage)
+			.ranking(rank)
             .build();
     }
 

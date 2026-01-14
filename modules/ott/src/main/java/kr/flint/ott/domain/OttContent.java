@@ -23,10 +23,7 @@ public class OttContent extends Base {
 	@Column(nullable = false)
 	private Long contentId;
 
-	@Column(nullable = false)
-	private String contentUrl;
-
-	public static OttContent create(OttProvider ottProvider, Long contentId, String contentUrl) {
-		return new OttContent(ottProvider, contentId, contentUrl);
+	public static OttContent create(OttProvider ottProvider, Long contentId) {
+		return new OttContent(ottProvider, contentId);
 	}
 }

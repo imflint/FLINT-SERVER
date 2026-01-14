@@ -24,7 +24,9 @@ public interface BookmarkControllerDocs {
 		@ApiResponse(
 			responseCode = "200",
 			description = "토글 성공",
-			content = @Content(schema = @Schema(implementation = SuccessResponse.class))
+			content = @Content(
+				schema = @Schema(implementation = BookmarkToggleSwaggerResponse.class)
+			)
 		),
 		@ApiResponse(
 			responseCode = "404",
@@ -46,7 +48,9 @@ public interface BookmarkControllerDocs {
 		@ApiResponse(
 			responseCode = "200",
 			description = "토글 성공",
-			content = @Content(schema = @Schema(implementation = SuccessResponse.class))
+			content = @Content(
+				schema = @Schema(implementation = BookmarkToggleSwaggerResponse.class)
+			)
 		),
 		@ApiResponse(
 			responseCode = "404",
@@ -68,7 +72,9 @@ public interface BookmarkControllerDocs {
 		@ApiResponse(
 			responseCode = "200",
 			description = "조회 성공",
-			content = @Content(schema = @Schema(implementation = SuccessResponse.class))
+			content = @Content(
+				schema = @Schema(implementation = GetBookmarkedUserSwaggerResponse.class)
+			)
 		),
 		@ApiResponse(
 			responseCode = "404",
