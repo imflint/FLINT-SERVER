@@ -58,8 +58,8 @@ cloud:
 
 jwt:
   secret: ${JWT_SECRET:local-dev-secret-key-at-least-32-characters-long}
-  access-expiration: 5m
-  refresh-expiration: 14d
+  access-expiration: 14d
+  refresh-expiration: 30d
   temp-expiration: 30m
 
 oauth:
