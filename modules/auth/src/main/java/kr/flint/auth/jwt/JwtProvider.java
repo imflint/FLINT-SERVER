@@ -34,7 +34,7 @@ public class JwtProvider {
 
     public JwtProvider(JwtProperties jwtProperties) {
         this.jwtProperties = jwtProperties;
-        this.secretKey = Keys.hmacShaKeyFor(jwtProperties.secret().getBytes(StandardCharsets.UTF_8));
+        this.secretKey = Keys.hmacShaKeyFor(jwtProperties.secret().trim().getBytes(StandardCharsets.UTF_8));
     }
 
     // Access Token 생성
@@ -76,6 +76,7 @@ public class JwtProvider {
                     .parseSignedClaims(token)
                     .getPayload();
         } catch (ExpiredJwtException e) {
+            log.warn("JWT 만료: {}", e.getMessage());
             throw new AuthException(AuthErrorCode.EXPIRED_TOKEN);
         } catch (JwtException e) {
             log.warn("JWT 파싱 실패: {}", e.getMessage());
