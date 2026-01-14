@@ -60,5 +60,5 @@ public class SearchController implements SearchControllerDocs {
 			searchQueryFacade.searchBookmarkedContents(userId, keyword, cursor, size);
 
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, response));
-	}
+		}
 }
