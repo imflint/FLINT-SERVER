@@ -1,5 +1,6 @@
 package kr.flint.api.domain.search.service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Component;
@@ -32,7 +33,6 @@ public class SearchQueryFacade {
 			.map(GetContentSearchRes::from)
 			.toList();
 	}
-
 
 	public PaginationResponse<BookmarkedCollectionSearchRes> searchBookmarkedCollections(
 		final Long userId,
