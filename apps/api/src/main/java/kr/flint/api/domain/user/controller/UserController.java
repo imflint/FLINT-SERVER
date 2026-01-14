@@ -15,17 +15,12 @@ import kr.flint.shared.dto.response.SuccessResponse;
 import kr.flint.user.dto.response.NicknameCheckResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
-public class UserController {
+public class UserController implements UserControllerDocs {
 
     private final UserQueryFacade userQueryFacade;
 	private final UserCommandFacade userCommandFacade;
@@ -96,6 +91,5 @@ public class UserController {
     private boolean isOwner(Long currentUserId, Long userId) {
         return currentUserId != null && currentUserId.equals(userId);
     }
-
 
 }

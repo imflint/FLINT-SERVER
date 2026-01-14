@@ -1,5 +1,6 @@
 package kr.flint.api.domain.auth.service;
 
+import kr.flint.api.domain.user.service.UserQueryFacade;
 import kr.flint.api.global.oauth.client.KakaoOAuthClient;
 import kr.flint.auth.dto.AuthTokens;
 import kr.flint.auth.dto.SocialUserInfo;
@@ -62,8 +63,10 @@ public class AuthFacade {
         // 좋아하는 작품 북마크 생성
         // TODO: ContentBookmarkService 연동 (modules:bookmark)
 
+
         // 구독 OTT 생성
         // TODO: UserOttService 연동 (modules:ott)
+
 
         // 토큰 발급
         AuthTokens tokens = authService.issueTokens(authInfo.userId(), authInfo.role());
