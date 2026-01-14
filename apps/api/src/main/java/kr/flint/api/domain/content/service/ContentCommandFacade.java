@@ -1,13 +1,11 @@
 package kr.flint.api.domain.content.service;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import kr.flint.api.domain.content.dto.GetContentDetailRes;
-import kr.flint.api.domain.content.dto.GetContentSearchRes;
+import kr.flint.api.domain.search.dto.GetContentSearchRes;
 import kr.flint.api.domain.content.dto.GetPopularContentRes;
 import kr.flint.content.domain.Content;
 import kr.flint.content.domain.Genre;

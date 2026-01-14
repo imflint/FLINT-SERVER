@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import kr.flint.api.domain.content.dto.GetContentDetailRes;
-import kr.flint.api.domain.content.dto.GetContentSearchRes;
+import kr.flint.api.domain.search.dto.GetContentSearchRes;
 import kr.flint.api.domain.content.service.ContentCommandFacade;
 import kr.flint.api.domain.content.service.ContentQueryFacade;
 import kr.flint.api.global.security.annotation.CurrentUser;

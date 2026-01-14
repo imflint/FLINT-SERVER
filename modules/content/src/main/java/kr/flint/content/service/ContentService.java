@@ -60,4 +60,12 @@ public class ContentService {
 		return contentRepository.findContentByTmdbId(tmdbId)
 			.orElse(null);
 	}
+
+	public List<Content> getContentByTitle(final String title) {
+		return contentRepository.findAllByTitleContaining(title);
+	}
+
+	public List<Content> getAllContent() {
+		return contentRepository.findAll();
+	}
 }

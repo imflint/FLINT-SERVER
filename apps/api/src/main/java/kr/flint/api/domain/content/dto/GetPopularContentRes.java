@@ -2,6 +2,8 @@ package kr.flint.api.domain.content.dto;
 
 import java.util.List;
 
+import kr.flint.api.domain.search.dto.GetContentSearchRes;
+
 public record GetPopularContentRes(
 	List<GetContentSearchRes> contentSearchList,
 	int page
