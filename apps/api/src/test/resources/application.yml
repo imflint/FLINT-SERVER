@@ -1,4 +1,14 @@
 spring:
+  ai:
+    openai:
+      api-key: test-api-key-for-testing-purpose
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      repositories:
+        enabled: false
+
   config:
     import:
       - optional:file:../../.env[.properties]

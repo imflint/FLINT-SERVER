@@ -1,5 +1,7 @@
 package kr.flint.api.storage.service;
 
+import kr.flint.api.config.GptTestConfig;
+import kr.flint.api.config.RedisTestConfig;
 import kr.flint.api.config.S3TestConfig;
 import kr.flint.api.global.storage.exception.StorageErrorCode;
 import kr.flint.api.global.storage.exception.StorageException;
@@ -17,8 +19,10 @@ import org.springframework.context.annotation.Import;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest
-@Import(S3TestConfig.class)
+@SpringBootTest(properties = {
+    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration"
+})
+@Import({S3TestConfig.class, RedisTestConfig.class, GptTestConfig.class})
 class StorageFacadeTest {
 
     @Autowired
