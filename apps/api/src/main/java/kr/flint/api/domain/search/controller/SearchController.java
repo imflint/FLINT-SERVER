@@ -14,6 +14,7 @@ import kr.flint.api.domain.search.dto.response.BookmarkedContentSearchRes;
 import kr.flint.api.domain.content.service.ContentQueryFacade;
 import kr.flint.api.domain.search.dto.GetContentSearchRes;
 import kr.flint.api.domain.search.dto.GetSearchBookmarkContentRes;
+import kr.flint.api.domain.search.dto.GetContentSearchRes;
 import kr.flint.api.domain.search.service.SearchQueryFacade;
 import kr.flint.api.global.security.annotation.CurrentUser;
 import kr.flint.shared.dto.PaginationResponse;
@@ -35,10 +36,10 @@ public class SearchController implements SearchControllerDocs {
 		List<GetContentSearchRes> contentSearchResList = searchQueryFacade.searchContent(keyword);
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, contentSearchResList));
 	}
+
 	@Override
 	@GetMapping("/bookmarked-collections")
 	public ResponseEntity<SuccessResponse<PaginationResponse<BookmarkedCollectionSearchRes>>> searchBookmarkedCollections(
-
 		@RequestParam("keyword") String keyword,
 		@RequestParam(value = "cursor", required = false) Long cursor,
 		@RequestParam(value = "size", defaultValue = "20") int size
@@ -60,6 +61,5 @@ public class SearchController implements SearchControllerDocs {
 		PaginationResponse<BookmarkedContentSearchRes> response =
 			searchQueryFacade.searchBookmarkedContents(userId, keyword, cursor, size);
 
-		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, response));
-	}
+		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, response));}
 }

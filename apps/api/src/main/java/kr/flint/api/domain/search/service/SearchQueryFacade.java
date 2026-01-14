@@ -1,5 +1,6 @@
 package kr.flint.api.domain.search.service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Component;
@@ -21,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SearchQueryFacade {
 	private final ContentService contentService;
+	private final SearchQueryRepository searchQueryRepository;
 
 	public List<GetContentSearchRes> searchContent(final String keyword){
 		if(keyword == null || keyword.isEmpty()){
@@ -51,6 +53,7 @@ public class SearchQueryFacade {
 			: null;
 
 		return PaginationResponse.ofCursor(SliceCursor.of(data, null, nextCursor));
+		}
 
 
 	public PaginationResponse<BookmarkedContentSearchRes> searchBookmarkedContents(
@@ -70,4 +73,5 @@ public class SearchQueryFacade {
 
 		return PaginationResponse.ofCursor(SliceCursor.of(data, null, nextCursor));
 	}
+
 }
