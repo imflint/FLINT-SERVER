@@ -33,6 +33,7 @@ public class SearchQueryFacade {
 			.toList();
 	}
 
+
 	public PaginationResponse<BookmarkedCollectionSearchRes> searchBookmarkedCollections(
 		final Long userId,
 		final String keyword,
@@ -68,6 +69,5 @@ public class SearchQueryFacade {
 			: null;
 
 		return PaginationResponse.ofCursor(SliceCursor.of(data, null, nextCursor));
-	}
-
+		}
 }
