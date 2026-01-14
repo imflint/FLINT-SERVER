@@ -25,7 +25,7 @@ public class SearchQueryRepository {
 	private final JPAQueryFactory jpaQueryFactory;
 
 	/**
-	 * 북마크한 컬렉션에서 키워드 검색
+	 * 북마크한 컬렉션에서 제목으로 검색
 	 */
 	public List<BookmarkedCollectionSearchRes> searchBookmarkedCollections(
 		final Long userId,
@@ -46,7 +46,7 @@ public class SearchQueryRepository {
 			.join(collection).on(collection.id.eq(collectionBookmark.collectionId))
 			.where(
 				collectionBookmark.userId.eq(userId),
-				containsKeyword(keyword, collection.title, collection.description),
+				containsKeyword(keyword, collection.title),
 				cursor != null ? collectionBookmark.id.lt(cursor) : null
 			)
 			.orderBy(collectionBookmark.id.desc())
@@ -55,7 +55,7 @@ public class SearchQueryRepository {
 	}
 
 	/**
-	 * 북마크한 콘텐츠에서 키워드 검색
+	 * 북마크한 콘텐츠에서 제목으로 검색
 	 */
 	public List<BookmarkedContentSearchRes> searchBookmarkedContents(
 		final Long userId,
@@ -77,7 +77,7 @@ public class SearchQueryRepository {
 			.join(content).on(content.id.eq(contentBookmark.contentId))
 			.where(
 				contentBookmark.userId.eq(userId),
-				containsKeyword(keyword, content.title, content.author),
+				containsKeyword(keyword, content.title),
 				cursor != null ? contentBookmark.id.lt(cursor) : null
 			)
 			.orderBy(contentBookmark.id.desc())
@@ -85,14 +85,11 @@ public class SearchQueryRepository {
 			.fetch();
 	}
 
-	private BooleanBuilder containsKeyword(final String keyword, final StringPath... fields) {
+	private BooleanBuilder containsKeyword(final String keyword, final StringPath field) {
 		BooleanBuilder builder = new BooleanBuilder();
 		if (keyword == null || keyword.isBlank()) {
 			return builder;
 		}
-		for (StringPath field : fields) {
-			builder.or(field.containsIgnoreCase(keyword));
-		}
-		return builder;
+		return builder.and(field.containsIgnoreCase(keyword));
 	}
 }
