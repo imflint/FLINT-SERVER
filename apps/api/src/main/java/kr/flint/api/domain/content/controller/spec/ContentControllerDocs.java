@@ -11,6 +11,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import kr.flint.ott.dto.GetOttResponse;
+import kr.flint.shared.dto.response.SuccessResponse;
 import kr.flint.shared.exception.ProblemDetail;
 
 @Tag(name = "Content", description = "콘텐츠 API")
@@ -32,7 +34,7 @@ public interface ContentControllerDocs {
 			content = @Content(schema = @Schema(implementation = ProblemDetail.class))
 		)
 	})
-	ResponseEntity<?> getOttList(
+	ResponseEntity<SuccessResponse<List<GetOttResponse>>> getOttList(
 		Long userId,
 		@Parameter(description = "콘텐츠 ID", example = "1")
 		Long contentId
