@@ -6,5 +6,5 @@ import org.springframework.stereotype.Repository;
 import kr.flint.content.domain.ContentGenre;
 
 @Repository
-public interface ContentGenreRepository extends JpaRepository<ContentGenre, Long> {
+public interface ContentGenreRepository extends JpaRepository<ContentGenre, Long>, ContentGenreRepositoryCustom {
 }

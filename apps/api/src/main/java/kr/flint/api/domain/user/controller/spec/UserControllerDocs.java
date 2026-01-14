@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import kr.flint.api.domain.user.dto.request.NicknameCheckReq;
 import kr.flint.api.domain.user.dto.response.UserBookmarkedCollectionsRes;
 import kr.flint.api.domain.user.dto.response.UserCollectionsRes;
@@ -13,6 +14,7 @@ import kr.flint.api.domain.user.dto.response.UserProfileRes;
 import kr.flint.shared.dto.response.SuccessResponse;
 import kr.flint.user.dto.response.NicknameCheckResponse;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -31,7 +33,7 @@ public interface UserControllerDocs {
     })
     ResponseEntity<SuccessResponse<NicknameCheckResponse>> checkNickname(
             @Parameter(description = "확인할 닉네임", example = "my_nickname")
-			@RequestParam  String nickname
+            @Valid @ModelAttribute NicknameCheckReq nickname
     );
 
     @Operation(

@@ -1,6 +1,8 @@
 package kr.flint.content.service;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -8,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import kr.flint.content.domain.Content;
 import kr.flint.content.domain.ContentGenre;
 import kr.flint.content.domain.Genre;
+import kr.flint.content.dto.ContentWithGenres;
 import kr.flint.content.exception.ContentErrorCode;
 import kr.flint.content.exception.ContentException;
 import kr.flint.content.repository.ContentGenreRepository;
@@ -67,5 +70,29 @@ public class ContentService {
 
 	public List<Content> getAllContent() {
 		return contentRepository.findAll();
+	}
+
+	// 콘텐츠 ID 목록으로 콘텐츠 + 장르 정보 조회
+	public List<ContentWithGenres> getContentsWithGenres(List<Long> contentIds) {
+		if (contentIds == null || contentIds.isEmpty()) {
+			return List.of();
+		}
+
+		List<Content> contents = contentRepository.findAllById(contentIds);
+		List<ContentGenre> contentGenres = contentGenreRepository.findAllByContentIdsWithGenre(contentIds);
+
+		// contentId -> genre names 매핑
+		Map<Long, List<String>> genreMap = contentGenres.stream()
+			.collect(Collectors.groupingBy(
+				cg -> cg.getContent().getId(),
+				Collectors.mapping(cg -> cg.getGenre().getName(), Collectors.toList())
+			));
+
+		return contents.stream()
+			.map(content -> ContentWithGenres.of(
+				content,
+				genreMap.getOrDefault(content.getId(), List.of())
+			))
+			.toList();
 	}
 }

@@ -20,12 +20,11 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
-public class UserController {
+public class UserController implements UserControllerDocs {
 
     private final UserQueryFacade userQueryFacade;
 	private final UserCommandFacade userCommandFacade;
 
-   // @Override
     @GetMapping("/nickname/check")
     public ResponseEntity<SuccessResponse<NicknameCheckResponse>> checkNickname(
             @Valid @ModelAttribute NicknameCheckReq request
@@ -35,7 +34,6 @@ public class UserController {
         );
     }
 
-    //@Override
     @GetMapping("/{userId}")
     public ResponseEntity<SuccessResponse<UserProfileRes>> getUserProfile(
             @PathVariable Long userId
@@ -45,7 +43,6 @@ public class UserController {
         );
     }
 
-    //@Override
     @GetMapping("/{userId}/keywords")
     public ResponseEntity<SuccessResponse<UserKeywordsRes>> getUserKeywords(
             @PathVariable Long userId
@@ -91,6 +88,5 @@ public class UserController {
     private boolean isOwner(Long currentUserId, Long userId) {
         return currentUserId != null && currentUserId.equals(userId);
     }
-
 
 }
