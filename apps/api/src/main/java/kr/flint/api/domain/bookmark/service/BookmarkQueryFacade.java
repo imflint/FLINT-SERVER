@@ -4,8 +4,14 @@ import java.util.List;
 
 import org.springframework.stereotype.Component;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import kr.flint.api.domain.bookmark.dto.response.GetBookmarkUserRes;
+import kr.flint.infra.gpt.dto.GptKeywordDto;
+import kr.flint.infra.gpt.dto.TasteWorkMetaDto;
+import kr.flint.api.domain.bookmark.repository.BookmarkQueryRepository;
 import kr.flint.bookmark.service.BookmarkService;
+import kr.flint.infra.gpt.service.ChatService;
 import kr.flint.user.dto.response.UserSimpleRes;
 import kr.flint.user.service.UserService;
 import lombok.RequiredArgsConstructor;
