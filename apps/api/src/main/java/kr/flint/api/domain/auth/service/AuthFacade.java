@@ -1,6 +1,15 @@
 package kr.flint.api.domain.auth.service;
 
-import kr.flint.api.domain.user.service.UserQueryFacade;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import kr.flint.api.domain.auth.dto.request.RefreshTokenReq;
+import kr.flint.api.domain.auth.dto.request.SignupReq;
+import kr.flint.api.domain.auth.dto.request.SocialVerifyReq;
+import kr.flint.api.domain.auth.dto.response.AuthTokenRes;
+import kr.flint.api.domain.auth.dto.response.SocialVerifyRes;
+import kr.flint.api.domain.auth.event.UserSignedUpEvent;
 import kr.flint.api.global.oauth.client.KakaoOAuthClient;
 import kr.flint.auth.dto.AuthTokens;
 import kr.flint.auth.dto.SocialUserInfo;
@@ -9,11 +18,6 @@ import kr.flint.auth.dto.TempTokenPayload;
 import kr.flint.auth.enums.AuthProvider;
 import kr.flint.auth.exception.AuthErrorCode;
 import kr.flint.auth.exception.AuthException;
-import kr.flint.api.domain.auth.dto.request.RefreshTokenReq;
-import kr.flint.api.domain.auth.dto.request.SignupReq;
-import kr.flint.api.domain.auth.dto.request.SocialVerifyReq;
-import kr.flint.api.domain.auth.dto.response.AuthTokenRes;
-import kr.flint.api.domain.auth.dto.response.SocialVerifyRes;
 import kr.flint.auth.service.AuthService;
 import kr.flint.auth.service.UserIdentityService;
 import kr.flint.bookmark.service.BookmarkService;
@@ -21,8 +25,6 @@ import kr.flint.ott.service.OttService;
 import kr.flint.user.dto.response.UserAuthInfo;
 import kr.flint.user.service.UserService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -34,6 +36,7 @@ public class AuthFacade {
     private final KakaoOAuthClient kakaoOAuthClient;
     private final BookmarkService bookmarkService;
     private final OttService ottService;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 소셜 로그인
@@ -65,8 +68,10 @@ public class AuthFacade {
         userIdentityService.create(authInfo.userId(), payload.provider(), payload.providerUserId());
 
         bookmarkService.createContentBookmarks(authInfo.userId(), request.favoriteContentIds());
-
         ottService.createUserOtts(authInfo.userId(), request.subscribedOttIds());
+
+        // 비동기 취향 분석 이벤트 발행 (트랜잭션 커밋 후 처리)
+        eventPublisher.publishEvent(UserSignedUpEvent.of(authInfo.userId(), request.favoriteContentIds()));
 
         // 토큰 발급
         AuthTokens tokens = authService.issueTokens(authInfo.userId(), authInfo.role());
