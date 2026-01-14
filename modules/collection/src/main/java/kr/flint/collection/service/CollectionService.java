@@ -2,6 +2,7 @@ package kr.flint.collection.service;
 
 import java.util.List;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -9,6 +10,8 @@ import kr.flint.collection.domain.Collection;
 import kr.flint.collection.domain.CollectionContent;
 import kr.flint.collection.domain.RecentViewedCollection;
 import kr.flint.collection.dto.CollectionCreateCommand;
+import kr.flint.collection.event.CollectionContentAddedEvent;
+import kr.flint.collection.event.CollectionContentRemovedEvent;
 import kr.flint.collection.exception.CollectionErrorCode;
 import kr.flint.collection.exception.CollectionException;
 import kr.flint.collection.repository.CollectionContentRepository;
@@ -23,6 +26,7 @@ public class CollectionService {
 	private final CollectionRepository collectionRepository;
 	private final CollectionContentRepository collectionContentRepository;
 	private final RecentViewedCollectionRepository recentViewedCollectionRepository;
+	private final ApplicationEventPublisher eventPublisher;
 
 	@Transactional
 	public void createCollection(final Long userId, final CollectionCreateCommand command) {
@@ -46,6 +50,11 @@ public class CollectionService {
 			.toList();
 
 		collectionContentRepository.saveAll(collectionContentList);
+
+		// 콘텐츠 추가 이벤트 발행 (CollectionKeyword 동기화 트리거)
+		collectionContentList.forEach(content ->
+			eventPublisher.publishEvent(new CollectionContentAddedEvent(savedCollection.getId(), content.getContentId()))
+		);
 	}
 
 	public Collection getCollectionById(final Long collectionId) {
