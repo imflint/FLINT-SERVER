@@ -26,7 +26,7 @@ public interface ContentControllerDocs {
 		@ApiResponse(
 			responseCode = "200",
 			description = "조회 성공",
-			content = @Content(schema = @Schema(implementation = SuccessResponse.class))
+			content = @Content(schema = @Schema(implementation = GetOttListSuccessResponse.class))
 		),
 		@ApiResponse(
 			responseCode = "404",
@@ -48,10 +48,10 @@ public interface ContentControllerDocs {
 		@ApiResponse(
 			responseCode = "200",
 			description = "조회 성공",
-			content = @Content(schema = @Schema(implementation = SuccessResponse.class))
+			content = @Content(schema = @Schema(implementation = GetBookmarkContentSuccessResponse.class))
 		)
 	})
-	ResponseEntity<SuccessResponse<?>> getBookmarkContent(Long userId);
+	ResponseEntity<?> getBookmarkContent(Long userId);
 
 	@Operation(
 		summary = "콘텐츠 검색",
@@ -61,10 +61,10 @@ public interface ContentControllerDocs {
 		@ApiResponse(
 			responseCode = "200",
 			description = "검색 성공",
-			content = @Content(schema = @Schema(implementation = SuccessResponse.class))
+			content = @Content(schema = @Schema(implementation = SearchContentSuccessResponse.class))
 		)
 	})
-	ResponseEntity<SuccessResponse<?>> searchContent(
+	ResponseEntity<?> searchContent(
 		@Parameter(description = "검색 키워드", example = "눈물의 여왕")
 		String keyword,
 		@Parameter(description = "페이지 번호 (1부터 시작)", example = "1")

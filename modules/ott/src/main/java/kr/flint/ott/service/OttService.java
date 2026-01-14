@@ -24,4 +24,5 @@ public class OttService {
 	public List<GetOttResponse> getOttList(final Long userId, final Long contentId) {
 		return ottUserRepository.getSubscribeOttList(userId, contentId);
 	}
+
 }

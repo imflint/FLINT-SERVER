@@ -54,7 +54,4 @@ public class Keyword extends Base {
             .build();
     }
 
-    public KeywordColor getColor() {
-        return level.getColor();
-    }
 }

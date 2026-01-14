@@ -34,4 +34,8 @@ public interface UserKeywordRepository extends JpaRepository<UserKeyword, Long> 
     // 사용자의 키워드 ID 목록만 조회
     @Query("SELECT uk.keywordId FROM UserKeyword uk WHERE uk.userId = :userId")
     List<Long> findKeywordIdsByUserId(@Param("userId") Long userId);
+
+	boolean existsByUserId(Long userId);
+
+	void deleteAllByUserId(Long userId);
 }

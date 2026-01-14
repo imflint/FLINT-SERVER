@@ -13,6 +13,8 @@ import kr.flint.api.domain.user.dto.response.UserProfileRes;
 import kr.flint.shared.dto.response.SuccessResponse;
 import kr.flint.user.dto.response.NicknameCheckResponse;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "User", description = "사용자 API")
 public interface UserControllerDocs {
@@ -27,7 +29,10 @@ public interface UserControllerDocs {
                     description = "닉네임 체크 성공"
             )
     })
-    ResponseEntity<SuccessResponse<NicknameCheckResponse>> checkNickname(NicknameCheckReq request);
+    ResponseEntity<SuccessResponse<NicknameCheckResponse>> checkNickname(
+            @Parameter(description = "확인할 닉네임", example = "my_nickname")
+			@RequestParam  String nickname
+    );
 
     @Operation(
             summary = "사용자 프로필 조회",
@@ -40,7 +45,8 @@ public interface UserControllerDocs {
             )
     })
     ResponseEntity<SuccessResponse<UserProfileRes>> getUserProfile(
-            @Parameter(description = "사용자 ID", example = "123456789") Long userId
+            @Parameter(description = "사용자 ID", example = "123456789")
+			@PathVariable Long userId
     );
 
     @Operation(
@@ -54,7 +60,8 @@ public interface UserControllerDocs {
             )
     })
     ResponseEntity<SuccessResponse<UserKeywordsRes>> getUserKeywords(
-            @Parameter(description = "사용자 ID", example = "123456789") Long userId
+            @Parameter(description = "사용자 ID", example = "123456789")
+			@PathVariable Long userId
     );
 
     @Operation(
@@ -69,7 +76,8 @@ public interface UserControllerDocs {
     })
     ResponseEntity<SuccessResponse<UserCollectionsRes>> getUserCollections(
             Long currentUserId,
-            @Parameter(description = "사용자 ID", example = "123456789") Long userId
+            @Parameter(description = "사용자 ID", example = "123456789")
+			@PathVariable Long userId
     );
 
     @Operation(
@@ -84,6 +92,7 @@ public interface UserControllerDocs {
     })
     ResponseEntity<SuccessResponse<UserBookmarkedCollectionsRes>> getUserBookmarkedCollections(
             Long currentUserId,
-            @Parameter(description = "사용자 ID", example = "123456789") Long userId
+            @Parameter(description = "사용자 ID", example = "123456789")
+			@PathVariable Long userId
     );
 }
