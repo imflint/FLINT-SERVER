@@ -1,8 +1,5 @@
 package kr.flint.api.domain.user.controller;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
 import kr.flint.api.domain.user.controller.spec.UserControllerDocs;
 import kr.flint.api.domain.user.dto.response.UserBookmarkedCollectionsRes;
 import kr.flint.api.domain.user.dto.response.UserCollectionsRes;
@@ -33,11 +30,7 @@ public class UserController implements UserControllerDocs {
     @Override
     @GetMapping("/nickname/check")
     public ResponseEntity<SuccessResponse<NicknameCheckResponse>> checkNickname(
-            @RequestParam
-            @NotBlank(message = "닉네임은 필수입니다.")
-            @Size(min = 2, max = 10, message = "닉네임은 2자 이상 10자 이하여야 합니다.")
-            @Pattern(regexp = "^[a-zA-Z0-9가-힣_]+$", message = "닉네임은 영문, 숫자, 한글, 밑줄만 사용 가능합니다.")
-            String nickname
+            @RequestParam String nickname
     ) {
         return ResponseEntity.ok(
                 SuccessResponse.of(SuccessCode.SUCCESS_NICKNAME_CHECK, userQueryFacade.checkNickname(nickname))

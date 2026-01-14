@@ -5,6 +5,9 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import kr.flint.api.domain.user.dto.response.UserBookmarkedCollectionsRes;
 import kr.flint.api.domain.user.dto.response.UserCollectionsRes;
 import kr.flint.api.domain.user.dto.response.UserKeywordsRes;
@@ -27,7 +30,11 @@ public interface UserControllerDocs {
             )
     })
     ResponseEntity<SuccessResponse<NicknameCheckResponse>> checkNickname(
-            @Parameter(description = "확인할 닉네임", example = "my_nickname") String nickname
+            @Parameter(description = "확인할 닉네임", example = "my_nickname")
+            @NotBlank(message = "닉네임은 필수입니다.")
+            @Size(min = 2, max = 10, message = "닉네임은 2자 이상 10자 이하여야 합니다.")
+            @Pattern(regexp = "^[a-zA-Z0-9가-힣_]+$", message = "닉네임은 영문, 숫자, 한글, 밑줄만 사용 가능합니다.")
+            String nickname
     );
 
     @Operation(

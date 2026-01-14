@@ -15,6 +15,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -25,8 +26,29 @@ import java.util.List;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private static final String[] EXCLUDED_PATHS = {
+            "/swagger-ui/**",
+            "/v3/api-docs/**",
+            "/api/v1/auth/**",
+            "/api/v1/users/nickname/check",
+            "/actuator/**"
+    };
+
+    private final AntPathMatcher pathMatcher = new AntPathMatcher();
+
     private final JwtProvider jwtProvider;
     private final AccessTokenBlacklist accessTokenBlacklist;
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        for (String pattern : EXCLUDED_PATHS) {
+            if (pathMatcher.match(pattern, path)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     @Override
     protected void doFilterInternal(
