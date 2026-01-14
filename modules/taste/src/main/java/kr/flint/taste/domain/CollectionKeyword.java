@@ -1,4 +1,4 @@
-package kr.flint.collection.domain;
+package kr.flint.taste.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

@@ -7,9 +7,9 @@ import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import kr.flint.collection.domain.CollectionKeyword;
 import kr.flint.collection.repository.CollectionContentRepository;
-import kr.flint.collection.repository.CollectionKeywordRepository;
+import kr.flint.taste.domain.CollectionKeyword;
+import kr.flint.taste.repository.CollectionKeywordRepository;
 import kr.flint.taste.repository.ContentKeywordRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

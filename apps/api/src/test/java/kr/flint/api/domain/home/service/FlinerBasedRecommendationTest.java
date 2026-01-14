@@ -17,9 +17,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import kr.flint.api.domain.home.dto.projection.CollectionBasicProjection;
 import kr.flint.api.domain.home.repository.HomeCollectionRepository;
-import kr.flint.collection.domain.CollectionKeyword;
-import kr.flint.collection.repository.CollectionKeywordRepository;
+import kr.flint.taste.domain.CollectionKeyword;
 import kr.flint.taste.domain.UserKeyword;
+import kr.flint.taste.repository.CollectionKeywordRepository;
 import kr.flint.taste.repository.UserKeywordRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -84,7 +84,7 @@ class FlinerBasedRecommendationTest {
             when(userKeywordRepository.findKeywordIdsByUserId(USER_ID)).thenReturn(List.of(KEYWORD_1));
             when(homeCollectionRepository.findAllFlinerIds()).thenReturn(List.of(FLINER_1));
             when(userKeywordRepository.findByUserIdIn(List.of(FLINER_1))).thenReturn(List.of(
-                UserKeyword.create(FLINER_1, KEYWORD_3, 100) // 다른 키워드
+                UserKeyword.create(FLINER_1, KEYWORD_3, 100, 1) // 다른 키워드
             ));
 
             // when
@@ -104,9 +104,9 @@ class FlinerBasedRecommendationTest {
             // Fliner1: KEYWORD_1만 가짐 (50% 중복)
             // Fliner2: KEYWORD_1, KEYWORD_2 가짐 (100% 중복)
             when(userKeywordRepository.findByUserIdIn(List.of(FLINER_1, FLINER_2))).thenReturn(List.of(
-                UserKeyword.create(FLINER_1, KEYWORD_1, 50),
-                UserKeyword.create(FLINER_2, KEYWORD_1, 50),
-                UserKeyword.create(FLINER_2, KEYWORD_2, 50)
+                UserKeyword.create(FLINER_1, KEYWORD_1, 50, 1),
+                UserKeyword.create(FLINER_2, KEYWORD_1, 50, 1),
+                UserKeyword.create(FLINER_2, KEYWORD_2, 50, 2)
             ));
 
             // 각 Fliner의 컬렉션
@@ -140,7 +140,7 @@ class FlinerBasedRecommendationTest {
             when(userKeywordRepository.findKeywordIdsByUserId(USER_ID)).thenReturn(List.of(KEYWORD_1));
             when(homeCollectionRepository.findAllFlinerIds()).thenReturn(List.of(FLINER_1));
             when(userKeywordRepository.findByUserIdIn(List.of(FLINER_1))).thenReturn(List.of(
-                UserKeyword.create(FLINER_1, KEYWORD_1, 100)
+                UserKeyword.create(FLINER_1, KEYWORD_1, 100, 1)
             ));
             when(homeCollectionRepository.findPublicCollectionsByFlinerIds(List.of(FLINER_1)))
                 .thenReturn(List.of(
