@@ -10,7 +10,10 @@ import kr.flint.api.domain.search.dto.response.BookmarkedContentSearchRes;
 import kr.flint.api.domain.search.repository.SearchQueryRepository;
 import kr.flint.shared.dto.PaginationResponse;
 import kr.flint.shared.dto.SliceCursor;
+import kr.flint.api.domain.content.repository.ContentQueryRepository;
 import kr.flint.api.domain.search.dto.GetContentSearchRes;
+import kr.flint.api.domain.content.service.ContentQueryFacade;
+import kr.flint.api.domain.search.dto.GetSearchBookmarkContentRes;
 import kr.flint.content.domain.Content;
 import kr.flint.content.service.ContentService;
 import lombok.RequiredArgsConstructor;
@@ -50,7 +53,7 @@ public class SearchQueryFacade {
 			: null;
 
 		return PaginationResponse.ofCursor(SliceCursor.of(data, null, nextCursor));
-	}
+		}
 
 	public PaginationResponse<BookmarkedContentSearchRes> searchBookmarkedContents(
 		final Long userId,
