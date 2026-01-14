@@ -26,13 +26,17 @@ public class RecommendationCacheService {
     private static final Duration DEFAULT_TTL = Duration.ofHours(24);
 
     // 캐시 조회
-    @SuppressWarnings("unchecked")
     public Optional<List<Long>> getCachedRecommendations(Long userId) {
         try {
             String key = buildKey(userId);
             Object cached = redisTemplate.opsForValue().get(key);
             if (cached instanceof List<?> list) {
-                return Optional.of((List<Long>) list);
+                List<Long> result = list.stream()
+                    .filter(Number.class::isInstance)
+                    .map(Number.class::cast)
+                    .map(Number::longValue)
+                    .toList();
+                return result.isEmpty() ? Optional.empty() : Optional.of(result);
             }
             return Optional.empty();
         } catch (Exception e) {
