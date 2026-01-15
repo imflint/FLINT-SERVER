@@ -1,17 +1,18 @@
-package kr.flint.api.domain.content.controller.spec;
+package kr.flint.api.domain.search.controller.spec;
+
+import java.util.List;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import kr.flint.api.domain.search.dto.GetContentSearchRes;
-import kr.flint.shared.dto.PaginationResponse;
 
 @Schema(description = "콘텐츠 검색 성공 응답")
-public record SearchContentSuccessResponse(
-
+public record SearchContentSwaggerResponse(
 	@Schema(example = "SUCCESS_FETCH")
 	String code,
 
 	@Schema(example = "조회 성공")
 	String message,
 
-	PaginationResponse<GetContentSearchRes> data
-) {}
+	List<GetContentSearchRes> data
+) {
+}

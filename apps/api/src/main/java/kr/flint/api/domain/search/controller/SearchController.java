@@ -1,5 +1,7 @@
 package kr.flint.api.domain.search.controller;
 
+import java.util.List;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -9,6 +11,9 @@ import org.springframework.web.bind.annotation.RestController;
 import kr.flint.api.domain.search.controller.spec.SearchControllerDocs;
 import kr.flint.api.domain.search.dto.response.BookmarkedCollectionSearchRes;
 import kr.flint.api.domain.search.dto.response.BookmarkedContentSearchRes;
+import kr.flint.api.domain.search.dto.GetContentSearchRes;
+import kr.flint.api.domain.search.dto.GetSearchBookmarkContentRes;
+import kr.flint.api.domain.search.dto.GetContentSearchRes;
 import kr.flint.api.domain.search.service.SearchQueryFacade;
 import kr.flint.api.global.security.annotation.CurrentUser;
 import kr.flint.shared.dto.PaginationResponse;
@@ -22,6 +27,15 @@ import lombok.RequiredArgsConstructor;
 public class SearchController implements SearchControllerDocs {
 
 	private final SearchQueryFacade searchQueryFacade;
+
+	@Override
+	@GetMapping("/contents")
+	public ResponseEntity<SuccessResponse<List<GetContentSearchRes>>> searchContent(
+		@RequestParam(name = "keyword", required = false) String keyword
+	){
+		List<GetContentSearchRes> contentSearchResList = searchQueryFacade.searchContent(keyword);
+		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, contentSearchResList));
+	}
 
 	@Override
 	@GetMapping("/bookmarked-collections")
@@ -49,5 +63,5 @@ public class SearchController implements SearchControllerDocs {
 			searchQueryFacade.searchBookmarkedContents(userId, keyword, cursor, size);
 
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, response));
-	}
+		}
 }

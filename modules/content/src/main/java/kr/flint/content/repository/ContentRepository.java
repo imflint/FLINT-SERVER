@@ -17,4 +17,6 @@ public interface ContentRepository extends JpaRepository<Content, Long> {
 	boolean existsByTmdbId(Long tmdbId);
 
 	Optional<Content> findContentByTmdbId(Long tmdbId);
+
+	List<Content> findAllByTitleContaining(String title);
 }

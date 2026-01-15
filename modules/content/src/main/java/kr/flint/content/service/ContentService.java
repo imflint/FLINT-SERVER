@@ -64,6 +64,14 @@ public class ContentService {
 			.orElse(null);
 	}
 
+	public List<Content> getContentByTitle(final String title) {
+		return contentRepository.findAllByTitleContaining(title);
+	}
+
+	public List<Content> getAllContent() {
+		return contentRepository.findAll();
+	}
+
 	// 콘텐츠 ID 목록으로 콘텐츠 + 장르 정보 조회
 	public List<ContentWithGenres> getContentsWithGenres(List<Long> contentIds) {
 		if (contentIds == null || contentIds.isEmpty()) {
