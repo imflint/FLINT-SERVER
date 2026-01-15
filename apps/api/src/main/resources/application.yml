@@ -43,3 +43,10 @@ management:
   endpoint:
     health:
       show-details: never
+
+decorator:
+  datasource:
+    p6spy:
+      enable-logging: false
+      multiline: true
+      logging: slf4j
