@@ -59,11 +59,6 @@ oauth:
     connect-timeout: 5s
     read-timeout: 10s
 
-cors:
-  allowed-origins:
-    - http://localhost:3000
-    - http://localhost:8080
-
 tmdb:
   base-url: https://api.themoviedb.org
   api-key: test-api-key

@@ -60,10 +60,6 @@ logging:
   level:
     kr.flint: info
 
-cors:
-  allowed-origins:
-    - https://flint.r-e.kr
-
 tmdb:
   base-url: https://api.themoviedb.org
   api-key: ${tmdb.api-key}

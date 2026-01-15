@@ -76,11 +76,6 @@ logging:
   level:
     kr.flint: debug
 
-cors:
-  allowed-origins:
-    - http://localhost:3000
-    - http://localhost:8080
-
 tmdb:
   base-url: https://api.themoviedb.org
   api-key: ${TMDB_API_KEY}
