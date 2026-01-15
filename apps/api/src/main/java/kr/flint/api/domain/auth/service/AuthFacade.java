@@ -75,7 +75,7 @@ public class AuthFacade {
 
         // 토큰 발급
         AuthTokens tokens = authService.issueTokens(authInfo.userId(), authInfo.role());
-        return toAuthTokenResponse(tokens);
+        return AuthTokenRes.from(tokens);
     }
 
     /**
@@ -89,11 +89,7 @@ public class AuthFacade {
         // 인증 정보 조회 후 새 토큰 발급
         UserAuthInfo authInfo = userService.getAuthInfo(userId);
         AuthTokens tokens = authService.issueTokens(authInfo.userId(), authInfo.role());
-        return toAuthTokenResponse(tokens);
-    }
-
-    private AuthTokenRes toAuthTokenResponse(AuthTokens tokens) {
-        return AuthTokenRes.of(tokens.accessToken(), tokens.refreshToken(), tokens.userId());
+        return AuthTokenRes.from(tokens);
     }
 
     /**
@@ -112,6 +108,7 @@ public class AuthFacade {
 
     // 소셜 제공자별 사용자 정보 조회
     private SocialUserInfo getSocialUserInfo(AuthProvider provider, String code) {
+        // 일단 mvp에서는 kakao만 제공
         if (provider != AuthProvider.KAKAO) {
             throw new AuthException(AuthErrorCode.UNSUPPORTED_PROVIDER);
         }
