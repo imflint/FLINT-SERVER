@@ -14,7 +14,6 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import kr.flint.api.global.config.properties.CorsProperties;
 import kr.flint.api.global.security.JwtAuthenticationFilter;
 import kr.flint.api.global.security.JwtExceptionFilter;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +25,6 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtExceptionFilter jwtExceptionFilter;
-    private final CorsProperties corsProperties;
 
     private static final String[] PUBLIC_ENDPOINTS = {
             "/swagger-ui/**",
@@ -57,7 +55,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(corsProperties.allowedOrigins());
+        configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
