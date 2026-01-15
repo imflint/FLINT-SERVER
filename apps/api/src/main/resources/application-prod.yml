@@ -1,4 +1,12 @@
 spring:
+  ai:
+    openai:
+      api-key: ${openai.key}
+      chat:
+        options:
+          model: gpt-4o-mini
+          temperature: 0.3
+
   config:
     import:
       - aws-parameterstore:/config/flint-api/
@@ -51,3 +59,11 @@ oauth:
 logging:
   level:
     kr.flint: info
+
+cors:
+  allowed-origins:
+    - https://flint.r-e.kr
+
+tmdb:
+  base-url: https://api.themoviedb.org
+  api-key: ${tmdb.api-key}

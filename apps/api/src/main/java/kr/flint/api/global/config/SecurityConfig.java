@@ -1,8 +1,7 @@
 package kr.flint.api.global.config;
 
-import kr.flint.api.global.security.JwtAuthenticationFilter;
-import kr.flint.api.global.security.JwtExceptionFilter;
-import lombok.RequiredArgsConstructor;
+import java.util.List;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -15,7 +14,10 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.List;
+import kr.flint.api.global.config.properties.CorsProperties;
+import kr.flint.api.global.security.JwtAuthenticationFilter;
+import kr.flint.api.global.security.JwtExceptionFilter;
+import lombok.RequiredArgsConstructor;
 
 @Configuration
 @EnableWebSecurity
@@ -24,6 +26,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtExceptionFilter jwtExceptionFilter;
+    private final CorsProperties corsProperties;
 
     private static final String[] PUBLIC_ENDPOINTS = {
             "/swagger-ui/**",
@@ -54,11 +57,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of(
-                "http://localhost:3000",
-                "http://localhost:8080",
-                "https://flint.r-e.kr"
-        ));
+        configuration.setAllowedOrigins(corsProperties.allowedOrigins());
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
