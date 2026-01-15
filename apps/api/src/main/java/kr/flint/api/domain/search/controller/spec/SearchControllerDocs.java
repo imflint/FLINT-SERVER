@@ -1,5 +1,7 @@
 package kr.flint.api.domain.search.controller.spec;
 
+import java.util.List;
+
 import org.springframework.http.ResponseEntity;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -9,6 +11,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import kr.flint.api.domain.search.dto.GetContentSearchRes;
 import kr.flint.api.domain.search.dto.response.BookmarkedCollectionSearchRes;
 import kr.flint.api.domain.search.dto.response.BookmarkedContentSearchRes;
 import kr.flint.shared.dto.PaginationResponse;
@@ -16,6 +19,24 @@ import kr.flint.shared.dto.response.SuccessResponse;
 
 @Tag(name = "Search", description = "검색 API")
 public interface SearchControllerDocs {
+
+	@Operation(
+		summary = "콘텐츠 검색",
+		description = "키워드로 콘텐츠를 검색합니다."
+	)
+	@ApiResponses({
+		@ApiResponse(
+			responseCode = "200",
+			description = "검색 성공",
+			content = @Content(
+				schema = @Schema(implementation = SearchContentSwaggerResponse.class)
+			)
+		)
+	})
+	ResponseEntity<SuccessResponse<List<GetContentSearchRes>>> searchContent(
+		@Parameter(description = "검색 키워드", example = "눈물의 여왕")
+		String keyword
+	);
 
 	@Operation(
 		summary = "북마크한 컬렉션 검색",

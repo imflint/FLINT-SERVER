@@ -28,6 +28,7 @@ public class SearchController implements SearchControllerDocs {
 
 	private final SearchQueryFacade searchQueryFacade;
 
+	@Override
 	@GetMapping("/contents")
 	public ResponseEntity<SuccessResponse<List<GetContentSearchRes>>> searchContent(
 		@RequestParam(name = "keyword", required = false) String keyword
