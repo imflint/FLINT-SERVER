@@ -62,10 +62,19 @@ public class ContentCommandFacade {
 					);
 				}
 
+				List<String> tmdbGenreList;
 				String author = extractMovieAuthor(result.id());
 				String posterUrl = result.poster() == null
 					? null
 					: TMDB_IMAGE_BASE + result.poster();
+
+				if ("movie".equals(result.mediaType())) {
+					author = extractMovieAuthor(result.id());
+					tmdbGenreList = extractMovieGenreList(result.id());
+				} else {
+					author = extractTvAuthor(result.id());
+					tmdbGenreList = extractTvGenreList(result.id());
+				}
 
 				int year = extractYear(result.mediaType(), result.releaseDate(), result.firstAirDate());
 				Content content = Content.create(
@@ -76,6 +85,14 @@ public class ContentCommandFacade {
 					result.overview(),
 					posterUrl
 				);
+
+				List<Genre> genreList = tmdbGenreList.stream()
+					.filter(genreName -> !contentService.checkGenre(genreName))
+					.map(Genre::create)
+					.toList();
+
+				Content savedContent = contentService.tmdbToDb(content, genreList);
+				ottCommandFacade.mapContentOtt(savedContent.getId(), result.id(), result.mediaType());
 
 				return GetContentSearchRes.of(
 					result.id(),
