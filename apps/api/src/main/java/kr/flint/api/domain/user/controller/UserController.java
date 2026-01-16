@@ -53,7 +53,7 @@ public class UserController implements UserControllerDocs {
         );
     }
 
-    //@Override
+    @Override
     @GetMapping("/{userId}/collections")
     public ResponseEntity<SuccessResponse<UserCollectionsRes>> getUserCollections(
             @CurrentUser(required = false) Long currentUserId,
@@ -65,7 +65,7 @@ public class UserController implements UserControllerDocs {
         );
     }
 
-    //@Override
+    @Override
     @GetMapping("/{userId}/bookmarked-collections")
     public ResponseEntity<SuccessResponse<UserBookmarkedCollectionsRes>> getUserBookmarkedCollections(
             @CurrentUser(required = false) Long currentUserId,
