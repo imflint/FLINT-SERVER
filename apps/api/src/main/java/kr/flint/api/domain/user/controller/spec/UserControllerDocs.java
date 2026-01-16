@@ -97,4 +97,19 @@ public interface UserControllerDocs {
             @Parameter(description = "사용자 ID", example = "123456789")
 			@PathVariable Long userId
     );
+
+	@Operation(
+		summary = "취향 키워드 재계산",
+		description = "GPT를 호출하여 사용자의 취향 키워드를 다시 계산하고 갱신합니다."
+	)
+	@ApiResponses({
+		@ApiResponse(
+			responseCode = "200",
+			description = "취향 키워드 재계산 성공"
+		)
+	})
+	ResponseEntity<SuccessResponse<Void>> recalculateKeyword(
+		@Parameter(description = "현재 로그인한 사용자 ID", example = "123456789")
+		Long userId
+	);
 }

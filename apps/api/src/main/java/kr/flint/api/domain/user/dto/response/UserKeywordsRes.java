@@ -19,8 +19,8 @@ public record UserKeywordsRes(
 
     @Schema(description = "키워드 항목")
     public record KeywordItem(
-		@Schema(description = "Level", example = "LV1")
-		String level,
+		@Schema(description = "Color", example = "ORANGE")
+		String color,
 		@Schema(description = "순위", example = "1")
 		int rank,
         @Schema(description = "키워드 이름", example = "힐링")
@@ -32,7 +32,7 @@ public record UserKeywordsRes(
     ) {
         public static KeywordItem from(UserKeywordProjection projection) {
             return new KeywordItem(
-				projection.getLevel().getDescription(),
+				projection.getLevel().getColor().toString(),
 				projection.getRanking(),
                 projection.getName(),
                 projection.getPercentage(),
