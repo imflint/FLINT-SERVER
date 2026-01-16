@@ -48,6 +48,7 @@ public class ContentCommandFacade {
 	}
 
 	private GetPopularContentRes getPopularContent(int page) {
+		log.info("실행 메서드: 인기");
 		TmdbCommonRes tmdbList = tmdbClient.getPopularMovieList("ko-KR", page);
 		List<GetContentSearchRes> popularList = tmdbList.contentList().stream()
 			.map(result -> {
@@ -62,19 +63,11 @@ public class ContentCommandFacade {
 					);
 				}
 
-				List<String> tmdbGenreList;
-				String author = extractMovieAuthor(result.id());
 				String posterUrl = result.poster() == null
 					? null
 					: TMDB_IMAGE_BASE + result.poster();
-
-				if ("movie".equals(result.mediaType())) {
-					author = extractMovieAuthor(result.id());
-					tmdbGenreList = extractMovieGenreList(result.id());
-				} else {
-					author = extractTvAuthor(result.id());
-					tmdbGenreList = extractTvGenreList(result.id());
-				}
+				String author = extractMovieAuthor(result.id());
+				List<String> tmdbGenreList = extractMovieGenreList(result.id());
 
 				int year = extractYear(result.mediaType(), result.releaseDate(), result.firstAirDate());
 				Content content = Content.create(
@@ -110,6 +103,7 @@ public class ContentCommandFacade {
 
 	@Transactional
 	public List<GetContentSearchRes> getTmdbContentList(final String keyword, final int page) {
+		log.info("실행 메서드 : 전체");
 
 		TmdbCommonRes tmdbSearchRes = tmdbClient.getMultiList(keyword, "ko-KR", page);
 
