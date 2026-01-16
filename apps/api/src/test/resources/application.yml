@@ -48,6 +48,9 @@ cloud:
       bucket: test-bucket
       region: ap-northeast-2
       presign-expiration: 10m
+    cloudfront:
+      enabled: false
+      url:
 
 oauth:
   kakao:
