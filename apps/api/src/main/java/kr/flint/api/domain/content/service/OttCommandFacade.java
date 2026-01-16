@@ -3,6 +3,9 @@ package kr.flint.api.domain.content.service;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import feign.FeignException;
+import kr.flint.content.exception.ContentErrorCode;
+import kr.flint.content.exception.ContentException;
 import kr.flint.infra.tmdb.client.TmdbClient;
 import kr.flint.infra.tmdb.dto.TmdbOttRes;
 import kr.flint.ott.domain.OttContent;
@@ -21,20 +24,27 @@ public class OttCommandFacade {
 
 	public void mapContentOtt(Long contentId, Long tmdbId, String mediaType) {
 
-		TmdbOttRes res = tmdbClient.getMovieWatchProviders(tmdbId);
+		try {
+			TmdbOttRes res = tmdbClient.getMovieWatchProviders(tmdbId);
+			var country = (res.results() == null) ? null : res.results().get("KR");
+			if (country == null || country.flatrate() == null)
+				return;
 
-		var country = (res.results() == null) ? null : res.results().get("KR");
-		if (country == null || country.flatrate() == null) return;
+			for (var p : country.flatrate()) {
+				OttProvider provider = ottProviderRepository.findByName(p.providerName())
+					.orElse(null);
+				if (provider == null)
+					continue;
 
-		for (var p : country.flatrate()) {
-			OttProvider provider = ottProviderRepository.findByName(p.providerName())
-				.orElse(null);
-			if (provider == null) continue;
-
-			if (ottContentRepository.existsByOttProviderAndContentId(provider, contentId)) {
-				continue;
+				if (ottContentRepository.existsByOttProviderAndContentId(provider, contentId)) {
+					continue;
+				}
+				ottContentRepository.save(OttContent.create(provider, contentId));
 			}
-			ottContentRepository.save(OttContent.create(provider, contentId));
+		} catch (Exception e) {
+			throw new ContentException(ContentErrorCode.TMDB_OTT_NOT_FOUND);
 		}
+
 	}
+
 }

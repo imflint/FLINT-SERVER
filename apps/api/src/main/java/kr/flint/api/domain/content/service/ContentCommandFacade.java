@@ -9,6 +9,8 @@ import kr.flint.api.domain.search.dto.GetContentSearchRes;
 import kr.flint.api.domain.content.dto.GetPopularContentRes;
 import kr.flint.content.domain.Content;
 import kr.flint.content.domain.Genre;
+import kr.flint.content.exception.ContentErrorCode;
+import kr.flint.content.exception.ContentException;
 import kr.flint.content.service.ContentService;
 import kr.flint.infra.tmdb.client.TmdbClient;
 import kr.flint.infra.tmdb.dto.TmdbCommonRes;
@@ -48,56 +50,61 @@ public class ContentCommandFacade {
 	}
 
 	private GetPopularContentRes getPopularContent(int page) {
-		log.info("실행 메서드: 인기");
-		TmdbCommonRes tmdbList = tmdbClient.getPopularMovieList("ko-KR", page);
-		List<GetContentSearchRes> popularList = tmdbList.contentList().stream()
-			.map(result -> {
-				Content existing = contentService.getContentByTmdbId(result.id());
-				if (existing != null) {
-					return GetContentSearchRes.of(
-						existing.getTmdbId(),
-						existing.getTitle(),
-						existing.getAuthor(),
-						existing.getPoster(),
-						existing.getYear()
+		try{
+			log.info("실행 메서드: 인기");
+			TmdbCommonRes tmdbList = tmdbClient.getPopularMovieList("ko-KR", page);
+			List<GetContentSearchRes> popularList = tmdbList.contentList().stream()
+				.map(result -> {
+					Content existing = contentService.getContentByTmdbId(result.id());
+					if (existing != null) {
+						return GetContentSearchRes.of(
+							existing.getTmdbId(),
+							existing.getTitle(),
+							existing.getAuthor(),
+							existing.getPoster(),
+							existing.getYear()
+						);
+					}
+
+					String posterUrl = result.poster() == null
+						? null
+						: TMDB_IMAGE_BASE + result.poster();
+					String author = extractMovieAuthor(result.id());
+					List<String> tmdbGenreList = extractMovieGenreList(result.id());
+
+					int year = extractYear(result.mediaType(), result.releaseDate(), result.firstAirDate());
+					Content content = Content.create(
+						result.id(),
+						result.title(),
+						year,
+						author,
+						result.overview(),
+						posterUrl
 					);
-				}
 
-				String posterUrl = result.poster() == null
-					? null
-					: TMDB_IMAGE_BASE + result.poster();
-				String author = extractMovieAuthor(result.id());
-				List<String> tmdbGenreList = extractMovieGenreList(result.id());
+					List<Genre> genreList = tmdbGenreList.stream()
+						.filter(genreName -> !contentService.checkGenre(genreName))
+						.map(Genre::create)
+						.toList();
 
-				int year = extractYear(result.mediaType(), result.releaseDate(), result.firstAirDate());
-				Content content = Content.create(
-					result.id(),
-					result.title(),
-					year,
-					author,
-					result.overview(),
-					posterUrl
-				);
+					Content savedContent = contentService.tmdbToDb(content, genreList);
+					ottCommandFacade.mapContentOtt(savedContent.getId(), result.id(), result.mediaType());
 
-				List<Genre> genreList = tmdbGenreList.stream()
-					.filter(genreName -> !contentService.checkGenre(genreName))
-					.map(Genre::create)
-					.toList();
+					return GetContentSearchRes.of(
+						result.id(),
+						result.title(),
+						author,
+						posterUrl,
+						year
+					);
+				})
+				.toList();
 
-				Content savedContent = contentService.tmdbToDb(content, genreList);
-				ottCommandFacade.mapContentOtt(savedContent.getId(), result.id(), result.mediaType());
+			return GetPopularContentRes.from(popularList, page);
+		} catch (Exception e) {
+			throw new ContentException(ContentErrorCode.TMDB_CONTENT_NOT_FOUND);
+		}
 
-				return GetContentSearchRes.of(
-					result.id(),
-					result.title(),
-					author,
-					posterUrl,
-					year
-				);
-			})
-			.toList();
-
-		return GetPopularContentRes.from(popularList, page);
 	}
 
 
