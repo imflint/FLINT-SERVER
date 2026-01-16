@@ -66,11 +66,11 @@ public class ContentCommandFacade {
 						);
 					}
 
-					String posterUrl = result.poster() == null
-						? null
-						: TMDB_IMAGE_BASE + result.poster();
-					String author = extractMovieAuthor(result.id());
-					List<String> tmdbGenreList = extractMovieGenreList(result.id());
+				String posterUrl = result.poster() == null
+					? null
+					: TMDB_IMAGE_BASE + result.poster();
+				String author = extractMovieAuthor(result.id());
+				List<String> tmdbGenreList = extractMovieGenreList(result.id());
 
 					int year = extractYear(result.mediaType(), result.releaseDate(), result.firstAirDate());
 					Content content = Content.create(
