@@ -39,7 +39,7 @@ public class OttCommandFacade {
 				if (ottContentRepository.existsByOttProviderAndContentId(provider, contentId)) {
 					continue;
 				}
-				ottContentRepository.save(OttContent.create(provider, contentId));
+				ottContentRepository.save(OttContent.create(provider, contentId, provider.getUrl()));
 			}
 		} catch (Exception e) {
 			throw new ContentException(ContentErrorCode.TMDB_OTT_NOT_FOUND);
