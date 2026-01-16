@@ -2,12 +2,13 @@ package kr.flint.api.domain.collection.dto.request;
 
 import java.util.List;
 
+import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import kr.flint.collection.dto.CollectionCreateCommand;
 
 public record CreateCollectionReq(
-	@NotNull(message = "컬렉션 이미지는 필수 입력값입니다")
+	@Nullable
 	String imageUrl,
 	@NotNull(message = "컬렉션 제목은 필수 입력 값입니다")
 	@Size(min = 0, max = 20)

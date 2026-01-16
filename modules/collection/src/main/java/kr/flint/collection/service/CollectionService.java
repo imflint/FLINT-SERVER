@@ -29,11 +29,11 @@ public class CollectionService {
 	private final ApplicationEventPublisher eventPublisher;
 
 	@Transactional
-	public void createCollection(final Long userId, final CollectionCreateCommand command) {
+	public void createCollection(final Long userId, final CollectionCreateCommand command, final String contentUrl) {
 		Collection newCollection = Collection.create(
 			command.title(),
 			command.description(),
-			command.imageUrl(),
+			contentUrl,
 			command.isPublic(),
 			userId
 		);

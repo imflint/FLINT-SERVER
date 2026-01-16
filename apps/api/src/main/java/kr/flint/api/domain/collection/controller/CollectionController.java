@@ -30,25 +30,25 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/collections")
-public class CollectionController implements CollectionControllerDocs {
+public class CollectionController {
 	private final CollectionCommandFacade collectionCommandFacade;
 	private final CollectionQueryFacade collectionQueryFacade;
 	private final CollectionQueryService collectionQueryService;
 	private final CollectionService collectionService;
 
-	@Override
+	//@Override
 	@PostMapping
 	public ResponseEntity<SuccessResponse<?>> postCollection(
-		@CurrentUser Long userId,
+		//@CurrentUser Long userId,
 		@Valid @RequestBody CreateCollectionReq createCollectionReq
 	){
-		collectionCommandFacade.createCollection(userId, createCollectionReq);
+		collectionCommandFacade.createCollection(1L, createCollectionReq);
 		return ResponseEntity
 			.status(SuccessCode.SUCCESS_CREATE.getHttpStatus())
 			.body(SuccessResponse.of(SuccessCode.SUCCESS_CREATE));
 	}
 
-	@Override
+	//@Override
 	@GetMapping
 	public ResponseEntity<SuccessResponse<PaginationResponse<GetCollectionSimpleRes>>> discoverCollectionList(
 		@RequestParam(required = false) Long cursor,
@@ -58,7 +58,7 @@ public class CollectionController implements CollectionControllerDocs {
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, collectionList));
 	}
 
-	@Override
+	//@Override
 	@GetMapping("/{collectionId}")
 	public ResponseEntity<SuccessResponse<GetCollectionDetailRes>> getCollectionDetail(
 		@CurrentUser Long userId,
@@ -69,12 +69,12 @@ public class CollectionController implements CollectionControllerDocs {
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, collectionDetail));
 	}
 
-	@Override
+	//@Override
 	@GetMapping("/recent")
 	public ResponseEntity<SuccessResponse<List<GetCollectionDetailListRes>>> getRecentCollectionList(
-		@CurrentUser Long userId
+		//@CurrentUser Long userId
 	){
-		List<GetCollectionDetailListRes> getCollectionDetailListRes = collectionQueryService.getRecentCollectionList(userId);
+		List<GetCollectionDetailListRes> getCollectionDetailListRes = collectionQueryService.getRecentCollectionList(1L);
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, getCollectionDetailListRes));
 	}
 
