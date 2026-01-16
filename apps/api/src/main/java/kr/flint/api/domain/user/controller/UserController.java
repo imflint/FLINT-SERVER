@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+// TODO: 본인용이랑 타인용 api 분리 고민
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor

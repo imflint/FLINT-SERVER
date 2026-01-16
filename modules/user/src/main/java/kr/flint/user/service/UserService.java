@@ -2,6 +2,8 @@ package kr.flint.user.service;
 
 import java.util.List;
 
+import org.springframework.util.CollectionUtils;
+
 import kr.flint.user.domain.User;
 import kr.flint.user.dto.response.UserAuthInfo;
 import kr.flint.user.dto.response.UserSimpleRes;
@@ -50,7 +52,7 @@ public class UserService {
         return UserAuthInfo.of(saved.getId(), saved.getUserRole().name());
     }
 	public List<UserSimpleRes> getUserInfoList(List<Long> userIdList) {
-		if (userIdList == null || userIdList.isEmpty()) {
+		if (CollectionUtils.isEmpty(userIdList)) {
 			return null;
 		}
 		return userRepository.findByIds(userIdList);

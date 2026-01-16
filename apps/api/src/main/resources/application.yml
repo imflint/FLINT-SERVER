@@ -50,3 +50,6 @@ decorator:
       enable-logging: false
       multiline: true
       logging: slf4j
+
+recommendation:
+  strategy: fliner-keyword  # fliner-keyword | fliner-collection

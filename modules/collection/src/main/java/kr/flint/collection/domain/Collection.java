@@ -15,10 +15,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
+@Getter
+@Builder(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Getter
-@Builder(access = AccessLevel.PROTECTED)
 public class Collection extends BaseTime {
 
 	@Column(nullable = false)
@@ -27,7 +27,7 @@ public class Collection extends BaseTime {
 	@Column(nullable = false)
 	private String description;
 
-	@Column(name = "collection_image", nullable = false)
+	@Column(nullable = false)
 	private String image;
 
 	@Column(nullable = false)
@@ -50,6 +50,7 @@ public class Collection extends BaseTime {
 			.build();
 	}
 
+    // TODO: 동시성 이슈 및 sync 체크
 	public void increaseBookmarkCount() {
 		this.bookmarkCount++;
 	}

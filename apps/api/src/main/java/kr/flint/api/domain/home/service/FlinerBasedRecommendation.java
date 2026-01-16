@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.springframework.context.annotation.Primary;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import kr.flint.api.domain.home.dto.projection.CollectionBasicProjection;
@@ -30,7 +30,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Component
-@Primary
+@ConditionalOnProperty(name = "recommendation.strategy", havingValue = "fliner-collection")
 @RequiredArgsConstructor
 public class FlinerBasedRecommendation implements CollectionRecommendationPort {
 

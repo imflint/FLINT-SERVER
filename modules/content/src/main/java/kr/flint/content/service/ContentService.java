@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 
 import kr.flint.content.domain.Content;
 import kr.flint.content.domain.ContentGenre;
@@ -74,7 +75,7 @@ public class ContentService {
 
 	// 콘텐츠 ID 목록으로 콘텐츠 + 장르 정보 조회
 	public List<ContentWithGenres> getContentsWithGenres(List<Long> contentIds) {
-		if (contentIds == null || contentIds.isEmpty()) {
+		if (CollectionUtils.isEmpty(contentIds)) {
 			return List.of();
 		}
 
