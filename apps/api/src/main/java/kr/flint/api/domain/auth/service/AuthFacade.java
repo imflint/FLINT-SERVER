@@ -108,8 +108,8 @@ public class AuthFacade {
 
     /**
      * 소셜 제공자별 사용자 정보 조회
-     * - accessToken이 있으면 Mobile 플로우 (토큰으로 직접 조회)
-     * - code가 있으면 Web 플로우 (코드 → 토큰 교환 → 조회)
+     * - accessToken -> Mobile (토큰으로 직접 조회)
+     * - code -> Web (코드, 토큰 교환, 조회)
      */
     private SocialUserInfo getSocialUserInfo(SocialVerifyReq request) {
         if (request.provider() != AuthProvider.KAKAO) {
