@@ -25,9 +25,19 @@ public class KakaoOAuthClient {
     private final RestClient kakaoRestClient;
     private final KakaoProperties kakaoProperties;
 
+    /**
+     * 인가 코드로 사용자 정보 조회 (Web 플로우)
+     */
     public SocialUserInfo getUserInfoByCode(String authorizationCode) {
         KakaoTokenRes tokenResponse = getToken(authorizationCode);
-        return getUserInfo(tokenResponse.accessToken());
+        return getUserInfoByAccessToken(tokenResponse.accessToken());
+    }
+
+    /**
+     * 액세스 토큰으로 사용자 정보 조회 (Mobile 플로우)
+     */
+    public SocialUserInfo getUserInfoByAccessToken(String accessToken) {
+        return getUserInfo(accessToken);
     }
 
     private KakaoTokenRes getToken(String authorizationCode) {
