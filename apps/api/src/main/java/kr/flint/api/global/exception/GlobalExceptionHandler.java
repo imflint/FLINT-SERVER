@@ -9,6 +9,7 @@ import kr.flint.shared.exception.ProblemDetail;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -156,6 +157,22 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(errorCode.getHttpStatus())
+                .body(problemDetail);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ProblemDetail> handleHttpMessageNotReadable(HttpMessageNotReadableException e, HttpServletRequest request) {
+        log.warn("요청 본문 파싱 오류: {}", e.getMessage());
+        AppError errorCode = ErrorCode.INVALID_INPUT;
+
+        ProblemDetail problemDetail = ProblemDetail.of(
+                errorCode,
+                "요청 본문을 읽을 수 없습니다. JSON 형식 또는 값을 확인해주세요.",
+                request.getRequestURI()
+        );
+
+        return ResponseEntity
+                .badRequest()
                 .body(problemDetail);
     }
 
