@@ -35,7 +35,8 @@ public class SecurityConfig {
             "/api/v1/users/nickname/check",
             "/actuator/**",
 			"/api/v1/search/**",
-			"api/v1/contents/search/**"
+			"api/v1/contents/search/**",
+			"/api/v1/**"
     };
 
     @Bean
