@@ -42,7 +42,7 @@ public class CollectionController implements CollectionControllerDocs {
 		@CurrentUser Long userId,
 		@Valid @RequestBody CreateCollectionReq createCollectionReq
 	){
-		collectionCommandFacade.createCollection(userId, createCollectionReq);
+		collectionCommandFacade.createCollection(1L, createCollectionReq);
 		return ResponseEntity
 			.status(SuccessCode.SUCCESS_CREATE.getHttpStatus())
 			.body(SuccessResponse.of(SuccessCode.SUCCESS_CREATE));

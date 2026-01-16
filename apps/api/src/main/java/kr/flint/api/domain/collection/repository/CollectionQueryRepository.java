@@ -3,6 +3,8 @@ package kr.flint.api.domain.collection.repository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Repository;
 
@@ -101,32 +103,80 @@ public class CollectionQueryRepository {
 	}
 
 	public List<GetCollectionDetailListRes> getCollectionDetailList(Long userId){
-		return jpaQueryFactory
-			.select(Projections.constructor(
-				GetCollectionDetailListRes.class,
-				collection.id,
-				collection.title,
-				collection.description,
-				collection.image,
-				collection.bookmarkCount,
+		List<CollectionBaseRow> baseRows =
+			jpaQueryFactory
+				.select(Projections.constructor(
+					CollectionBaseRow.class,
+					collection.id,
+					collection.title,
+					collection.description,
+					collection.bookmarkCount,
+					collectionBookmark.id.isNotNull(),
+					user.id,
+					user.nickname,
+					user.profileImage
+				))
+				.from(recentViewedCollection)
+				.join(collection).on(collection.id.eq(recentViewedCollection.collection.id))
+				.join(user).on(user.id.eq(collection.userId))
+				.leftJoin(collectionBookmark).on(
+					collectionBookmark.collectionId.eq(collection.id)
+						.and(collectionBookmark.userId.eq(userId))
+				)
+				.where(recentViewedCollection.userId.eq(userId))
+				.orderBy(recentViewedCollection.createdAt.desc())
+				.fetch();
 
-				collectionBookmark.id.isNotNull(),
+		List<Long> collectionIds = baseRows.stream()
+			.map(CollectionBaseRow::collectionId)
+			.distinct()
+			.toList();
 
-				user.id,
-				user.nickname,
-				user.profileImage
+		List<ContentImageRow> imageRows =
+			jpaQueryFactory
+				.select(Projections.constructor(
+					ContentImageRow.class,
+					collectionContent.collection.id,
+					content.poster // 너희 컬럼명에 맞게
+				))
+				.from(collectionContent)
+				.join(content).on(content.id.eq(collectionContent.contentId))
+				.where(collectionContent.collection.id.in(collectionIds))
+				.fetch();
+
+		Map<Long, List<String>> imageMap = imageRows.stream()
+			.collect(Collectors.groupingBy(
+				ContentImageRow::collectionId,
+				Collectors.mapping(ContentImageRow::contentImage, Collectors.toList())
+			));
+
+		return baseRows.stream()
+			.map(r -> new GetCollectionDetailListRes(
+				r.collectionId(),
+				r.title(),
+				r.description(),
+				imageMap.getOrDefault(r.collectionId(), List.of()),
+				r.bookmarkCount(),
+				r.isBookmarked(),
+				r.authorId(),
+				r.nickname(),
+				r.profileUrl()
 			))
-			.from(recentViewedCollection)
-			.join(collection).on(collection.id.eq(recentViewedCollection.collection.id))
-			.join(user).on(user.id.eq(collection.userId))
-			.leftJoin(collectionBookmark).on(
-				collectionBookmark.collectionId.eq(collection.id)
-					.and(collectionBookmark.userId.eq(userId))
-			)
-			.where(recentViewedCollection.userId.eq(userId))
-			.orderBy(recentViewedCollection.createdAt.desc())
-			.fetch();
+			.toList();
 	}
+
+	public record CollectionBaseRow(
+		Long collectionId,
+		String title,
+		String description,
+		Integer bookmarkCount,
+		Boolean isBookmarked,
+		Long authorId,
+		String nickname,
+		String profileUrl
+	) {}
+
+	public record ContentImageRow(Long collectionId, String contentImage) {}
 
 	public record GetCollectionHeader(
 		Long collectionId,
