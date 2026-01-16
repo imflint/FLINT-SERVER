@@ -5,6 +5,8 @@ import static kr.flint.user.domain.QUser.*;
 
 import java.util.List;
 
+import org.springframework.util.CollectionUtils;
+
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
@@ -19,6 +21,10 @@ public class UserCollectionRepositoryCustomImpl implements UserCollectionReposit
 
 	@Override
 	public List<CollectionWithUserProjection> findAllCollectionsWithUserByUserId(Long userId) {
+		if (userId == null) {
+			return List.of();
+		}
+
 		List<CollectionWithUserProjectionImpl> result = queryFactory
 			.select(Projections.constructor(CollectionWithUserProjectionImpl.class,
 				collection.id,
@@ -38,6 +44,10 @@ public class UserCollectionRepositoryCustomImpl implements UserCollectionReposit
 
 	@Override
 	public List<CollectionWithUserProjection> findPublicCollectionsWithUserByUserId(Long userId) {
+		if (userId == null) {
+			return List.of();
+		}
+
 		List<CollectionWithUserProjectionImpl> result = queryFactory
 			.select(Projections.constructor(CollectionWithUserProjectionImpl.class,
 				collection.id,
@@ -60,7 +70,7 @@ public class UserCollectionRepositoryCustomImpl implements UserCollectionReposit
 
 	@Override
 	public List<CollectionWithUserProjection> findAllCollectionsWithUserByIdIn(List<Long> collectionIds) {
-		if (collectionIds == null || collectionIds.isEmpty()) {
+		if (CollectionUtils.isEmpty(collectionIds)) {
 			return List.of();
 		}
 
@@ -83,7 +93,7 @@ public class UserCollectionRepositoryCustomImpl implements UserCollectionReposit
 
 	@Override
 	public List<CollectionWithUserProjection> findPublicCollectionsWithUserByIdIn(List<Long> collectionIds) {
-		if (collectionIds == null || collectionIds.isEmpty()) {
+		if (CollectionUtils.isEmpty(collectionIds)) {
 			return List.of();
 		}
 

@@ -5,6 +5,8 @@ import static kr.flint.user.domain.QUser.*;
 
 import java.util.List;
 
+import org.springframework.util.CollectionUtils;
+
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
@@ -23,7 +25,7 @@ public class HomeCollectionRepositoryCustomImpl implements HomeCollectionReposit
 
     @Override
     public List<CollectionCardProjection> findCollectionCardsWithUser(List<Long> collectionIds) {
-        if (collectionIds == null || collectionIds.isEmpty()) {
+        if (CollectionUtils.isEmpty(collectionIds)) {
             return List.of();
         }
 
@@ -60,7 +62,7 @@ public class HomeCollectionRepositoryCustomImpl implements HomeCollectionReposit
 
     @Override
     public List<CollectionBasicProjection> findPublicCollectionsByFlinerIds(List<Long> flinerIds) {
-        if (flinerIds == null || flinerIds.isEmpty()) {
+        if (CollectionUtils.isEmpty(flinerIds)) {
             return List.of();
         }
 

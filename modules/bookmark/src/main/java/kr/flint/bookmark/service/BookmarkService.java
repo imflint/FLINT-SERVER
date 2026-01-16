@@ -3,6 +3,7 @@ package kr.flint.bookmark.service;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 import org.springframework.transaction.annotation.Transactional;
 
 import kr.flint.bookmark.domain.CollectionBookmark;
@@ -63,7 +64,7 @@ public class BookmarkService {
 
 	@Transactional
 	public void createContentBookmarks(final Long userId, final List<Long> contentIds) {
-		if (contentIds == null || contentIds.isEmpty()) {
+		if (CollectionUtils.isEmpty(contentIds)) {
 			return;
 		}
 

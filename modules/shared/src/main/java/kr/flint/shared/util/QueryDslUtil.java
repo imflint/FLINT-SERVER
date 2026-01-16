@@ -1,11 +1,14 @@
 package kr.flint.shared.util;
 
+import java.util.Collection;
+
+import org.jspecify.annotations.Nullable;
+import org.springframework.util.CollectionUtils;
+
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Predicate;
-import lombok.NoArgsConstructor;
-import org.jspecify.annotations.Nullable;
 
-import java.util.Collection;
+import lombok.NoArgsConstructor;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -64,7 +67,7 @@ public final class QueryDslUtil {
             @Nullable Collection<T> collection,
             Function<Collection<T>, Predicate> predicateFunction
     ) {
-        return collection == null || collection.isEmpty()
+        return CollectionUtils.isEmpty(collection)
                 ? emptyCondition()
                 : predicateFunction.apply(collection);
     }

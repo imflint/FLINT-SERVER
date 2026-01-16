@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import kr.flint.api.domain.search.dto.response.BookmarkedCollectionSearchRes;
 import kr.flint.api.domain.search.dto.response.BookmarkedContentSearchRes;
@@ -24,8 +25,8 @@ public class SearchQueryFacade {
 	private final ContentService contentService;
 	private final SearchQueryRepository searchQueryRepository;
 
-	public List<GetContentSearchRes> searchContent(final String keyword){
-		if(keyword == null || keyword.isEmpty()){
+	public List<GetContentSearchRes> searchContent(final String keyword) {
+		if (!StringUtils.hasText(keyword)) {
 			List<Content> contentSearchResList = contentService.getAllContent();
 			return contentSearchResList.stream()
 				.map(GetContentSearchRes::from)
