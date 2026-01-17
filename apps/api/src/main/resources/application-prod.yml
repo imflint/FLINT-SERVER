@@ -39,6 +39,9 @@ cloud:
       bucket: ${s3.bucket}
       region: ap-northeast-2
       presign-expiration: 10m
+    cloudfront:
+      enabled: true
+      url: ${cloudfront.url}
 
 jwt:
   secret: ${jwt.secret}

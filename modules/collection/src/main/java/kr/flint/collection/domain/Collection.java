@@ -61,5 +61,4 @@ public class Collection extends BaseTime {
 		}
 	}
 
-
 }

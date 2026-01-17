@@ -55,6 +55,9 @@ cloud:
       access-key: ${S3_ACCESS_KEY}
       secret-key: ${S3_SECRET_KEY}
       presign-expiration: 10m
+    cloudfront:
+      enabled: false
+      url: ${CLOUDFRONT_URL:}
 
 jwt:
   secret: ${JWT_SECRET:local-dev-secret-key-at-least-32-characters-long}

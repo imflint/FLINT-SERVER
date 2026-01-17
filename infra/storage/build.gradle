@@ -5,6 +5,7 @@ plugins {
 dependencies {
     api platform("software.amazon.awssdk:bom:2.29.51")
     api 'software.amazon.awssdk:s3'
+    api 'software.amazon.awssdk:cloudfront'
     api project(':modules:shared')
 
     implementation 'org.springframework.boot:spring-boot-starter'
