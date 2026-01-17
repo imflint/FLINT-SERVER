@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import kr.flint.api.domain.collection.dto.response.GetCollectionDetailListRes;
 import kr.flint.api.domain.collection.repository.CollectionQueryRepository;
 import kr.flint.api.domain.collection.dto.response.GetCollectionSimpleRes;
+import kr.flint.infra.storage.cloudfront.CloudFrontUrlProvider;
 import kr.flint.shared.dto.SliceCursor;
 import lombok.RequiredArgsConstructor;
 
@@ -16,12 +17,20 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class CollectionQueryService {
 	private final CollectionQueryRepository collectionQueryRepository;
+	private final CloudFrontUrlProvider cloudFrontUrlProvider;
 
 	public SliceCursor<GetCollectionSimpleRes> getCollectionList(final Long cursor, final int size){
 		List<GetCollectionSimpleRes> fetchedCollections = collectionQueryRepository.getCollectionSimpleList(cursor, size);
 
 		boolean hasNext = fetchedCollections.size() > size;
-		List<GetCollectionSimpleRes> collectionList = hasNext ? fetchedCollections.subList(0, size) : fetchedCollections;
+		List<GetCollectionSimpleRes> collectionList = hasNext
+			? fetchedCollections.subList(0, size)
+			: fetchedCollections;
+
+		// S3 key를 CloudFront URL로 변환
+		List<GetCollectionSimpleRes> resolvedList = collectionList.stream()
+			.map(c -> c.withResolvedImageUrl(cloudFrontUrlProvider::resolveUrl))
+			.toList();
 
 		String nextCursor = hasNext
 			? String.valueOf(collectionList.get(collectionList.size() - 1).collectionId())
@@ -29,7 +38,7 @@ public class CollectionQueryService {
 
 		String currentCursor = cursor != null ? String.valueOf(cursor) : null;
 
-		return SliceCursor.of(collectionList, currentCursor, nextCursor);
+		return SliceCursor.of(resolvedList, currentCursor, nextCursor);
 	}
 
 	public List<GetCollectionDetailListRes> getRecentCollectionList(final Long userId){

@@ -1,6 +1,7 @@
 package kr.flint.api.domain.collection.dto.response;
 
 import java.time.LocalDate;
+import java.util.function.Function;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
@@ -14,23 +15,33 @@ public record GetCollectionSimpleRes(
 	String description,
 	LocalDate createdAt
 ) {
-	public static GetCollectionSimpleRes of(Collection collection) {
+	public static GetCollectionSimpleRes of(Collection collection, Function<String, String> imageUrlResolver) {
 		return new GetCollectionSimpleRes(
 			collection.getId(),
-			collection.getImage(),
+			imageUrlResolver.apply(collection.getImage()),
 			collection.getTitle(),
 			collection.getDescription(),
 			null
 		);
 	}
 
-	public static GetCollectionSimpleRes ofWithCreatedAt(Collection collection) {
+	public static GetCollectionSimpleRes ofWithCreatedAt(Collection collection, Function<String, String> imageUrlResolver) {
 		return new GetCollectionSimpleRes(
 			collection.getId(),
-			collection.getImage(),
+			imageUrlResolver.apply(collection.getImage()),
 			collection.getTitle(),
 			collection.getDescription(),
 			collection.getCreatedAt().toLocalDate()
+		);
+	}
+
+	public GetCollectionSimpleRes withResolvedImageUrl(Function<String, String> imageUrlResolver) {
+		return new GetCollectionSimpleRes(
+			collectionId,
+			imageUrlResolver.apply(imageUrl),
+			title,
+			description,
+			createdAt
 		);
 	}
 }

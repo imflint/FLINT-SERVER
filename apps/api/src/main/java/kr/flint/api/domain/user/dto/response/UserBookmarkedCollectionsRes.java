@@ -1,6 +1,7 @@
 package kr.flint.api.domain.user.dto.response;
 
 import java.util.List;
+import java.util.function.Function;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -9,9 +10,9 @@ public record UserBookmarkedCollectionsRes(
     @Schema(description = "컬렉션 목록")
     List<BookmarkedCollectionItem> collections
 ) {
-    public static UserBookmarkedCollectionsRes from(List<CollectionWithUserProjection> projections) {
+    public static UserBookmarkedCollectionsRes from(List<CollectionWithUserProjection> projections, Function<String, String> imageUrlResolver) {
         List<BookmarkedCollectionItem> items = projections.stream()
-            .map(BookmarkedCollectionItem::from)
+            .map(p -> BookmarkedCollectionItem.from(p, imageUrlResolver))
             .toList();
         return new UserBookmarkedCollectionsRes(items);
     }
@@ -29,11 +30,11 @@ public record UserBookmarkedCollectionsRes(
         @Schema(description = "작성자 이름", example = "홍길동")
         String userName
     ) {
-        public static BookmarkedCollectionItem from(CollectionWithUserProjection projection) {
+        public static BookmarkedCollectionItem from(CollectionWithUserProjection projection, Function<String, String> imageUrlResolver) {
             return new BookmarkedCollectionItem(
                 String.valueOf(projection.getId()),
                 projection.getTitle(),
-                projection.getImage(),
+                imageUrlResolver.apply(projection.getImage()),
                 projection.getProfileImage(),
                 projection.getUserName()
             );

@@ -1,5 +1,7 @@
 package kr.flint.api.domain.home.dto.response;
 
+import java.util.function.Function;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 import kr.flint.api.domain.home.dto.projection.CollectionCardProjection;
 
@@ -20,11 +22,11 @@ public record CollectionCardRes(
     @Schema(description = "생성자 닉네임", example = "영화덕후")
     String userName
 ) {
-    public static CollectionCardRes from(CollectionCardProjection projection) {
+    public static CollectionCardRes from(CollectionCardProjection projection, Function<String, String> imageUrlResolver) {
         return new CollectionCardRes(
             String.valueOf(projection.getId()),
             projection.getTitle(),
-            projection.getImage(),
+            imageUrlResolver.apply(projection.getImage()),
             projection.getProfileImage(),
             projection.getUserName()
         );

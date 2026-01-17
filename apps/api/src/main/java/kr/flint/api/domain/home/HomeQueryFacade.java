@@ -15,6 +15,7 @@ import kr.flint.api.domain.home.dto.response.RecommendedCollectionsRes;
 import kr.flint.api.domain.home.port.CollectionRecommendationPort;
 import kr.flint.api.domain.home.repository.HomeCollectionRepository;
 import kr.flint.api.domain.home.service.RecommendationCacheService;
+import kr.flint.infra.storage.cloudfront.CloudFrontUrlProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -29,6 +30,7 @@ public class HomeQueryFacade {
     private final CollectionRecommendationPort recommendationPort;
     private final HomeCollectionRepository homeCollectionRepository;
     private final RecommendationCacheService cacheService;
+    private final CloudFrontUrlProvider cloudFrontUrlProvider;
 
     // 추천 컬렉션 조회 (캐시 적용)
     public RecommendedCollectionsRes getRecommendedCollections(Long userId) {
@@ -62,7 +64,7 @@ public class HomeQueryFacade {
 
         List<CollectionCardRes> orderedCards = collectionIds.stream()
             .filter(projectionMap::containsKey)
-            .map(id -> CollectionCardRes.from(projectionMap.get(id)))
+            .map(id -> CollectionCardRes.from(projectionMap.get(id), cloudFrontUrlProvider::resolveUrl))
             .toList();
 
         return RecommendedCollectionsRes.from(orderedCards);

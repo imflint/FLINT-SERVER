@@ -11,6 +11,7 @@ import kr.flint.api.domain.collection.dto.response.GetCollectionSimpleRes;
 import kr.flint.collection.exception.CollectionErrorCode;
 import kr.flint.collection.exception.CollectionException;
 import kr.flint.collection.service.CollectionService;
+import kr.flint.infra.storage.cloudfront.CloudFrontUrlProvider;
 import kr.flint.shared.dto.PaginationResponse;
 import kr.flint.shared.dto.SliceCursor;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ public class CollectionQueryFacade {
 	private final CollectionQueryService collectionQueryService;
 	private final CollectionQueryRepository collectionQueryRepository;
 	private final CollectionService collectionService;
+	private final CloudFrontUrlProvider cloudFrontUrlProvider;
 
 	public PaginationResponse<GetCollectionSimpleRes> getCollectionList(Long cursor, int size){
 		SliceCursor<GetCollectionSimpleRes> sliceCursor = collectionQueryService.getCollectionList(cursor, size);
@@ -39,7 +41,7 @@ public class CollectionQueryFacade {
 			header.collectionId(),
 			header.title(),
 			header.description(),
-			header.imageUrl(),
+			cloudFrontUrlProvider.resolveUrl(header.imageUrl()),
 			header.createdAt().toLocalDate(),
 			header.isBookmarked(),
 			header.toAuthor(),

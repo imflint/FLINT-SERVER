@@ -15,6 +15,7 @@ import kr.flint.api.domain.user.dto.response.UserProfileRes;
 import kr.flint.infra.gpt.dto.GptKeywordDto;
 import kr.flint.infra.gpt.dto.TasteWorkMetaDto;
 import kr.flint.infra.gpt.service.ChatService;
+import kr.flint.infra.storage.cloudfront.CloudFrontUrlProvider;
 import kr.flint.taste.dto.response.KeywordSimpleRes;
 import kr.flint.taste.dto.response.UserKeywordProjection;
 import kr.flint.taste.service.TasteService;
@@ -39,6 +40,7 @@ public class UserQueryFacade {
 	private final ChatService chatService;
 	private final TasteService tasteService;
 	private final UserCommandFacade userCommandFacade;
+	private final CloudFrontUrlProvider cloudFrontUrlProvider;
 
 	public NicknameCheckResponse checkNickname(String nickname) {
         boolean exists = userService.existsByNickname(nickname);
@@ -57,7 +59,7 @@ public class UserQueryFacade {
 
         List<UserKeywordProjection> keywords = tasteService.getUserKeywords(userId);
 		log.info("keywords: {}", keywords);
-        return UserKeywordsRes.from(keywords);
+        return UserKeywordsRes.from(keywords, cloudFrontUrlProvider::resolveUrl);
 
 
 		//TODO: 기획한테 언제 취향 키워드 계산할 건지 물어봐야함
@@ -68,18 +70,18 @@ public class UserQueryFacade {
         List<CollectionWithUserProjection> collections = isOwner
             ? userCollectionRepository.findAllCollectionsWithUserByUserId(userId)
             : userCollectionRepository.findPublicCollectionsWithUserByUserId(userId);
-        return UserCollectionsRes.from(collections);
+        return UserCollectionsRes.from(collections, cloudFrontUrlProvider::resolveUrl);
     }
 
     // 사용자가 북마크한 컬렉션 조회 (본인이면 전체, 타인이면 공개만)
     public UserBookmarkedCollectionsRes getUserBookmarkedCollections(Long userId, boolean isOwner) {
         List<Long> collectionIds = bookmarkService.getBookmarkedCollectionIds(userId);
         if (collectionIds.isEmpty()) {
-            return UserBookmarkedCollectionsRes.from(Collections.emptyList());
+            return UserBookmarkedCollectionsRes.from(Collections.emptyList(), cloudFrontUrlProvider::resolveUrl);
         }
         List<CollectionWithUserProjection> collections = isOwner
             ? userCollectionRepository.findAllCollectionsWithUserByIdIn(collectionIds)
             : userCollectionRepository.findPublicCollectionsWithUserByIdIn(collectionIds);
-        return UserBookmarkedCollectionsRes.from(collections);
+        return UserBookmarkedCollectionsRes.from(collections, cloudFrontUrlProvider::resolveUrl);
     }
 }

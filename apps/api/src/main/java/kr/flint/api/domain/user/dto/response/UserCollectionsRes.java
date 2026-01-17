@@ -1,6 +1,7 @@
 package kr.flint.api.domain.user.dto.response;
 
 import java.util.List;
+import java.util.function.Function;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -9,9 +10,9 @@ public record UserCollectionsRes(
     @Schema(description = "컬렉션 목록")
     List<CollectionItem> collections
 ) {
-    public static UserCollectionsRes from(List<CollectionWithUserProjection> projections) {
+    public static UserCollectionsRes from(List<CollectionWithUserProjection> projections, Function<String, String> imageUrlResolver) {
         List<CollectionItem> items = projections.stream()
-            .map(CollectionItem::from)
+            .map(p -> CollectionItem.from(p, imageUrlResolver))
             .toList();
         return new UserCollectionsRes(items);
     }
@@ -29,11 +30,11 @@ public record UserCollectionsRes(
         @Schema(description = "작성자 이름", example = "홍길동")
         String userName
     ) {
-        public static CollectionItem from(CollectionWithUserProjection projection) {
+        public static CollectionItem from(CollectionWithUserProjection projection, Function<String, String> imageUrlResolver) {
             return new CollectionItem(
                 String.valueOf(projection.getId()),
                 projection.getTitle(),
-                projection.getImage(),
+                imageUrlResolver.apply(projection.getImage()),
                 projection.getProfileImage(),
                 projection.getUserName()
             );
