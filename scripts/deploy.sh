@@ -67,6 +67,7 @@ docker_login() {
     token=$(aws ssm get-parameter \
         --name "/config/flint-api/ghcr.token" \
         --with-decryption \
+        --region ap-northeast-2 \
         --query "Parameter.Value" \
         --output text 2>/dev/null) || true
 
