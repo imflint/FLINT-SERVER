@@ -70,7 +70,9 @@ public class ContentCommandFacade {
 						? null
 						: TMDB_IMAGE_BASE + result.poster();
 					String author = extractMovieAuthor(result.id());
-					List<String> tmdbGenreList = extractMovieGenreList(result.id());
+					List<Genre> tmdbGenreList = extractMovieGenreList(result.id()).stream()
+						.map(name -> contentService.getGenre(name))
+						.toList();
 					log.info("날짜 1: ", result.firstAirDate());
 					log.info("날짜 2: ", result.releaseDate());
 
@@ -84,12 +86,7 @@ public class ContentCommandFacade {
 						posterUrl
 					);
 
-					List<Genre> genreList = tmdbGenreList.stream()
-						.filter(genreName -> !contentService.checkGenre(genreName))
-						.map(Genre::create)
-						.toList();
-
-					Content savedContent = contentService.tmdbToDb(content, genreList);
+					Content savedContent = contentService.tmdbToDb(content, tmdbGenreList);
 					ottCommandFacade.mapContentOtt(savedContent.getId(), result.id(), result.mediaType());
 
 					return GetContentSearchRes.of(

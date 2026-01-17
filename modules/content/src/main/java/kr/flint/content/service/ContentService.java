@@ -63,6 +63,11 @@ public class ContentService {
 		return genreRepository.existsByName(genre);
 	}
 
+	public Genre getGenre(final String genreName) {
+		return genreRepository.findByName(genreName)
+			.orElseThrow(() -> new ContentException(ContentErrorCode.GENRE_NOT_FOUND));
+	}
+
 	public Content getContentByTmdbId(final Long tmdbId) {
 		return contentRepository.findContentByTmdbId(tmdbId)
 			.orElse(null);
