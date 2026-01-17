@@ -18,10 +18,12 @@ import kr.flint.content.repository.ContentGenreRepository;
 import kr.flint.content.repository.ContentRepository;
 import kr.flint.content.repository.GenreRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
+@Slf4j
 public class ContentService {
 	private final ContentRepository contentRepository;
 	private final ContentGenreRepository contentGenreRepository;
@@ -57,6 +59,7 @@ public class ContentService {
 		return savedContent;
 	}
 	public boolean checkGenre(final String genre) {
+		log.info("checkGenre {}", genre);
 		return genreRepository.existsByName(genre);
 	}
 
