@@ -8,7 +8,7 @@ bootJar {
 
 bootBuildImage {
     imageName = "ghcr.io/imflint/flint-api:${project.version}"
-    builder = "paketobuildpacks/builder-jammy-base:latest"
+    builder = "paketobuildpacks/builder-jammy-base:0.4.524"
 
     environment = [
         "BP_JVM_VERSION": "21"

@@ -61,10 +61,19 @@ get_container_name() {
 # GitHub Container Registry 로그인
 docker_login() {
     log "Logging in to GitHub Container Registry..."
-    if [ -n "${GITHUB_TOKEN:-}" ]; then
-        echo "$GITHUB_TOKEN" | docker login "$REGISTRY" -u github --password-stdin
+
+    # Parameter Store에서 토큰 가져오기 (기존 설정 경로와 동일한 패턴)
+    local token
+    token=$(aws ssm get-parameter \
+        --name "/config/flint-api/ghcr.token" \
+        --with-decryption \
+        --query "Parameter.Value" \
+        --output text 2>/dev/null) || true
+
+    if [ -n "$token" ]; then
+        echo "$token" | docker login "$REGISTRY" -u github --password-stdin
     else
-        log "GITHUB_TOKEN not set, assuming already logged in"
+        log "WARNING: No GHCR token found, assuming already logged in"
     fi
 }
 
