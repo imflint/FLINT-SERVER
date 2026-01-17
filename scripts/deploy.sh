@@ -1,30 +1,32 @@
 #!/bin/bash
 set -euo pipefail
 
+# 이미지 태그를 인자로 받음
+IMAGE_TAG="${1:-ghcr.io/imflint/flint-api:latest}"
+
 APP_NAME="flint-api"
 DEPLOY_PATH="/home/ubuntu"
-JAR_NAME="flint-api-0.0.1-SNAPSHOT.jar"
-NEW_JAR_PATH="/home/ubuntu/deploy/$JAR_NAME"
-BACKUP_JAR="$DEPLOY_PATH/flint-api-backup.jar"
 PROFILE="dev"
 
 BLUE_PORT=8080
 GREEN_PORT=8081
+BLUE_CONTAINER="${APP_NAME}-blue"
+GREEN_CONTAINER="${APP_NAME}-green"
 
 NGINX_CONF="/etc/nginx/conf.d/flint-upstream.conf"
 HEALTH_CHECK_PATH="/actuator/health"
-MAX_RETRY=12
+MAX_RETRY=24
 RETRY_INTERVAL=5
+
+REGISTRY="ghcr.io"
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
 
-# 필수 명령어 확인
 check_dependencies() {
-    command -v lsof >/dev/null 2>&1 || { log "ERROR: lsof not installed"; exit 1; }
+    command -v docker >/dev/null 2>&1 || { log "ERROR: docker not installed"; exit 1; }
     command -v curl >/dev/null 2>&1 || { log "ERROR: curl not installed"; exit 1; }
-    command -v java >/dev/null 2>&1 || { log "ERROR: java not installed"; exit 1; }
 }
 
 # 현재 활성 포트 확인
@@ -36,7 +38,7 @@ get_active_port() {
     fi
 }
 
-# 비활성 포트 반환
+# 비활성 포트/컨테이너 반환
 get_inactive_port() {
     local active_port
     active_port=$(get_active_port)
@@ -47,36 +49,60 @@ get_inactive_port() {
     fi
 }
 
-# 특정 포트의 프로세스 종료
-kill_app_on_port() {
+get_container_name() {
     local port="$1"
-    local pid
-    pid=$(lsof -ti:"$port" 2>/dev/null || true)
-    if [ -n "$pid" ]; then
-        log "Stopping application on port $port (PID: $pid)"
-        kill -TERM "$pid" 2>/dev/null || true
-        # 그레이스풀 셧다운 대기 (Spring Boot 기본 30초)
-        sleep 10
-        # 강제 종료
-        if lsof -ti:"$port" > /dev/null 2>&1; then
-            log "Force killing application on port $port"
-            kill -9 "$(lsof -ti:"$port")" 2>/dev/null || true
-        fi
+    if [ "$port" == "$BLUE_PORT" ]; then
+        echo "$BLUE_CONTAINER"
+    else
+        echo "$GREEN_CONTAINER"
     fi
 }
 
-# 앱 시작
-start_app() {
+# GitHub Container Registry 로그인
+docker_login() {
+    log "Logging in to GitHub Container Registry..."
+    if [ -n "${GITHUB_TOKEN:-}" ]; then
+        echo "$GITHUB_TOKEN" | docker login "$REGISTRY" -u github --password-stdin
+    else
+        log "GITHUB_TOKEN not set, assuming already logged in"
+    fi
+}
+
+# 이미지 pull
+pull_image() {
+    log "Pulling image: $IMAGE_TAG"
+    docker pull "$IMAGE_TAG"
+}
+
+# 컨테이너 종료 및 제거
+stop_container() {
+    local container_name="$1"
+    if docker ps -a --format '{{.Names}}' | grep -q "^${container_name}$"; then
+        log "Stopping container: $container_name"
+        docker stop "$container_name" 2>/dev/null || true
+        docker rm "$container_name" 2>/dev/null || true
+    fi
+}
+
+# 컨테이너 시작
+start_container() {
     local port="$1"
-    log "Starting application on port $port"
+    local container_name
+    container_name=$(get_container_name "$port")
 
-    cd "$DEPLOY_PATH" || { log "ERROR: Failed to cd to $DEPLOY_PATH"; return 1; }
-    nohup java -jar "$JAR_NAME" \
-        --spring.profiles.active="$PROFILE" \
-        --server.port="$port" \
-        > "app-$port.log" 2>&1 &
+    log "Starting container: $container_name on port $port"
 
-    log "Application starting on port $port (PID: $!)"
+    docker run -d \
+        --name "$container_name" \
+        --restart unless-stopped \
+        -p "$port:8080" \
+        -e "SPRING_PROFILES_ACTIVE=$PROFILE" \
+        -e "SERVER_PORT=8080" \
+        --memory=512m \
+        --cpus=1 \
+        "$IMAGE_TAG"
+
+    log "Container $container_name started (port: $port)"
 }
 
 # 헬스체크
@@ -102,14 +128,12 @@ switch_nginx() {
     local new_port="$1"
     log "Switching nginx to port $new_port"
 
-    # upstream 설정 변경
     sudo tee "$NGINX_CONF" > /dev/null << EOF
 upstream flint-api {
     server 127.0.0.1:$new_port;
 }
 EOF
 
-    # nginx 설정 테스트 및 리로드
     if sudo nginx -t > /dev/null 2>&1; then
         sudo nginx -s reload
         log "Nginx switched to port $new_port"
@@ -123,48 +147,45 @@ EOF
 # 롤백
 rollback() {
     local port="$1"
+    local container_name
+    container_name=$(get_container_name "$port")
+
     log "Rolling back..."
-    kill_app_on_port "$port"
-    if [ -f "$BACKUP_JAR" ]; then
-        cp "$BACKUP_JAR" "$DEPLOY_PATH/$JAR_NAME"
-        log "Restored JAR from backup"
-    fi
+    stop_container "$container_name"
 }
 
 # 메인 배포 로직
 deploy() {
     local active_port
     local inactive_port
+    local inactive_container
+    local active_container
+
     active_port=$(get_active_port)
     inactive_port=$(get_inactive_port)
+    inactive_container=$(get_container_name "$inactive_port")
+    active_container=$(get_container_name "$active_port")
 
     log "=== Blue-Green Deployment Start ==="
-    log "Active port: $active_port, Deploying to: $inactive_port"
+    log "Image: $IMAGE_TAG"
+    log "Active port: $active_port ($active_container)"
+    log "Deploying to: $inactive_port ($inactive_container)"
 
     # 0. 필수 명령어 확인
     check_dependencies
 
-    # 1. 기존 JAR 백업
-    if [ -f "$DEPLOY_PATH/$JAR_NAME" ]; then
-        log "Backing up current JAR..."
-        cp "$DEPLOY_PATH/$JAR_NAME" "$BACKUP_JAR"
-    fi
+    # 1. Docker 로그인
+    docker_login
 
-    # 2. 새 JAR 복사
-    if [ -f "$NEW_JAR_PATH" ]; then
-        log "Copying new JAR..."
-        cp "$NEW_JAR_PATH" "$DEPLOY_PATH/$JAR_NAME"
-    else
-        log "ERROR: New JAR not found at $NEW_JAR_PATH"
-        exit 1
-    fi
+    # 2. 이미지 pull
+    pull_image
 
-    # 3. 비활성 포트의 기존 프로세스 종료
-    kill_app_on_port "$inactive_port"
+    # 3. 비활성 컨테이너 정리
+    stop_container "$inactive_container"
 
-    # 4. 새 버전 시작
-    if ! start_app "$inactive_port"; then
-        log "Failed to start application"
+    # 4. 새 컨테이너 시작
+    if ! start_container "$inactive_port"; then
+        log "Failed to start container"
         rollback "$inactive_port"
         exit 1
     fi
@@ -186,16 +207,17 @@ deploy() {
     # 7. 활성 포트 기록
     echo "$inactive_port" > "$DEPLOY_PATH/active_port"
 
-    # 8. 이전 버전 종료 (connection draining 대기)
+    # 8. 이전 컨테이너 종료 (connection draining 대기)
     log "Waiting for connection draining (30s)..."
     sleep 30
-    kill_app_on_port "$active_port"
+    stop_container "$active_container"
 
-    # 9. deploy 폴더 정리
-    rm -f "$NEW_JAR_PATH"
+    # 9. 오래된 이미지 정리
+    log "Cleaning up old images..."
+    docker image prune -f --filter "until=24h" || true
 
     log "=== Deployment completed successfully ==="
-    log "New active port: $inactive_port"
+    log "New active port: $inactive_port ($inactive_container)"
 }
 
 # 실행
