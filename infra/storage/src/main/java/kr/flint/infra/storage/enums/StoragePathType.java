@@ -16,7 +16,10 @@ import static kr.flint.shared.storage.FileExtension.*;
 public enum StoragePathType implements StoragePath {
 
     @Schema(description = "사용자 프로필 이미지 (허용: JPG, JPEG, PNG)")
-    USER_PROFILE("user/profile", Extensions.IMAGE);
+    USER_PROFILE("user/profile", Extensions.IMAGE),
+    @Schema(description = "키워드 로고 이미지 (허용: JPG, JPEG, PNG)")
+    LOGO_IMAGE("keywords/logo", Extensions.IMAGE),
+    ;
 
     private final String path;
     private final Set<FileExtension> allowedExtensions;
