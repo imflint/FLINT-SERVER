@@ -150,8 +150,10 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          envs: GITHUB_TOKEN
           script: |
             chmod +x /home/ubuntu/deploy.sh
+            export GITHUB_TOKEN="${GITHUB_TOKEN}"
             /home/ubuntu/deploy.sh ${{ needs.build-image.outputs.image_tag }}
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GHCR_PAT }}
