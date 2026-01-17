@@ -71,8 +71,10 @@ public class ContentCommandFacade {
 						: TMDB_IMAGE_BASE + result.poster();
 					String author = extractMovieAuthor(result.id());
 					List<String> tmdbGenreList = extractMovieGenreList(result.id());
+					log.info("날짜 1: ", result.firstAirDate());
+					log.info("날짜 2: ", result.releaseDate());
 
-					int year = extractYear(result.mediaType(), result.releaseDate(), result.firstAirDate());
+					int year = extractYearFromDate(result.releaseDate());
 					Content content = Content.create(
 						result.id(),
 						result.title(),
@@ -206,13 +208,15 @@ public class ContentCommandFacade {
 	}
 
 	private int extractYear(String mediaType, String releaseDate, String firstAirDate) {
+		log.info(mediaType + " " + releaseDate + " " + firstAirDate);
 		String date = "movie".equals(mediaType) ? releaseDate : firstAirDate;
 		return extractYearFromDate(date);
 	}
 
-	private int extractYearFromDate(String date) {
-		if (date == null || date.isBlank() || date.length() < 4) return 0;
-		return Integer.parseInt(date.substring(0, 4));
+	private int extractYearFromDate(String releaseDate) {
+		log.info(releaseDate);
+		if (releaseDate == null || releaseDate.isBlank() || releaseDate.length() < 4) return 0;
+		return Integer.parseInt(releaseDate.substring(0, 4));
 	}
 
 }
