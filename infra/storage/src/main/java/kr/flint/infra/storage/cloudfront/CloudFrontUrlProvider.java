@@ -16,15 +16,13 @@ public class CloudFrontUrlProvider {
 
 	private final CloudFrontProperties cloudFrontProperties;
 
-	/**
-	 * CloudFront URL 생성
-	 * @param key S3 객체 키 (예: "images/photo.jpg")
-	 * @return CloudFront URL
-	 */
 	public String getUrl(String key) {
 		if (!StringUtils.hasText(key)) {
 			return null;
 		}
-		return cloudFrontProperties.url() + "/" + key;
+		String baseUrl = cloudFrontProperties.url();
+		String normalizedUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+		String normalizedKey = key.startsWith("/") ? key.substring(1) : key;
+		return normalizedUrl + "/" + normalizedKey;
 	}
 }
