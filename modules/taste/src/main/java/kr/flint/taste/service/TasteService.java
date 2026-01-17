@@ -36,10 +36,6 @@ public class TasteService {
 	//TODO : LV 대신 색상
 	@Transactional
 	public void matchUserKeywords(Long userId, List<KeywordSimpleRes> gptKeywordList){
-		if(userKeywordRepository.existsByUserId(userId)){
-			userKeywordRepository.deleteAllByUserId(userId);
-		}
-
 		List<String> keywordNameList = gptKeywordList.stream()
 			.map(KeywordSimpleRes::name)
 			.toList();

@@ -1,10 +1,12 @@
 package kr.flint.api.domain.collection.dto.response;
 
+import java.util.List;
+
 public record GetCollectionDetailListRes(
 	Long collectionId,
 	String title,
 	String description,
-	String imageUrl,
+	List<String> imageList,
 	Integer bookmarkCount,
 	Boolean isBookmarked,
 
@@ -12,4 +14,5 @@ public record GetCollectionDetailListRes(
 	String nickname,
 	String profileUrl
 ) {
+
 }

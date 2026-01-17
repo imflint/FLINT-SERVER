@@ -24,10 +24,12 @@ import kr.flint.bookmark.service.BookmarkService;
 import kr.flint.user.dto.response.NicknameCheckResponse;
 import kr.flint.user.service.UserService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@Slf4j
 public class UserQueryFacade {
 
     private final UserService userService;
@@ -54,6 +56,7 @@ public class UserQueryFacade {
 		userCommandFacade.callGpt(userId);
 
         List<UserKeywordProjection> keywords = tasteService.getUserKeywords(userId);
+		log.info("keywords: {}", keywords);
         return UserKeywordsRes.from(keywords);
 
 

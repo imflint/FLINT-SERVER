@@ -43,7 +43,7 @@ public class AuthFacade {
      */
     @Transactional
     public SocialVerifyRes verifySocialCode(SocialVerifyReq request) {
-        SocialUserInfo userInfo = getSocialUserInfo(request.provider(), request.code());
+        SocialUserInfo userInfo = getSocialUserInfo(request);
         SocialVerifyResult result = authService.verifySocialUser(request.provider(), userInfo);
 
         if (result.isRegistered()) {
@@ -106,12 +106,19 @@ public class AuthFacade {
         authService.logoutAll(userId, accessToken);
     }
 
-    // 소셜 제공자별 사용자 정보 조회
-    private SocialUserInfo getSocialUserInfo(AuthProvider provider, String code) {
-        // 일단 mvp에서는 kakao만 제공
-        if (provider != AuthProvider.KAKAO) {
+    /**
+     * 소셜 제공자별 사용자 정보 조회
+     * - accessToken -> Mobile (토큰으로 직접 조회)
+     * - code -> Web (코드, 토큰 교환, 조회)
+     */
+    private SocialUserInfo getSocialUserInfo(SocialVerifyReq request) {
+        if (request.provider() != AuthProvider.KAKAO) {
             throw new AuthException(AuthErrorCode.UNSUPPORTED_PROVIDER);
         }
-        return kakaoOAuthClient.getUserInfoByCode(code);
+
+        if (request.hasAccessToken()) {
+            return kakaoOAuthClient.getUserInfoByAccessToken(request.accessToken());
+        }
+        return kakaoOAuthClient.getUserInfoByCode(request.code());
     }
 }

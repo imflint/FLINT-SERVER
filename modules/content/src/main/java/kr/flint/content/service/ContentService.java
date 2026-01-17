@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 
 import kr.flint.content.domain.Content;
 import kr.flint.content.domain.ContentGenre;
@@ -17,10 +18,12 @@ import kr.flint.content.repository.ContentGenreRepository;
 import kr.flint.content.repository.ContentRepository;
 import kr.flint.content.repository.GenreRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
+@Slf4j
 public class ContentService {
 	private final ContentRepository contentRepository;
 	private final ContentGenreRepository contentGenreRepository;
@@ -56,7 +59,13 @@ public class ContentService {
 		return savedContent;
 	}
 	public boolean checkGenre(final String genre) {
+		log.info("checkGenre {}", genre);
 		return genreRepository.existsByName(genre);
+	}
+
+	public Genre getGenre(final String genreName) {
+		return genreRepository.findByName(genreName)
+			.orElseThrow(() -> new ContentException(ContentErrorCode.GENRE_NOT_FOUND));
 	}
 
 	public Content getContentByTmdbId(final Long tmdbId) {
@@ -74,7 +83,7 @@ public class ContentService {
 
 	// 콘텐츠 ID 목록으로 콘텐츠 + 장르 정보 조회
 	public List<ContentWithGenres> getContentsWithGenres(List<Long> contentIds) {
-		if (contentIds == null || contentIds.isEmpty()) {
+		if (CollectionUtils.isEmpty(contentIds)) {
 			return List.of();
 		}
 

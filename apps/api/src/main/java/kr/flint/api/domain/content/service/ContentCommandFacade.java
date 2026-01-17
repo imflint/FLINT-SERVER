@@ -9,6 +9,8 @@ import kr.flint.api.domain.search.dto.GetContentSearchRes;
 import kr.flint.api.domain.content.dto.GetPopularContentRes;
 import kr.flint.content.domain.Content;
 import kr.flint.content.domain.Genre;
+import kr.flint.content.exception.ContentErrorCode;
+import kr.flint.content.exception.ContentException;
 import kr.flint.content.service.ContentService;
 import kr.flint.infra.tmdb.client.TmdbClient;
 import kr.flint.infra.tmdb.dto.TmdbCommonRes;
@@ -48,51 +50,66 @@ public class ContentCommandFacade {
 	}
 
 	private GetPopularContentRes getPopularContent(int page) {
-		TmdbCommonRes tmdbList = tmdbClient.getPopularMovieList("ko-KR", page);
-		List<GetContentSearchRes> popularList = tmdbList.contentList().stream()
-			.map(result -> {
-				Content existing = contentService.getContentByTmdbId(result.id());
-				if (existing != null) {
-					return GetContentSearchRes.of(
-						existing.getTmdbId(),
-						existing.getTitle(),
-						existing.getAuthor(),
-						existing.getPoster(),
-						existing.getYear()
+		try{
+			log.info("실행 메서드: 인기");
+			TmdbCommonRes tmdbList = tmdbClient.getPopularMovieList("ko-KR", page);
+			List<GetContentSearchRes> popularList = tmdbList.contentList().stream()
+				.map(result -> {
+					Content existing = contentService.getContentByTmdbId(result.id());
+					if (existing != null) {
+						return GetContentSearchRes.of(
+							existing.getTmdbId(),
+							existing.getTitle(),
+							existing.getAuthor(),
+							existing.getPoster(),
+							existing.getYear()
+						);
+					}
+
+					String posterUrl = result.poster() == null
+						? null
+						: TMDB_IMAGE_BASE + result.poster();
+					String author = extractMovieAuthor(result.id());
+					List<Genre> tmdbGenreList = extractMovieGenreList(result.id()).stream()
+						.map(name -> contentService.getGenre(name))
+						.toList();
+					log.info("날짜 1: ", result.firstAirDate());
+					log.info("날짜 2: ", result.releaseDate());
+
+					int year = extractYearFromDate(result.releaseDate());
+					Content content = Content.create(
+						result.id(),
+						result.title(),
+						year,
+						author,
+						result.overview(),
+						posterUrl
 					);
-				}
 
-				String author = extractMovieAuthor(result.id());
-				String posterUrl = result.poster() == null
-					? null
-					: TMDB_IMAGE_BASE + result.poster();
+					Content savedContent = contentService.tmdbToDb(content, tmdbGenreList);
+					ottCommandFacade.mapContentOtt(savedContent.getId(), result.id(), result.mediaType());
 
-				int year = extractYear(result.mediaType(), result.releaseDate(), result.firstAirDate());
-				Content content = Content.create(
-					result.id(),
-					result.title(),
-					year,
-					author,
-					result.overview(),
-					posterUrl
-				);
+					return GetContentSearchRes.of(
+						result.id(),
+						result.title(),
+						author,
+						posterUrl,
+						year
+					);
+				})
+				.toList();
 
-				return GetContentSearchRes.of(
-					result.id(),
-					result.title(),
-					author,
-					posterUrl,
-					year
-				);
-			})
-			.toList();
+			return GetPopularContentRes.from(popularList, page);
+		} catch (Exception e) {
+			throw new ContentException(ContentErrorCode.TMDB_CONTENT_NOT_FOUND);
+		}
 
-		return GetPopularContentRes.from(popularList, page);
 	}
 
 
 	@Transactional
 	public List<GetContentSearchRes> getTmdbContentList(final String keyword, final int page) {
+		log.info("실행 메서드 : 전체");
 
 		TmdbCommonRes tmdbSearchRes = tmdbClient.getMultiList(keyword, "ko-KR", page);
 
@@ -188,13 +205,15 @@ public class ContentCommandFacade {
 	}
 
 	private int extractYear(String mediaType, String releaseDate, String firstAirDate) {
+		log.info(mediaType + " " + releaseDate + " " + firstAirDate);
 		String date = "movie".equals(mediaType) ? releaseDate : firstAirDate;
 		return extractYearFromDate(date);
 	}
 
-	private int extractYearFromDate(String date) {
-		if (date == null || date.isBlank() || date.length() < 4) return 0;
-		return Integer.parseInt(date.substring(0, 4));
+	private int extractYearFromDate(String releaseDate) {
+		log.info(releaseDate);
+		if (releaseDate == null || releaseDate.isBlank() || releaseDate.length() < 4) return 0;
+		return Integer.parseInt(releaseDate.substring(0, 4));
 	}
 
 }

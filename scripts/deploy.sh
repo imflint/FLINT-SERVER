@@ -102,14 +102,12 @@ switch_nginx() {
     local new_port="$1"
     log "Switching nginx to port $new_port"
 
-    # upstream 설정 변경
     sudo tee "$NGINX_CONF" > /dev/null << EOF
 upstream flint-api {
     server 127.0.0.1:$new_port;
 }
 EOF
 
-    # nginx 설정 테스트 및 리로드
     if sudo nginx -t > /dev/null 2>&1; then
         sudo nginx -s reload
         log "Nginx switched to port $new_port"

@@ -3,6 +3,7 @@ package kr.flint.ott.service;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 import org.springframework.transaction.annotation.Transactional;
 
 import kr.flint.ott.domain.OttProvider;
@@ -27,7 +28,7 @@ public class OttService {
 
 	@Transactional
 	public void createUserOtts(final Long userId, final List<Long> ottProviderIds) {
-		if (ottProviderIds == null || ottProviderIds.isEmpty()) {
+		if (CollectionUtils.isEmpty(ottProviderIds)) {
 			return;
 		}
 
