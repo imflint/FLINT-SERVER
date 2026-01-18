@@ -16,100 +16,96 @@ import kr.flint.user.dto.response.NicknameCheckResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "User", description = "사용자 API")
 public interface UserControllerDocs {
 
-    @Operation(
-            summary = "닉네임 중복 체크",
-            description = "닉네임 사용 가능 여부를 확인합니다."
-    )
+    @Operation(summary = "닉네임 중복 체크", description = "닉네임 사용 가능 여부를 확인합니다.")
     @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "닉네임 체크 성공"
-            )
+            @ApiResponse(responseCode = "200", description = "닉네임 체크 성공")
     })
     ResponseEntity<SuccessResponse<NicknameCheckResponse>> checkNickname(
             @Parameter(description = "확인할 닉네임", example = "my_nickname")
             @Valid @ModelAttribute NicknameCheckReq nickname
     );
 
-    @Operation(
-            summary = "사용자 프로필 조회",
-            description = "특정 사용자의 기본 프로필 정보(닉네임, 프로필 이미지, 플리너 여부)를 조회합니다."
-    )
+    // === 본인 조회 (인증 필수) ===
+
+    @Operation(summary = "내 프로필 조회", description = "로그인한 사용자 본인의 프로필 정보를 조회합니다.")
     @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "프로필 조회 성공"
-            )
+            @ApiResponse(responseCode = "200", description = "프로필 조회 성공")
+    })
+    ResponseEntity<SuccessResponse<UserProfileRes>> getMyProfile(
+            @Parameter(hidden = true) Long userId
+    );
+
+    @Operation(summary = "내 취향 키워드 조회", description = "로그인한 사용자 본인의 취향 키워드 목록을 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "취향 키워드 조회 성공")
+    })
+    ResponseEntity<SuccessResponse<UserKeywordsRes>> getMyKeywords(
+            @Parameter(hidden = true) Long userId
+    );
+
+    @Operation(summary = "내 컬렉션 조회", description = "로그인한 사용자 본인이 생성한 모든 컬렉션(공개+비공개)을 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "컬렉션 조회 성공")
+    })
+    ResponseEntity<SuccessResponse<UserCollectionsRes>> getMyCollections(
+            @Parameter(hidden = true) Long userId
+    );
+
+    @Operation(summary = "내 북마크 컬렉션 조회", description = "로그인한 사용자 본인이 북마크한 모든 컬렉션을 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "북마크 컬렉션 조회 성공")
+    })
+    ResponseEntity<SuccessResponse<UserBookmarkedCollectionsRes>> getMyBookmarkedCollections(
+            @Parameter(hidden = true) Long userId
+    );
+
+    @Operation(summary = "내 취향 키워드 재계산", description = "GPT를 호출하여 로그인한 사용자의 취향 키워드를 다시 계산합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "취향 키워드 재계산 성공")
+    })
+    ResponseEntity<SuccessResponse<Void>> recalculateKeyword(
+            @Parameter(hidden = true) Long userId
+    );
+
+    // === 타인 조회 (인증 선택) ===
+
+    @Operation(summary = "사용자 프로필 조회", description = "특정 사용자의 프로필 정보를 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "프로필 조회 성공")
     })
     ResponseEntity<SuccessResponse<UserProfileRes>> getUserProfile(
             @Parameter(description = "사용자 ID", example = "123456789")
-			@PathVariable Long userId
+            @PathVariable Long userId
     );
 
-    @Operation(
-            summary = "사용자 취향 키워드 조회",
-            description = "특정 사용자의 취향 키워드 목록을 조회합니다."
-    )
+    @Operation(summary = "사용자 취향 키워드 조회", description = "특정 사용자의 취향 키워드 목록을 조회합니다.")
     @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "취향 키워드 조회 성공"
-            )
+            @ApiResponse(responseCode = "200", description = "취향 키워드 조회 성공")
     })
     ResponseEntity<SuccessResponse<UserKeywordsRes>> getUserKeywords(
             @Parameter(description = "사용자 ID", example = "123456789")
-			@PathVariable Long userId
+            @PathVariable Long userId
     );
 
-    @Operation(
-            summary = "사용자 생성 컬렉션 조회",
-            description = "특정 사용자가 생성한 컬렉션 목록을 조회합니다. 본인 조회 시 전체 컬렉션, 타인 조회 시 공개 컬렉션만 반환됩니다."
-    )
+    @Operation(summary = "사용자 컬렉션 조회", description = "특정 사용자가 생성한 공개 컬렉션을 조회합니다.")
     @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "컬렉션 조회 성공"
-            )
+            @ApiResponse(responseCode = "200", description = "컬렉션 조회 성공")
     })
     ResponseEntity<SuccessResponse<UserCollectionsRes>> getUserCollections(
-            Long currentUserId,
             @Parameter(description = "사용자 ID", example = "123456789")
-			@PathVariable Long userId
+            @PathVariable Long userId
     );
 
-    @Operation(
-            summary = "사용자 북마크 컬렉션 조회",
-            description = "특정 사용자가 북마크한 컬렉션 목록을 조회합니다. 본인 조회 시 전체 컬렉션, 타인 조회 시 공개 컬렉션만 반환됩니다."
-    )
+    @Operation(summary = "사용자 북마크 컬렉션 조회", description = "특정 사용자가 북마크한 공개 컬렉션을 조회합니다.")
     @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "북마크 컬렉션 조회 성공"
-            )
+            @ApiResponse(responseCode = "200", description = "북마크 컬렉션 조회 성공")
     })
     ResponseEntity<SuccessResponse<UserBookmarkedCollectionsRes>> getUserBookmarkedCollections(
-            Long currentUserId,
             @Parameter(description = "사용자 ID", example = "123456789")
-			@PathVariable Long userId
+            @PathVariable Long userId
     );
-
-	@Operation(
-		summary = "취향 키워드 재계산",
-		description = "GPT를 호출하여 사용자의 취향 키워드를 다시 계산하고 갱신합니다."
-	)
-	@ApiResponses({
-		@ApiResponse(
-			responseCode = "200",
-			description = "취향 키워드 재계산 성공"
-		)
-	})
-	ResponseEntity<SuccessResponse<Void>> recalculateKeyword(
-		@Parameter(description = "현재 로그인한 사용자 ID", example = "123456789")
-		Long userId
-	);
 }
