@@ -17,8 +17,8 @@ public enum StoragePathType implements StoragePath {
 
     @Schema(description = "사용자 프로필 이미지 (허용: JPG, JPEG, PNG)")
     USER_PROFILE("user/profile", Extensions.IMAGE),
-    @Schema(description = "키워드 로고 이미지 (허용: JPG, JPEG, PNG)")
-    LOGO_IMAGE("keywords/logo", Extensions.IMAGE),
+    @Schema(description = "키워드 로고 이미지 (허용: JPG, JPEG, PNG, SVG)")
+    LOGO_IMAGE("keywords/logo", Extensions.LOGO),
     ;
 
     private final String path;
@@ -26,5 +26,6 @@ public enum StoragePathType implements StoragePath {
 
     private static class Extensions {
         static final Set<FileExtension> IMAGE = Set.of(JPG, JPEG, PNG);
+        static final Set<FileExtension> LOGO = Set.of(JPG, JPEG, PNG, SVG);
     }
 }
