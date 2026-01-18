@@ -17,7 +17,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-// TODO: 본인용이랑 타인용 api 분리 고민
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
@@ -35,6 +34,47 @@ public class UserController implements UserControllerDocs {
         );
     }
 
+    @Override
+    @GetMapping("/me")
+    public ResponseEntity<SuccessResponse<UserProfileRes>> getMyProfile(
+            @CurrentUser Long userId
+    ) {
+        return ResponseEntity.ok(
+                SuccessResponse.of(SuccessCode.SUCCESS_FETCH, userQueryFacade.getUserProfile(userId))
+        );
+    }
+
+    @Override
+    @GetMapping("/me/keywords")
+    public ResponseEntity<SuccessResponse<UserKeywordsRes>> getMyKeywords(
+            @CurrentUser Long userId
+    ) {
+        return ResponseEntity.ok(
+                SuccessResponse.of(SuccessCode.SUCCESS_KEYWORDS_FETCH, userQueryFacade.getUserKeywords(userId))
+        );
+    }
+
+    @Override
+    @GetMapping("/me/collections")
+    public ResponseEntity<SuccessResponse<UserCollectionsRes>> getMyCollections(
+            @CurrentUser Long userId
+    ) {
+        return ResponseEntity.ok(
+                SuccessResponse.of(SuccessCode.SUCCESS_COLLECTIONS_FETCH, userQueryFacade.getMyCollections(userId))
+        );
+    }
+
+    @Override
+    @GetMapping("/me/bookmarked-collections")
+    public ResponseEntity<SuccessResponse<UserBookmarkedCollectionsRes>> getMyBookmarkedCollections(
+            @CurrentUser Long userId
+    ) {
+        return ResponseEntity.ok(
+                SuccessResponse.of(SuccessCode.SUCCESS_COLLECTIONS_FETCH, userQueryFacade.getMyBookmarkedCollections(userId))
+        );
+    }
+
+    @Override
     @GetMapping("/{userId}")
     public ResponseEntity<SuccessResponse<UserProfileRes>> getUserProfile(
             @PathVariable Long userId
@@ -44,6 +84,7 @@ public class UserController implements UserControllerDocs {
         );
     }
 
+    @Override
     @GetMapping("/{userId}/keywords")
     public ResponseEntity<SuccessResponse<UserKeywordsRes>> getUserKeywords(
             @PathVariable Long userId
@@ -56,38 +97,30 @@ public class UserController implements UserControllerDocs {
     @Override
     @GetMapping("/{userId}/collections")
     public ResponseEntity<SuccessResponse<UserCollectionsRes>> getUserCollections(
-            @CurrentUser(required = false) Long currentUserId,
             @PathVariable Long userId
     ) {
-        boolean isOwner = isOwner(currentUserId, userId);
         return ResponseEntity.ok(
-                SuccessResponse.of(SuccessCode.SUCCESS_COLLECTIONS_FETCH, userQueryFacade.getUserCollections(userId, isOwner))
+                SuccessResponse.of(SuccessCode.SUCCESS_COLLECTIONS_FETCH, userQueryFacade.getPublicCollections(userId))
         );
     }
 
     @Override
     @GetMapping("/{userId}/bookmarked-collections")
     public ResponseEntity<SuccessResponse<UserBookmarkedCollectionsRes>> getUserBookmarkedCollections(
-            @CurrentUser(required = false) Long currentUserId,
             @PathVariable Long userId
     ) {
-        boolean isOwner = isOwner(currentUserId, userId);
         return ResponseEntity.ok(
-                SuccessResponse.of(SuccessCode.SUCCESS_COLLECTIONS_FETCH, userQueryFacade.getUserBookmarkedCollections(userId, isOwner))
+                SuccessResponse.of(SuccessCode.SUCCESS_COLLECTIONS_FETCH, userQueryFacade.getPublicBookmarkedCollections(userId))
         );
     }
 
-	@PatchMapping("/recalculate/keyword")
-	public ResponseEntity<SuccessResponse<Void>> recalculateKeyword(
-		@CurrentUser(required = true) Long userId
-	){
-		userCommandFacade.callGpt(userId);
-		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_KEYWORDS_FETCH));
-	}
-
-    // 본인 여부 확인 (비로그인 시 false)
-    private boolean isOwner(Long currentUserId, Long userId) {
-        return currentUserId != null && currentUserId.equals(userId);
+    @Override
+    @PatchMapping("/me/keywords/recalculate")
+    public ResponseEntity<SuccessResponse<Void>> recalculateKeyword(
+            @CurrentUser Long userId
+    ) {
+        userCommandFacade.callGpt(userId);
+        return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_KEYWORDS_FETCH));
     }
 
 }

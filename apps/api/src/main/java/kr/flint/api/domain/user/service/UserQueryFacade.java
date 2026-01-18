@@ -65,23 +65,31 @@ public class UserQueryFacade {
 		//TODO: 기획한테 언제 취향 키워드 계산할 건지 물어봐야함
     }
 
-    // 사용자가 생성한 컬렉션 조회 (본인이면 전체, 타인이면 공개만)
-    public UserCollectionsRes getUserCollections(Long userId, boolean isOwner) {
-        List<CollectionWithUserProjection> collections = isOwner
-            ? userCollectionRepository.findAllCollectionsWithUserByUserId(userId)
-            : userCollectionRepository.findPublicCollectionsWithUserByUserId(userId);
+    public UserCollectionsRes getMyCollections(Long userId) {
+        List<CollectionWithUserProjection> collections = userCollectionRepository.findAllCollectionsWithUserByUserId(userId);
         return UserCollectionsRes.from(collections, cloudFrontUrlProvider::resolveUrl);
     }
 
-    // 사용자가 북마크한 컬렉션 조회 (본인이면 전체, 타인이면 공개만)
-    public UserBookmarkedCollectionsRes getUserBookmarkedCollections(Long userId, boolean isOwner) {
+    public UserCollectionsRes getPublicCollections(Long userId) {
+        List<CollectionWithUserProjection> collections = userCollectionRepository.findPublicCollectionsWithUserByUserId(userId);
+        return UserCollectionsRes.from(collections, cloudFrontUrlProvider::resolveUrl);
+    }
+
+    public UserBookmarkedCollectionsRes getMyBookmarkedCollections(Long userId) {
         List<Long> collectionIds = bookmarkService.getBookmarkedCollectionIds(userId);
         if (collectionIds.isEmpty()) {
             return UserBookmarkedCollectionsRes.from(Collections.emptyList(), cloudFrontUrlProvider::resolveUrl);
         }
-        List<CollectionWithUserProjection> collections = isOwner
-            ? userCollectionRepository.findAllCollectionsWithUserByIdIn(collectionIds)
-            : userCollectionRepository.findPublicCollectionsWithUserByIdIn(collectionIds);
+        List<CollectionWithUserProjection> collections = userCollectionRepository.findAllCollectionsWithUserByIdIn(collectionIds);
+        return UserBookmarkedCollectionsRes.from(collections, cloudFrontUrlProvider::resolveUrl);
+    }
+
+    public UserBookmarkedCollectionsRes getPublicBookmarkedCollections(Long userId) {
+        List<Long> collectionIds = bookmarkService.getBookmarkedCollectionIds(userId);
+        if (collectionIds.isEmpty()) {
+            return UserBookmarkedCollectionsRes.from(Collections.emptyList(), cloudFrontUrlProvider::resolveUrl);
+        }
+        List<CollectionWithUserProjection> collections = userCollectionRepository.findPublicCollectionsWithUserByIdIn(collectionIds);
         return UserBookmarkedCollectionsRes.from(collections, cloudFrontUrlProvider::resolveUrl);
     }
 }
