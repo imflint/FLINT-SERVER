@@ -9,7 +9,8 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import kr.flint.api.domain.search.dto.GetContentSearchRes;
+import kr.flint.api.domain.search.dto.response.GetContentSearchListRes;
+import kr.flint.api.domain.search.dto.response.GetContentSearchRes;
 import kr.flint.api.domain.search.dto.response.BookmarkedCollectionSearchRes;
 import kr.flint.api.domain.search.dto.response.BookmarkedContentSearchRes;
 import kr.flint.shared.dto.PaginationResponse;
@@ -25,8 +26,8 @@ public interface SearchControllerDocs {
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "검색 성공", useReturnTypeSchema = true)
 	})
-	ResponseEntity<SuccessResponse<List<GetContentSearchRes>>> searchContent(
-		@Parameter(description = "검색 키워드", example = "눈물의 여왕")
+	ResponseEntity<SuccessResponse<GetContentSearchListRes>> searchContent(
+		@Parameter(description = "검색 키워드", example = "주토피아")
 		String keyword
 	);
 

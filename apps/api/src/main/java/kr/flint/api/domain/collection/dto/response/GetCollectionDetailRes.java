@@ -13,7 +13,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public record GetCollectionDetailRes(
 	@Schema(description = "컬렉션 ID", example = "1")
 	@JsonSerialize(using = ToStringSerializer.class)
-	Long collectionId,
+	Long id,
 	@Schema(description = "컬렉션 제목", example = "주말에 보기 좋은 영화")
 	String title,
 	@Schema(description = "컬렉션 설명", example = "편하게 볼 수 있는 영화들을 모았습니다")
@@ -29,13 +29,13 @@ public record GetCollectionDetailRes(
 	Author author,
 
 	@ArraySchema(schema = @Schema(implementation = Content.class))
-	List<Content> contentList
+	List<Content> contents
 ) {
 	@Schema(description = "컬렉션 작성자")
 	public record Author(
 		@Schema(description = "사용자 ID", example = "123")
 		@JsonSerialize(using = ToStringSerializer.class)
-		Long userId,
+		Long id,
 		@Schema(description = "닉네임", example = "플린트")
 		String nickname,
 		@Schema(description = "프로필 이미지 URL", example = "https://example.com/profile.jpg")
@@ -48,7 +48,7 @@ public record GetCollectionDetailRes(
 	public record Content(
 		@Schema(description = "콘텐츠 ID", example = "456")
 		@JsonSerialize(using = ToStringSerializer.class)
-		Long contentId,
+		Long id,
 		@Schema(description = "콘텐츠 제목", example = "눈물의 여왕")
 		String title,
 		@Schema(description = "썸네일 URL", example = "https://example.com/thumb.jpg")

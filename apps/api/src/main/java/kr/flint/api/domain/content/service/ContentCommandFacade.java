@@ -5,7 +5,7 @@ import java.util.List;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import kr.flint.api.domain.search.dto.GetContentSearchRes;
+import kr.flint.api.domain.search.dto.response.GetContentSearchRes;
 import kr.flint.api.domain.content.dto.GetPopularContentRes;
 import kr.flint.content.domain.Content;
 import kr.flint.content.domain.Genre;
@@ -45,7 +45,7 @@ public class ContentCommandFacade {
 		String nextCursor = String.valueOf(cursor + 1);
 
 		return PaginationResponse.ofCursor(
-			SliceCursor.of(popularContentList.contentSearchList(), String.valueOf(cursor), nextCursor)
+			SliceCursor.of(popularContentList.contents(), String.valueOf(cursor), nextCursor)
 		);
 	}
 

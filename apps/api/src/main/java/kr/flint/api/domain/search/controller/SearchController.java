@@ -11,9 +11,8 @@ import org.springframework.web.bind.annotation.RestController;
 import kr.flint.api.domain.search.controller.spec.SearchControllerDocs;
 import kr.flint.api.domain.search.dto.response.BookmarkedCollectionSearchRes;
 import kr.flint.api.domain.search.dto.response.BookmarkedContentSearchRes;
-import kr.flint.api.domain.search.dto.GetContentSearchRes;
-import kr.flint.api.domain.search.dto.GetSearchBookmarkContentRes;
-import kr.flint.api.domain.search.dto.GetContentSearchRes;
+import kr.flint.api.domain.search.dto.response.GetContentSearchListRes;
+import kr.flint.api.domain.search.dto.response.GetContentSearchRes;
 import kr.flint.api.domain.search.service.SearchQueryFacade;
 import kr.flint.api.global.security.annotation.CurrentUser;
 import kr.flint.shared.dto.PaginationResponse;
@@ -30,11 +29,11 @@ public class SearchController implements SearchControllerDocs {
 
 	@Override
 	@GetMapping("/contents")
-	public ResponseEntity<SuccessResponse<List<GetContentSearchRes>>> searchContent(
+	public ResponseEntity<SuccessResponse<GetContentSearchListRes>> searchContent(
 		@RequestParam(name = "keyword", required = false) String keyword
 	){
 		List<GetContentSearchRes> contentSearchResList = searchQueryFacade.searchContent(keyword);
-		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, contentSearchResList));
+		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, new GetContentSearchListRes(contentSearchResList)));
 	}
 
 	@Override

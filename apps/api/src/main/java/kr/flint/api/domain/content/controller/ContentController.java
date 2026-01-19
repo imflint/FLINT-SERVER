@@ -2,7 +2,6 @@ package kr.flint.api.domain.content.controller;
 
 import java.util.List;
 
-import kr.flint.api.domain.content.controller.spec.ContentControllerDocs;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -10,8 +9,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import kr.flint.api.domain.content.controller.spec.ContentControllerDocs;
 import kr.flint.api.domain.content.dto.GetContentDetailRes;
-import kr.flint.api.domain.search.dto.GetContentSearchRes;
+import kr.flint.api.domain.search.dto.response.GetContentSearchRes;
 import kr.flint.api.domain.content.service.ContentCommandFacade;
 import kr.flint.api.domain.content.service.ContentQueryFacade;
 import kr.flint.api.global.security.annotation.CurrentUser;
@@ -28,6 +28,7 @@ public class ContentController implements ContentControllerDocs {
 	private final ContentQueryFacade contentQueryFacade;
 	private final ContentCommandFacade contentCommandFacade;
 
+	@Override
 	@GetMapping("/ott/{contentId}")
 	public ResponseEntity<SuccessResponse<List<GetOttResponse>>> getOttList(
 		@CurrentUser Long userId,
@@ -37,6 +38,7 @@ public class ContentController implements ContentControllerDocs {
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, getOttResponseList));
 	}
 
+	@Override
 	@GetMapping("/bookmarks")
 	public ResponseEntity<SuccessResponse<List<GetContentDetailRes>>> getBookmarkContent(
 		@CurrentUser Long userId
@@ -45,6 +47,7 @@ public class ContentController implements ContentControllerDocs {
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, getContentDetailResList));
 	}
 
+	@Override
 	@GetMapping("/search")
 	public ResponseEntity<SuccessResponse<PaginationResponse<GetContentSearchRes>>> searchContent(
 		@RequestParam(required = false, name = "keyword") String keyword,

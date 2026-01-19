@@ -1,4 +1,4 @@
-package kr.flint.api.domain.search.dto;
+package kr.flint.api.domain.search.dto.response;
 
 import java.util.List;
 
