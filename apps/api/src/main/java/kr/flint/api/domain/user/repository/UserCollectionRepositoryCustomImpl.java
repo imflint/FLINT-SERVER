@@ -12,10 +12,8 @@ import org.springframework.util.CollectionUtils;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
-import kr.flint.api.domain.user.dto.response.CollectionContentImageProjection;
-import kr.flint.api.domain.user.dto.response.CollectionContentImageProjectionImpl;
-import kr.flint.api.domain.user.dto.response.CollectionWithUserProjection;
-import kr.flint.api.domain.user.dto.response.CollectionWithUserProjectionImpl;
+import kr.flint.api.domain.user.dto.response.CollectionContentImageDto;
+import kr.flint.api.domain.user.dto.response.CollectionWithUserDto;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
@@ -24,13 +22,13 @@ public class UserCollectionRepositoryCustomImpl implements UserCollectionReposit
 	private final JPAQueryFactory queryFactory;
 
 	@Override
-	public List<CollectionWithUserProjection> findAllCollectionsWithUserByUserId(Long userId) {
+	public List<CollectionWithUserDto> findAllCollectionsWithUserByUserId(Long userId) {
 		if (userId == null) {
 			return List.of();
 		}
 
-		List<CollectionWithUserProjectionImpl> result = queryFactory
-			.select(Projections.constructor(CollectionWithUserProjectionImpl.class,
+		return queryFactory
+			.select(Projections.constructor(CollectionWithUserDto.class,
 				collection.id,
 				collection.title,
 				collection.description,
@@ -45,18 +43,16 @@ public class UserCollectionRepositoryCustomImpl implements UserCollectionReposit
 			.where(collection.userId.eq(userId))
 			.orderBy(collection.id.desc())
 			.fetch();
-
-		return List.copyOf(result);
 	}
 
 	@Override
-	public List<CollectionWithUserProjection> findPublicCollectionsWithUserByUserId(Long userId) {
+	public List<CollectionWithUserDto> findPublicCollectionsWithUserByUserId(Long userId) {
 		if (userId == null) {
 			return List.of();
 		}
 
-		List<CollectionWithUserProjectionImpl> result = queryFactory
-			.select(Projections.constructor(CollectionWithUserProjectionImpl.class,
+		return queryFactory
+			.select(Projections.constructor(CollectionWithUserDto.class,
 				collection.id,
 				collection.title,
 				collection.description,
@@ -74,18 +70,16 @@ public class UserCollectionRepositoryCustomImpl implements UserCollectionReposit
 			)
 			.orderBy(collection.id.desc())
 			.fetch();
-
-		return List.copyOf(result);
 	}
 
 	@Override
-	public List<CollectionWithUserProjection> findAllCollectionsWithUserByIdIn(List<Long> collectionIds) {
+	public List<CollectionWithUserDto> findAllCollectionsWithUserByIdIn(List<Long> collectionIds) {
 		if (CollectionUtils.isEmpty(collectionIds)) {
 			return List.of();
 		}
 
-		List<CollectionWithUserProjectionImpl> result = queryFactory
-			.select(Projections.constructor(CollectionWithUserProjectionImpl.class,
+		return queryFactory
+			.select(Projections.constructor(CollectionWithUserDto.class,
 				collection.id,
 				collection.title,
 				collection.description,
@@ -100,18 +94,16 @@ public class UserCollectionRepositoryCustomImpl implements UserCollectionReposit
 			.where(collection.id.in(collectionIds))
 			.orderBy(collection.id.desc())
 			.fetch();
-
-		return List.copyOf(result);
 	}
 
 	@Override
-	public List<CollectionWithUserProjection> findPublicCollectionsWithUserByIdIn(List<Long> collectionIds) {
+	public List<CollectionWithUserDto> findPublicCollectionsWithUserByIdIn(List<Long> collectionIds) {
 		if (CollectionUtils.isEmpty(collectionIds)) {
 			return List.of();
 		}
 
-		List<CollectionWithUserProjectionImpl> result = queryFactory
-			.select(Projections.constructor(CollectionWithUserProjectionImpl.class,
+		return queryFactory
+			.select(Projections.constructor(CollectionWithUserDto.class,
 				collection.id,
 				collection.title,
 				collection.description,
@@ -129,18 +121,16 @@ public class UserCollectionRepositoryCustomImpl implements UserCollectionReposit
 			)
 			.orderBy(collection.id.desc())
 			.fetch();
-
-		return List.copyOf(result);
 	}
 
 	@Override
-	public List<CollectionContentImageProjection> findContentImagesByCollectionIds(List<Long> collectionIds) {
+	public List<CollectionContentImageDto> findContentImagesByCollectionIds(List<Long> collectionIds) {
 		if (CollectionUtils.isEmpty(collectionIds)) {
 			return List.of();
 		}
 
-		List<CollectionContentImageProjectionImpl> result = queryFactory
-			.select(Projections.constructor(CollectionContentImageProjectionImpl.class,
+		return queryFactory
+			.select(Projections.constructor(CollectionContentImageDto.class,
 				collectionContent.collection.id,
 				content.poster
 			))
@@ -149,7 +139,5 @@ public class UserCollectionRepositoryCustomImpl implements UserCollectionReposit
 			.where(collectionContent.collection.id.in(collectionIds))
 			.orderBy(collectionContent.id.asc())
 			.fetch();
-
-		return List.copyOf(result);
 	}
 }

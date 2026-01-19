@@ -1,7 +1,6 @@
 package kr.flint.api.domain.user.controller;
 
 import kr.flint.api.domain.user.controller.spec.UserControllerDocs;
-import kr.flint.api.domain.user.dto.response.UserBookmarkedCollectionsRes;
 import kr.flint.api.domain.user.dto.response.UserCollectionsRes;
 import kr.flint.api.domain.user.dto.response.UserKeywordsRes;
 import kr.flint.api.domain.user.dto.response.UserProfileRes;
@@ -67,7 +66,7 @@ public class UserController implements UserControllerDocs {
 
     @Override
     @GetMapping("/me/bookmarked-collections")
-    public ResponseEntity<SuccessResponse<UserBookmarkedCollectionsRes>> getMyBookmarkedCollections(
+    public ResponseEntity<SuccessResponse<UserCollectionsRes>> getMyBookmarkedCollections(
             @CurrentUser Long userId
     ) {
         return ResponseEntity.ok(
@@ -108,7 +107,7 @@ public class UserController implements UserControllerDocs {
 
     @Override
     @GetMapping("/{userId}/bookmarked-collections")
-    public ResponseEntity<SuccessResponse<UserBookmarkedCollectionsRes>> getUserBookmarkedCollections(
+    public ResponseEntity<SuccessResponse<UserCollectionsRes>> getUserBookmarkedCollections(
             @CurrentUser Long currentUserId,
             @PathVariable Long userId
     ) {

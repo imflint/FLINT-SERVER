@@ -11,32 +11,32 @@ import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 
-@Schema(description = "사용자가 생성한 컬렉션 목록 응답")
+@Schema(description = "컬렉션 목록 응답")
 public record UserCollectionsRes(
-    @ArraySchema(schema = @Schema(implementation = CollectionDetailItem.class))
-    List<CollectionDetailItem> collections
+    @ArraySchema(schema = @Schema(implementation = CollectionItem.class))
+    List<CollectionItem> collections
 ) {
     private static final int MAX_IMAGE_COUNT = 2;
 
     public static UserCollectionsRes from(
-        List<CollectionWithUserProjection> projections,
+        List<CollectionWithUserDto> projections,
         Map<Long, List<String>> contentImagesMap,
         Set<Long> bookmarkedCollectionIds,
         Function<String, String> imageUrlResolver
     ) {
-        List<CollectionDetailItem> items = projections.stream()
-            .map(p -> CollectionDetailItem.from(
+        List<CollectionItem> items = projections.stream()
+            .map(p -> CollectionItem.from(
                 p,
-                contentImagesMap.getOrDefault(p.getId(), List.of()),
-                bookmarkedCollectionIds.contains(p.getId()),
+                contentImagesMap.getOrDefault(p.id(), List.of()),
+                bookmarkedCollectionIds.contains(p.id()),
                 imageUrlResolver
             ))
             .toList();
         return new UserCollectionsRes(items);
     }
 
-    @Schema(description = "컬렉션 상세 항목")
-    public record CollectionDetailItem(
+    @Schema(description = "컬렉션 항목")
+    public record CollectionItem(
         @Schema(description = "컬렉션 ID", example = "1")
         @JsonSerialize(using = ToStringSerializer.class)
         Long id,
@@ -60,32 +60,30 @@ public record UserCollectionsRes(
         @Schema(description = "작성자 프로필 URL", example = "https://example.com/profile.jpg")
         String profileUrl
     ) {
-        public static CollectionDetailItem from(
-            CollectionWithUserProjection projection,
+        public static CollectionItem from(
+            CollectionWithUserDto dto,
             List<String> contentPosters,
             boolean isBookmarked,
             Function<String, String> imageUrlResolver
         ) {
-            // 최대 2개의 이미지만 사용
             List<String> limitedPosters = contentPosters.stream()
                 .limit(MAX_IMAGE_COUNT)
                 .map(imageUrlResolver)
                 .toList();
 
-            // 첫 번째 이미지를 썸네일로 사용
-            String thumbnail = limitedPosters.isEmpty() ? null : limitedPosters.get(0);
+            String thumbnail = limitedPosters.isEmpty() ? null : limitedPosters.getFirst();
 
-            return new CollectionDetailItem(
-                projection.getId(),
+            return new CollectionItem(
+                dto.id(),
                 thumbnail,
-                projection.getTitle(),
-                projection.getDescription(),
+                dto.title(),
+                dto.description(),
                 limitedPosters,
-                projection.getBookmarkCount(),
+                dto.bookmarkCount(),
                 isBookmarked,
-                projection.getUserId(),
-                projection.getNickname(),
-                imageUrlResolver.apply(projection.getProfileImage())
+                dto.userId(),
+                dto.nickname(),
+                imageUrlResolver.apply(dto.profileImage())
             );
         }
     }
