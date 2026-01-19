@@ -6,7 +6,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import kr.flint.api.domain.user.dto.request.NicknameCheckReq;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import kr.flint.api.domain.user.dto.response.UserBookmarkedCollectionsRes;
 import kr.flint.api.domain.user.dto.response.UserCollectionsRes;
 import kr.flint.api.domain.user.dto.response.UserKeywordsRes;
@@ -14,8 +15,8 @@ import kr.flint.api.domain.user.dto.response.UserProfileRes;
 import kr.flint.shared.dto.response.SuccessResponse;
 import kr.flint.user.dto.response.NicknameCheckResponse;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "User", description = "사용자 API")
 public interface UserControllerDocs {
@@ -25,8 +26,9 @@ public interface UserControllerDocs {
             @ApiResponse(responseCode = "200", description = "닉네임 체크 성공")
     })
     ResponseEntity<SuccessResponse<NicknameCheckResponse>> checkNickname(
-            @Parameter(description = "확인할 닉네임", example = "my_nickname")
-            @Valid @ModelAttribute NicknameCheckReq nickname
+            @Parameter(description = "확인할 닉네임 (2-10자, 영문/숫자/한글/밑줄만 가능)", example = "플린트")
+            @RequestParam @Valid @Size(min = 2, max = 10) @Pattern(regexp = "^[a-zA-Z0-9가-힣_]+$")
+            String nickname
     );
 
     // === 본인 조회 (인증 필수) ===
