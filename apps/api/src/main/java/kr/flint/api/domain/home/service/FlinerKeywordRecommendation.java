@@ -44,23 +44,18 @@ public class FlinerKeywordRecommendation implements CollectionRecommendationPort
 			return List.of();
 		}
 
-		// 모든 Fliner 조회
 		List<Long> flinerIds = homeCollectionRepository.findAllFlinerIds();
 		if (flinerIds.isEmpty()) {
 			log.debug("Fliner가 없습니다.");
 			return List.of();
 		}
 
-		// Fliner-사용자 키워드 중복률 계산 및 정렬
 		List<FlinerMatch> flinerMatches = calculateFlinerMatches(flinerIds, userKeywordIds);
 		if (flinerMatches.isEmpty()) {
 			return List.of();
 		}
-
-		// 각 Fliner별 최신 컬렉션 할당
 		assignLatestCollections(flinerMatches);
 
-		// maxSize 제한 조정
 		return adjustToLimit(flinerMatches, maxSize);
 	}
 

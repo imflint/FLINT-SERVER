@@ -37,18 +37,15 @@ public class HomeQueryFacade {
     private final BookmarkQueryService bookmarkQueryService;
     private final CloudFrontUrlProvider cloudFrontUrlProvider;
 
-    // 추천 컬렉션 조회 (캐시 적용)
+    // 추천 컬렉션 조회
     public RecommendedCollectionsRes getRecommendedCollections(Long userId) {
-        // 캐시 확인
         Optional<List<Long>> cached = cacheService.getCachedRecommendations(userId);
         List<Long> collectionIds;
 
         if (cached.isPresent()) {
-            // 캐시 히트 - 순서 셔플
             collectionIds = cacheService.getShuffledOrder(cached.get());
             log.debug("캐시 히트. userId={}", userId);
         } else {
-            // 캐시 미스 - 추천 로직 실행 후 캐싱
             collectionIds = recommendationPort.recommend(userId, MAX_RECOMMENDED_COLLECTIONS);
             if (!collectionIds.isEmpty()) {
                 cacheService.cacheRecommendations(userId, collectionIds);
@@ -60,16 +57,12 @@ public class HomeQueryFacade {
             return RecommendedCollectionsRes.from(List.of());
         }
 
-        // 컬렉션 + 작성자 정보 조회
         List<CollectionCardDto> collections = homeCollectionRepository.findCollectionCardsWithUser(collectionIds);
 
-        // imageList 조회
         Map<Long, List<String>> contentImagesMap = buildContentImagesMap(collectionIds);
 
-        // 북마크 여부 조회
         Set<Long> bookmarkedIds = bookmarkQueryService.getBookmarkedCollectionIdSet(userId);
 
-        // 추천 순서 유지를 위해 정렬
         Map<Long, CollectionCardDto> collectionMap = collections.stream()
             .collect(Collectors.toMap(CollectionCardDto::id, Function.identity()));
 

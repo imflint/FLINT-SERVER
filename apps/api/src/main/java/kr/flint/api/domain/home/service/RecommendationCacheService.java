@@ -14,9 +14,6 @@ import org.springframework.stereotype.Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * 추천 컬렉션 캐시 관리 서비스
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
