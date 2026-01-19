@@ -104,13 +104,17 @@ public class CollectionQueryRepository {
 			.fetch();
 	}
 
-	public List<GetCollectionDetailListRes> getCollectionDetailList(Long userId){
+	public List<GetCollectionDetailListRes> getCollectionDetailList(Long userId) {
+
+		// ✅ 1) baseRows: 컬렉션 중심으로만 가져오기 (썸네일은 collection.image)
+		// - content / collectionContent 조인 제거 (조인 실패로 row 날아가는 것 방지)
+		// - user는 leftJoin (soft delete/데이터 불일치 때문에 row 날아가는 것 방지)
 		List<CollectionBaseRow> baseRows =
 			jpaQueryFactory
 				.select(Projections.constructor(
 					CollectionBaseRow.class,
 					collection.id,
-					content.poster,
+					collection.image,              // ✅ collection_image 사용
 					collection.title,
 					collection.description,
 					collection.bookmarkCount,
@@ -121,22 +125,26 @@ public class CollectionQueryRepository {
 				))
 				.from(recentViewedCollection)
 				.join(collection).on(collection.id.eq(recentViewedCollection.collection.id))
-				.join(user).on(user.id.eq(collection.userId))
+				.leftJoin(user).on(user.id.eq(collection.userId)) // ✅ left join
 				.leftJoin(collectionBookmark).on(
 					collectionBookmark.collectionId.eq(collection.id)
 						.and(collectionBookmark.userId.eq(userId))
 				)
-				.join(collectionContent).on(collectionContent.collection.id.eq(collection.id))
-				.join(content).on(content.id.eq(collectionContent.contentId))
 				.where(recentViewedCollection.userId.eq(userId))
-				.orderBy(recentViewedCollection.createdAt.desc())
+				.orderBy(recentViewedCollection.viewedAt.desc()) // ✅ 최근 본 기준
 				.fetch();
+
+		if (baseRows.isEmpty()) {
+			return List.of();
+		}
 
 		List<Long> collectionIds = baseRows.stream()
 			.map(CollectionBaseRow::collectionId)
 			.distinct()
 			.toList();
 
+		// ✅ 2) imageRows: collection_content + content 조인으로 poster 가져오기
+		//    각 collection 당 2개만 imageMap에 넣기
 		List<ContentImageRow> imageRows =
 			jpaQueryFactory
 				.select(Projections.constructor(
@@ -155,15 +163,19 @@ public class CollectionQueryRepository {
 
 		Map<Long, List<String>> imageMap = new LinkedHashMap<>();
 		for (ContentImageRow row : imageRows) {
+			if (row.contentImage() == null) continue;
+
 			List<String> list = imageMap.computeIfAbsent(row.collectionId(), k -> new ArrayList<>());
-			if (list.size() < 2 && row.contentImage() != null) {
+			if (list.size() < 2) {
 				list.add(row.contentImage());
 			}
 		}
+
+		// ✅ 3) DTO 매핑
 		return baseRows.stream()
 			.map(r -> new GetCollectionDetailListRes(
 				r.collectionId(),
-				r.thumbnailUrl,
+				r.thumbnailUrl(),
 				r.title(),
 				r.description(),
 				imageMap.getOrDefault(r.collectionId(), List.of()),
@@ -178,7 +190,7 @@ public class CollectionQueryRepository {
 
 	public record CollectionBaseRow(
 		Long collectionId,
-		String thumbnailUrl,
+		String thumbnailUrl,  // ✅ collection.image 들어옴
 		String title,
 		String description,
 		Integer bookmarkCount,
@@ -188,7 +200,10 @@ public class CollectionQueryRepository {
 		String profileUrl
 	) {}
 
-	public record ContentImageRow(Long collectionId, String contentImage) {}
+	public record ContentImageRow(
+		Long collectionId,
+		String contentImage
+	) {}
 
 	public record GetCollectionHeader(
 		Long collectionId,
