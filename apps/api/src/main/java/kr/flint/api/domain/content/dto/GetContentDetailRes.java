@@ -9,7 +9,7 @@ import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record GetContentDetailRes(
 	@JsonSerialize(using = ToStringSerializer.class)
-	Long contentId,
+	Long id,
 	String title,
 	int year,
 	List<GetOttSimpleRes> getOttSimpleList

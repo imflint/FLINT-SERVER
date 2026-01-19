@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import kr.flint.api.domain.content.controller.spec.ContentControllerDocs;
 import kr.flint.api.domain.content.dto.GetContentDetailRes;
+import kr.flint.api.domain.content.dto.GetContentListRes;
 import kr.flint.api.domain.search.dto.response.GetContentSearchRes;
 import kr.flint.api.domain.content.service.ContentCommandFacade;
 import kr.flint.api.domain.content.service.ContentQueryFacade;
@@ -40,11 +41,11 @@ public class ContentController implements ContentControllerDocs {
 
 	@Override
 	@GetMapping("/bookmarks")
-	public ResponseEntity<SuccessResponse<List<GetContentDetailRes>>> getBookmarkContent(
+	public ResponseEntity<SuccessResponse<GetContentListRes>> getBookmarkContent(
 		@CurrentUser Long userId
 	){
 		List<GetContentDetailRes> getContentDetailResList = contentQueryFacade.getContentDetailList(userId);
-		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, getContentDetailResList));
+		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, new GetContentListRes(getContentDetailResList)));
 	}
 
 	@Override
