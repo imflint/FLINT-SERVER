@@ -27,11 +27,7 @@ public interface CollectionControllerDocs {
 		description = "새로운 컬렉션을 생성합니다."
 	)
 	@ApiResponses({
-		@ApiResponse(
-			responseCode = "201",
-			description = "생성 성공",
-			content = @Content(schema = @Schema(implementation = CollectionSwaggerResponses.SuccessResponseVoid.class))
-		),
+		@ApiResponse(responseCode = "201", description = "생성 성공"),
 		@ApiResponse(
 			responseCode = "400",
 			description = "잘못된 요청 (유효성 검증 실패)",
@@ -49,11 +45,7 @@ public interface CollectionControllerDocs {
 		description = "cursor와 size를 기반으로 컬렉션 목록을 조회합니다. cursor가 없으면 첫 페이지를 조회합니다."
 	)
 	@ApiResponses({
-		@ApiResponse(
-			responseCode = "200",
-			description = "조회 성공",
-			content = @Content(schema = @Schema(implementation = CollectionSwaggerResponses.SuccessResponsePaginationGetCollectionSimpleRes.class))
-		),
+		@ApiResponse(responseCode = "200", description = "조회 성공"),
 		@ApiResponse(
 			responseCode = "400",
 			description = "잘못된 요청",
@@ -72,11 +64,7 @@ public interface CollectionControllerDocs {
 		description = "collectionId로 컬렉션 상세 정보를 조회합니다. (조회 시 최근 본 컬렉션 저장 로직이 실행될 수 있습니다.)"
 	)
 	@ApiResponses({
-		@ApiResponse(
-			responseCode = "200",
-			description = "조회 성공",
-			content = @Content(schema = @Schema(implementation = CollectionSwaggerResponses.SuccessResponseGetCollectionDetailRes.class))
-		),
+		@ApiResponse(responseCode = "200", description = "조회 성공"),
 		@ApiResponse(
 			responseCode = "404",
 			description = "존재하지 않는 컬렉션",
@@ -94,11 +82,7 @@ public interface CollectionControllerDocs {
 		description = "사용자가 최근에 조회한 컬렉션 목록을 조회합니다."
 	)
 	@ApiResponses({
-		@ApiResponse(
-			responseCode = "200",
-			description = "조회 성공",
-			content = @Content(schema = @Schema(implementation = CollectionSwaggerResponses.SuccessResponseListGetCollectionDetailListRes.class))
-		)
+		@ApiResponse(responseCode = "200", description = "조회 성공")
 	})
 	ResponseEntity<SuccessResponse<List<GetCollectionDetailListRes>>> getRecentCollectionList(Long userId);
 }

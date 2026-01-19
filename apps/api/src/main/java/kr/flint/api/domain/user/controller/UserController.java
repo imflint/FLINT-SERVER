@@ -3,7 +3,7 @@ package kr.flint.api.domain.user.controller;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
-import kr.flint.api.domain.user.controller.spec.UserControllerDocs;
+import kr.flint.api.domain.user.controller.spec. UserControllerDocs;
 import kr.flint.api.domain.user.dto.response.UserBookmarkedCollectionsRes;
 import kr.flint.api.domain.user.dto.response.UserCollectionsRes;
 import kr.flint.api.domain.user.dto.response.UserKeywordsRes;

@@ -3,11 +3,12 @@ package kr.flint.api.domain.user.dto.response;
 import java.util.List;
 import java.util.function.Function;
 
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "사용자가 생성한 컬렉션 목록 응답")
 public record UserCollectionsRes(
-    @Schema(description = "컬렉션 목록")
+    @ArraySchema(schema = @Schema(implementation = CollectionItem.class))
     List<CollectionItem> collections
 ) {
     public static UserCollectionsRes from(List<CollectionWithUserProjection> projections, Function<String, String> imageUrlResolver) {
