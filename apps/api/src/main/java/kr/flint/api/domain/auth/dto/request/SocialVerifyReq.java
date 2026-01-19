@@ -8,7 +8,7 @@ import org.springframework.util.StringUtils;
 
 @Schema(description = "소셜 로그인 인증 요청")
 public record SocialVerifyReq(
-        @Schema(description = "소셜 로그인 제공자", example = "KAKAO", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "소셜 로그인 제공자 (KAKAO, APPLE, GOOGLE)", example = "KAKAO", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotNull(message = "소셜 로그인 제공자는 필수입니다.")
         AuthProvider provider,
 

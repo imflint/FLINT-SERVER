@@ -35,7 +35,7 @@ public record GetCollectionDetailRes(
 		String nickname,
 		@Schema(description = "프로필 이미지 URL", example = "https://example.com/profile.jpg")
 		String profileUrl,
-		@Schema(description = "사용자 역할", example = "FLINER")
+		@Schema(description = "사용자 역할 (ADMIN, FLINER, FLING)", example = "FLINER")
 		String userRole
 	){}
 
