@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import kr.flint.api.domain.collection.dto.response.GetCollectionDetailListRes;
 import kr.flint.api.domain.collection.dto.response.GetCollectionDetailRes;
 import kr.flint.api.domain.collection.dto.request.CreateCollectionReq;
+import kr.flint.api.domain.collection.dto.response.GetCollectionListRes;
 import kr.flint.api.domain.collection.dto.response.GetCollectionSimpleRes;
 import kr.flint.shared.dto.PaginationResponse;
 import kr.flint.shared.dto.response.SuccessResponse;
@@ -84,5 +85,5 @@ public interface CollectionControllerDocs {
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "조회 성공", useReturnTypeSchema = true)
 	})
-	ResponseEntity<SuccessResponse<List<GetCollectionDetailListRes>>> getRecentCollectionList(Long userId);
+	ResponseEntity<SuccessResponse<GetCollectionListRes>> getRecentCollectionList(Long userId);
 }

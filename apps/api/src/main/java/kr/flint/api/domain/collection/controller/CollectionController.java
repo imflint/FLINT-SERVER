@@ -15,6 +15,7 @@ import jakarta.validation.Valid;
 import kr.flint.api.domain.collection.controller.spec.CollectionControllerDocs;
 import kr.flint.api.domain.collection.dto.response.GetCollectionDetailListRes;
 import kr.flint.api.domain.collection.dto.response.GetCollectionDetailRes;
+import kr.flint.api.domain.collection.dto.response.GetCollectionListRes;
 import kr.flint.api.domain.collection.service.CollectionCommandFacade;
 import kr.flint.api.domain.collection.service.CollectionQueryFacade;
 import kr.flint.api.domain.collection.service.CollectionQueryService;
@@ -42,7 +43,7 @@ public class CollectionController implements CollectionControllerDocs {
 		@CurrentUser Long userId,
 		@Valid @RequestBody CreateCollectionReq createCollectionReq
 	){
-		collectionCommandFacade.createCollection(1L, createCollectionReq);
+		collectionCommandFacade.createCollection(userId, createCollectionReq);
 		return ResponseEntity
 			.status(SuccessCode.SUCCESS_CREATE.getHttpStatus())
 			.body(SuccessResponse.of(SuccessCode.SUCCESS_CREATE));
@@ -71,11 +72,11 @@ public class CollectionController implements CollectionControllerDocs {
 
 	@Override
 	@GetMapping("/recent")
-	public ResponseEntity<SuccessResponse<List<GetCollectionDetailListRes>>> getRecentCollectionList(
+	public ResponseEntity<SuccessResponse<GetCollectionListRes>> getRecentCollectionList(
 		@CurrentUser Long userId
 	){
-		List<GetCollectionDetailListRes> getCollectionDetailListRes = collectionQueryService.getRecentCollectionList(1L);
-		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, getCollectionDetailListRes));
+		List<GetCollectionDetailListRes> getCollectionDetailListRes = collectionQueryService.getRecentCollectionList(userId);
+		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, new GetCollectionListRes(getCollectionDetailListRes)));
 	}
 
 

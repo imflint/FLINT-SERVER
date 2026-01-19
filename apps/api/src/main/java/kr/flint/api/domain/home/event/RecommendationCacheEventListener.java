@@ -35,7 +35,7 @@ public class RecommendationCacheEventListener {
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onFlinerCollectionCreated(FlinerCollectionCreatedEvent event) {
-        log.debug("Fliner 컬렉션 생성 이벤트 수신. flinerId={}, collectionId={}", event.flinerId(), event.collectionId());
+        log.debug("Fliner 컬렉션 생성 이벤트 수신. flinerId={}, id={}", event.flinerId(), event.collectionId());
         try {
             cacheService.invalidateAllCache();
         } catch (Exception e) {

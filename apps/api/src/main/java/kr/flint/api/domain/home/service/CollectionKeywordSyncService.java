@@ -47,7 +47,7 @@ public class CollectionKeywordSyncService {
 
         if (!newKeywords.isEmpty()) {
             collectionKeywordRepository.saveAll(newKeywords);
-            log.debug("컬렉션 키워드 추가. collectionId={}, count={}", collectionId, newKeywords.size());
+            log.debug("컬렉션 키워드 추가. id={}, count={}", collectionId, newKeywords.size());
         }
     }
 
@@ -75,7 +75,7 @@ public class CollectionKeywordSyncService {
 
         if (!keywordsToRemove.isEmpty()) {
             collectionKeywordRepository.deleteByCollectionIdAndKeywordIdIn(collectionId, keywordsToRemove);
-            log.debug("컬렉션 키워드 삭제. collectionId={}, count={}", collectionId, keywordsToRemove.size());
+            log.debug("컬렉션 키워드 삭제. id={}, count={}", collectionId, keywordsToRemove.size());
         }
     }
 
@@ -86,7 +86,7 @@ public class CollectionKeywordSyncService {
 
         List<Long> contentIds = collectionContentRepository.findContentIdsByCollectionId(collectionId);
         if (contentIds.isEmpty()) {
-            log.debug("컬렉션에 콘텐츠가 없습니다. collectionId={}", collectionId);
+            log.debug("컬렉션에 콘텐츠가 없습니다. id={}", collectionId);
             return;
         }
 
@@ -97,7 +97,7 @@ public class CollectionKeywordSyncService {
 
         if (!keywords.isEmpty()) {
             collectionKeywordRepository.saveAll(keywords);
-            log.debug("컬렉션 키워드 전체 동기화. collectionId={}, count={}", collectionId, keywords.size());
+            log.debug("컬렉션 키워드 전체 동기화. id={}, count={}", collectionId, keywords.size());
         }
     }
 }
