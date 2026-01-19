@@ -2,12 +2,16 @@ package kr.flint.api.domain.collection.dto.response;
 
 import java.util.List;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
+
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "최근 본 컬렉션 상세 응답")
 public record GetCollectionDetailListRes(
 	@Schema(description = "컬렉션 ID", example = "1")
+	@JsonSerialize(using = ToStringSerializer.class)
 	Long id,
 	@Schema(description = "컬렉션 썸네일", example = "https://example.com/thumbnail.jpg")
 	String thumbnailUrl,
@@ -23,6 +27,7 @@ public record GetCollectionDetailListRes(
 	Boolean isBookmarked,
 
 	@Schema(description = "작성자 ID", example = "123")
+	@JsonSerialize(using = ToStringSerializer.class)
 	Long userId,
 	@Schema(description = "작성자 닉네임", example = "플린트")
 	String nickname,

@@ -1,9 +1,13 @@
 package kr.flint.api.domain.search.dto;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
+
 import kr.flint.content.domain.Content;
 
 public record GetContentSearchRes(
-	Long contentId, //tmdb id
+	@JsonSerialize(using = ToStringSerializer.class)
+	Long contentId,
 	String title,
 	String author,
 	String posterUrl,
