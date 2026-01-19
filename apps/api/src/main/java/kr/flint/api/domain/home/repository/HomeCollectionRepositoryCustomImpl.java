@@ -1,6 +1,8 @@
 package kr.flint.api.domain.home.repository;
 
 import static kr.flint.collection.domain.QCollection.*;
+import static kr.flint.collection.domain.QCollectionContent.*;
+import static kr.flint.content.domain.QContent.*;
 import static kr.flint.user.domain.QUser.*;
 
 import java.util.List;
@@ -12,8 +14,8 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 
 import kr.flint.api.domain.home.dto.projection.CollectionBasicProjection;
 import kr.flint.api.domain.home.dto.projection.CollectionBasicProjectionImpl;
-import kr.flint.api.domain.home.dto.projection.CollectionCardProjection;
-import kr.flint.api.domain.home.dto.projection.CollectionCardProjectionImpl;
+import kr.flint.api.domain.home.dto.projection.CollectionCardDto;
+import kr.flint.api.domain.home.dto.projection.CollectionContentImageDto;
 import kr.flint.user.domain.UserRole;
 import kr.flint.user.domain.UserStatus;
 import lombok.RequiredArgsConstructor;
@@ -24,16 +26,19 @@ public class HomeCollectionRepositoryCustomImpl implements HomeCollectionReposit
     private final JPAQueryFactory queryFactory;
 
     @Override
-    public List<CollectionCardProjection> findCollectionCardsWithUser(List<Long> collectionIds) {
+    public List<CollectionCardDto> findCollectionCardsWithUser(List<Long> collectionIds) {
         if (CollectionUtils.isEmpty(collectionIds)) {
             return List.of();
         }
 
-        List<CollectionCardProjectionImpl> result = queryFactory
-            .select(Projections.constructor(CollectionCardProjectionImpl.class,
+        return queryFactory
+            .select(Projections.constructor(CollectionCardDto.class,
                 collection.id,
                 collection.title,
+                collection.description,
                 collection.image,
+                collection.bookmarkCount,
+                collection.userId,
                 user.profileImage,
                 user.nickname
             ))
@@ -44,8 +49,24 @@ public class HomeCollectionRepositoryCustomImpl implements HomeCollectionReposit
                 collection.isPublic.isTrue()
             )
             .fetch();
+    }
 
-        return List.copyOf(result);
+    @Override
+    public List<CollectionContentImageDto> findContentImagesByCollectionIds(List<Long> collectionIds) {
+        if (CollectionUtils.isEmpty(collectionIds)) {
+            return List.of();
+        }
+
+        return queryFactory
+            .select(Projections.constructor(CollectionContentImageDto.class,
+                collectionContent.collection.id,
+                content.poster
+            ))
+            .from(collectionContent)
+            .join(content).on(collectionContent.contentId.eq(content.id))
+            .where(collectionContent.collection.id.in(collectionIds))
+            .orderBy(collectionContent.id.asc())
+            .fetch();
     }
 
     @Override

@@ -1,20 +1,24 @@
 package kr.flint.api.domain.home;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import kr.flint.api.domain.home.dto.projection.CollectionCardProjection;
+import kr.flint.api.domain.home.dto.projection.CollectionCardDto;
+import kr.flint.api.domain.home.dto.projection.CollectionContentImageDto;
 import kr.flint.api.domain.home.dto.response.CollectionCardRes;
 import kr.flint.api.domain.home.dto.response.RecommendedCollectionsRes;
 import kr.flint.api.domain.home.port.CollectionRecommendationPort;
 import kr.flint.api.domain.home.repository.HomeCollectionRepository;
 import kr.flint.api.domain.home.service.RecommendationCacheService;
+import kr.flint.bookmark.service.BookmarkQueryService;
 import kr.flint.infra.storage.cloudfront.CloudFrontUrlProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +34,7 @@ public class HomeQueryFacade {
     private final CollectionRecommendationPort recommendationPort;
     private final HomeCollectionRepository homeCollectionRepository;
     private final RecommendationCacheService cacheService;
+    private final BookmarkQueryService bookmarkQueryService;
     private final CloudFrontUrlProvider cloudFrontUrlProvider;
 
     // 추천 컬렉션 조회 (캐시 적용)
@@ -56,17 +61,38 @@ public class HomeQueryFacade {
         }
 
         // 컬렉션 + 작성자 정보 조회
-        List<CollectionCardProjection> projections = homeCollectionRepository.findCollectionCardsWithUser(collectionIds);
+        List<CollectionCardDto> collections = homeCollectionRepository.findCollectionCardsWithUser(collectionIds);
+
+        // imageList 조회
+        Map<Long, List<String>> contentImagesMap = buildContentImagesMap(collectionIds);
+
+        // 북마크 여부 조회
+        Set<Long> bookmarkedIds = bookmarkQueryService.getBookmarkedCollectionIdSet(userId);
 
         // 추천 순서 유지를 위해 정렬
-        Map<Long, CollectionCardProjection> projectionMap = projections.stream()
-            .collect(Collectors.toMap(CollectionCardProjection::getId, Function.identity()));
+        Map<Long, CollectionCardDto> collectionMap = collections.stream()
+            .collect(Collectors.toMap(CollectionCardDto::id, Function.identity()));
 
         List<CollectionCardRes> orderedCards = collectionIds.stream()
-            .filter(projectionMap::containsKey)
-            .map(id -> CollectionCardRes.from(projectionMap.get(id), cloudFrontUrlProvider::resolveUrl))
+            .filter(collectionMap::containsKey)
+            .map(id -> CollectionCardRes.from(
+                collectionMap.get(id),
+                contentImagesMap.getOrDefault(id, List.of()),
+                bookmarkedIds.contains(id),
+                cloudFrontUrlProvider::resolveUrl
+            ))
             .toList();
 
         return RecommendedCollectionsRes.from(orderedCards);
+    }
+
+    private Map<Long, List<String>> buildContentImagesMap(List<Long> collectionIds) {
+        List<CollectionContentImageDto> contentImages = homeCollectionRepository.findContentImagesByCollectionIds(collectionIds);
+
+        return contentImages.stream()
+            .collect(Collectors.groupingBy(
+                CollectionContentImageDto::collectionId,
+                Collectors.mapping(CollectionContentImageDto::poster, Collectors.toCollection(ArrayList::new))
+            ));
     }
 }
