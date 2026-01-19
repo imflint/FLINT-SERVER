@@ -19,11 +19,11 @@ import kr.flint.shared.dto.response.SuccessResponse;
 public interface SearchControllerDocs {
 
 	@Operation(
-		summary = "콘텐츠 검색",
+		summary = "콘텐츠 검색 - 재민",
 		description = "키워드로 콘텐츠를 검색합니다."
 	)
 	@ApiResponses({
-		@ApiResponse(responseCode = "200", description = "검색 성공")
+		@ApiResponse(responseCode = "200", description = "검색 성공", useReturnTypeSchema = true)
 	})
 	ResponseEntity<SuccessResponse<List<GetContentSearchRes>>> searchContent(
 		@Parameter(description = "검색 키워드", example = "눈물의 여왕")
@@ -31,11 +31,12 @@ public interface SearchControllerDocs {
 	);
 
 	@Operation(
-		summary = "북마크한 컬렉션 검색",
-		description = "사용자가 북마크한 컬렉션 중에서 키워드로 검색합니다. 제목과 설명에서 검색합니다."
+		summary = "북마크한 컬렉션 검색 - 호주",
+		description = "사용자가 북마크한 컬렉션 중에서 키워드로 검색합니다. 제목과 설명에서 검색합니다.",
+        deprecated = true
 	)
 	@ApiResponses({
-		@ApiResponse(responseCode = "200", description = "검색 성공")
+		@ApiResponse(responseCode = "200", description = "검색 성공", useReturnTypeSchema = true)
 	})
 	ResponseEntity<SuccessResponse<PaginationResponse<BookmarkedCollectionSearchRes>>> searchBookmarkedCollections(
 		Long userId,
@@ -48,11 +49,12 @@ public interface SearchControllerDocs {
 	);
 
 	@Operation(
-		summary = "북마크한 작품 검색",
-		description = "사용자가 북마크한 작품 중에서 키워드로 검색합니다. 제목과 감독/작가에서 검색합니다."
+		summary = "북마크한 작품 검색 - 호주",
+		description = "사용자가 북마크한 작품 중에서 키워드로 검색합니다. 제목과 감독/작가에서 검색합니다.",
+        deprecated = true
 	)
 	@ApiResponses({
-		@ApiResponse(responseCode = "200", description = "검색 성공")
+		@ApiResponse(responseCode = "200", description = "검색 성공", useReturnTypeSchema = true)
 	})
 	ResponseEntity<SuccessResponse<PaginationResponse<BookmarkedContentSearchRes>>> searchBookmarkedContents(
 		Long userId,

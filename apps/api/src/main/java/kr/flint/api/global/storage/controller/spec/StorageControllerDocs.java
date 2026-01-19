@@ -23,7 +23,7 @@ public interface StorageControllerDocs {
             @ApiResponse(
                     responseCode = "200",
                     description = "Presigned URL 발급 성공",
-                    content = @Content(schema = @Schema(implementation = StorageUploadUrl.class))
+                    useReturnTypeSchema = true
             ),
             @ApiResponse(
                     responseCode = "400",
