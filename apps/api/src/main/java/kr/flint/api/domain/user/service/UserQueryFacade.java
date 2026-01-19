@@ -22,7 +22,7 @@ import kr.flint.taste.dto.response.UserKeywordProjection;
 import kr.flint.taste.service.TasteService;
 import kr.flint.user.domain.User;
 import kr.flint.api.domain.user.repository.UserCollectionRepository;
-import kr.flint.bookmark.service.BookmarkService;
+import kr.flint.bookmark.service.BookmarkQueryService;
 import kr.flint.user.dto.response.NicknameCheckResponse;
 import kr.flint.user.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +35,7 @@ import lombok.extern.slf4j.Slf4j;
 public class UserQueryFacade {
 
     private final UserService userService;
-    private final BookmarkService bookmarkService;
+    private final BookmarkQueryService bookmarkQueryService;
     private final UserCollectionRepository userCollectionRepository;
 	private final BookmarkQueryRepository bookmarkQueryRepository;
 	private final ChatService chatService;
@@ -72,7 +72,7 @@ public class UserQueryFacade {
 
         List<Long> collectionIds = collections.stream().map(CollectionWithUserDto::id).toList();
         Map<Long, List<String>> contentImagesMap = buildContentImagesMap(collectionIds);
-        Set<Long> bookmarkedIds = bookmarkService.getBookmarkedCollectionIdSet(userId);
+        Set<Long> bookmarkedIds = bookmarkQueryService.getBookmarkedCollectionIdSet(userId);
 
         return UserCollectionsRes.from(collections, contentImagesMap, bookmarkedIds, cloudFrontUrlProvider::resolveUrl);
     }
@@ -85,26 +85,26 @@ public class UserQueryFacade {
 
         List<Long> collectionIds = collections.stream().map(CollectionWithUserDto::id).toList();
         Map<Long, List<String>> contentImagesMap = buildContentImagesMap(collectionIds);
-        Set<Long> bookmarkedIds = bookmarkService.getBookmarkedCollectionIdSet(currentUserId);
+        Set<Long> bookmarkedIds = bookmarkQueryService.getBookmarkedCollectionIdSet(currentUserId);
 
         return UserCollectionsRes.from(collections, contentImagesMap, bookmarkedIds, cloudFrontUrlProvider::resolveUrl);
     }
 
     public UserCollectionsRes getMyBookmarkedCollections(Long userId) {
-        List<Long> collectionIds = bookmarkService.getBookmarkedCollectionIds(userId);
+        List<Long> collectionIds = bookmarkQueryService.getBookmarkedCollectionIds(userId);
         if (collectionIds.isEmpty()) {
             return new UserCollectionsRes(Collections.emptyList());
         }
 
         List<CollectionWithUserDto> collections = userCollectionRepository.findAllCollectionsWithUserByIdIn(collectionIds);
         Map<Long, List<String>> contentImagesMap = buildContentImagesMap(collectionIds);
-        Set<Long> bookmarkedIds = bookmarkService.getBookmarkedCollectionIdSet(userId);
+        Set<Long> bookmarkedIds = bookmarkQueryService.getBookmarkedCollectionIdSet(userId);
 
         return UserCollectionsRes.from(collections, contentImagesMap, bookmarkedIds, cloudFrontUrlProvider::resolveUrl);
     }
 
     public UserCollectionsRes getPublicBookmarkedCollections(Long currentUserId, Long targetUserId) {
-        List<Long> collectionIds = bookmarkService.getBookmarkedCollectionIds(targetUserId);
+        List<Long> collectionIds = bookmarkQueryService.getBookmarkedCollectionIds(targetUserId);
         if (collectionIds.isEmpty()) {
             return new UserCollectionsRes(Collections.emptyList());
         }
@@ -112,7 +112,7 @@ public class UserQueryFacade {
         List<CollectionWithUserDto> collections = userCollectionRepository.findPublicCollectionsWithUserByIdIn(collectionIds);
         List<Long> publicCollectionIds = collections.stream().map(CollectionWithUserDto::id).toList();
         Map<Long, List<String>> contentImagesMap = buildContentImagesMap(publicCollectionIds);
-        Set<Long> bookmarkedIds = bookmarkService.getBookmarkedCollectionIdSet(currentUserId);
+        Set<Long> bookmarkedIds = bookmarkQueryService.getBookmarkedCollectionIdSet(currentUserId);
 
         return UserCollectionsRes.from(collections, contentImagesMap, bookmarkedIds, cloudFrontUrlProvider::resolveUrl);
     }

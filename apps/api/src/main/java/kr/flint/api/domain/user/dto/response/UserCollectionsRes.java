@@ -10,14 +10,13 @@ import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
+import kr.flint.api.domain.collection.util.CollectionImageProcessor;
 
 @Schema(description = "컬렉션 목록 응답")
 public record UserCollectionsRes(
     @ArraySchema(schema = @Schema(implementation = CollectionItem.class))
     List<CollectionItem> collections
 ) {
-    private static final int MAX_IMAGE_COUNT = 2;
-
     public static UserCollectionsRes from(
         List<CollectionWithUserDto> projections,
         Map<Long, List<String>> contentImagesMap,
@@ -66,19 +65,15 @@ public record UserCollectionsRes(
             boolean isBookmarked,
             Function<String, String> imageUrlResolver
         ) {
-            List<String> limitedPosters = contentPosters.stream()
-                .limit(MAX_IMAGE_COUNT)
-                .map(imageUrlResolver)
-                .toList();
-
-            String thumbnail = limitedPosters.isEmpty() ? null : limitedPosters.getFirst();
+            List<String> resolvedImages = CollectionImageProcessor.limitAndResolveImages(contentPosters, imageUrlResolver);
+            String thumbnail = CollectionImageProcessor.selectThumbnail(resolvedImages);
 
             return new CollectionItem(
                 dto.id(),
                 thumbnail,
                 dto.title(),
                 dto.description(),
-                limitedPosters,
+                resolvedImages,
                 dto.bookmarkCount(),
                 isBookmarked,
                 dto.userId(),

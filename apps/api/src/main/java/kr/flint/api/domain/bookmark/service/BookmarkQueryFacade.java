@@ -10,7 +10,7 @@ import kr.flint.api.domain.bookmark.dto.response.GetBookmarkUserRes;
 import kr.flint.infra.gpt.dto.GptKeywordDto;
 import kr.flint.infra.gpt.dto.TasteWorkMetaDto;
 import kr.flint.api.domain.bookmark.repository.BookmarkQueryRepository;
-import kr.flint.bookmark.service.BookmarkService;
+import kr.flint.bookmark.service.BookmarkQueryService;
 import kr.flint.infra.gpt.service.ChatService;
 import kr.flint.user.dto.response.UserSimpleRes;
 import kr.flint.user.service.UserService;
@@ -20,11 +20,11 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class BookmarkQueryFacade {
 	private final UserService userService;
-	private final BookmarkService bookmarkService;
+	private final BookmarkQueryService bookmarkQueryService;
 
 	public GetBookmarkUserRes getBookmarkedUser(Long collectionId){
-		int bookmarkCount = bookmarkService.getBookmarkCount(collectionId);
-		List<Long> userIdList = bookmarkService.getBookmarkUserId(collectionId);
+		int bookmarkCount = bookmarkQueryService.getBookmarkCount(collectionId);
+		List<Long> userIdList = bookmarkQueryService.getBookmarkUserId(collectionId);
 
 		List<UserSimpleRes> userList = userService.getUserInfoList(userIdList);
 

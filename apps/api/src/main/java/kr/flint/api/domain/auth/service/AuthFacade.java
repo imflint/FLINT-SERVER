@@ -20,7 +20,7 @@ import kr.flint.auth.exception.AuthErrorCode;
 import kr.flint.auth.exception.AuthException;
 import kr.flint.auth.service.AuthService;
 import kr.flint.auth.service.UserIdentityService;
-import kr.flint.bookmark.service.BookmarkService;
+import kr.flint.bookmark.service.BookmarkCommandService;
 import kr.flint.ott.service.OttService;
 import kr.flint.user.dto.response.UserAuthInfo;
 import kr.flint.user.service.UserService;
@@ -34,7 +34,7 @@ public class AuthFacade {
     private final UserService userService;
     private final UserIdentityService userIdentityService;
     private final KakaoOAuthClient kakaoOAuthClient;
-    private final BookmarkService bookmarkService;
+    private final BookmarkCommandService bookmarkCommandService;
     private final OttService ottService;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -67,7 +67,7 @@ public class AuthFacade {
         UserAuthInfo authInfo = userService.create(request.nickname());
         userIdentityService.create(authInfo.userId(), payload.provider(), payload.providerUserId());
 
-        bookmarkService.createContentBookmarks(authInfo.userId(), request.favoriteContentIds());
+        bookmarkCommandService.createContentBookmarks(authInfo.userId(), request.favoriteContentIds());
         ottService.createUserOtts(authInfo.userId(), request.subscribedOttIds());
 
         // 비동기 취향 분석 이벤트 발행 (트랜잭션 커밋 후 처리)

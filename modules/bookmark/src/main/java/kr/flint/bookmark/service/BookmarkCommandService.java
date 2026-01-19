@@ -1,9 +1,6 @@
 package kr.flint.bookmark.service;
 
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -17,13 +14,12 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
-public class BookmarkService {
+@Transactional
+public class BookmarkCommandService {
 	private final CollectionBookmarkRepository collectionBookmarkRepository;
 	private final ContentBookmarkRepository contentBookmarkRepository;
 
-	@Transactional
-	public boolean toggleContent(final Long userId, final Long contentId) {
+	public boolean toggleContent(Long userId, Long contentId) {
 		return contentBookmarkRepository.findByContentIdAndUserId(contentId, userId)
 			.map(
 				contentBookmark -> {
@@ -37,8 +33,7 @@ public class BookmarkService {
 			);
 	}
 
-	@Transactional
-	public boolean toggleCollection(final Long userId, final Long collectionId) {
+	public boolean toggleCollection(Long userId, Long collectionId) {
 		return collectionBookmarkRepository.findByCollectionIdAndUserId(collectionId, userId)
 			.map(
 				collectionBookmark -> {
@@ -53,28 +48,7 @@ public class BookmarkService {
 			);
 	}
 
-	public int getBookmarkCount(final Long collectionId) {
-		return collectionBookmarkRepository.countByCollectionId(collectionId);
-	}
-
-	public List<Long> getBookmarkUserId(final Long collectionId){
-		return collectionBookmarkRepository.findUserIdsByCollectionId(collectionId);
-	}
-
-	public List<Long> getBookmarkedCollectionIds(final Long userId) {
-		return collectionBookmarkRepository.findCollectionIdsByUserId(userId);
-	}
-
-	// 북마크한 컬렉션 ID Set 조회 (비로그인 시 빈 Set 반환)
-	public Set<Long> getBookmarkedCollectionIdSet(final Long userId) {
-		if (userId == null) {
-			return Collections.emptySet();
-		}
-		return new HashSet<>(collectionBookmarkRepository.findCollectionIdsByUserId(userId));
-	}
-
-	@Transactional
-	public void createContentBookmarks(final Long userId, final List<Long> contentIds) {
+	public void createContentBookmarks(Long userId, List<Long> contentIds) {
 		if (CollectionUtils.isEmpty(contentIds)) {
 			return;
 		}
