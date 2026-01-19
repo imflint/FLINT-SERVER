@@ -46,7 +46,7 @@ public record GetCollectionDetailRes(
 		@Schema(description = "콘텐츠 제목", example = "눈물의 여왕")
 		String title,
 		@Schema(description = "썸네일 URL", example = "https://example.com/thumb.jpg")
-		String imagelUrl,
+		String imageUrl,
 		@Schema(description = "감독/작가", example = "박지은")
 		String authorName,
 		@Schema(description = "북마크 여부", example = "false")
