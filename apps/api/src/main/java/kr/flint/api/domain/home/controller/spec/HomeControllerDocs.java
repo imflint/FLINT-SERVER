@@ -14,7 +14,7 @@ public interface HomeControllerDocs {
 
     @Operation(
         summary = "추천 컬렉션 조회",
-        description = "사용자 취향 키워드 기반 추천 컬렉션 목록(최대 10개)을 조회합니다."
+        description = "사용자 취향 키워드 기반 추천 컬렉션 목록(최대 10개)을 조회합니다. - 호주"
     )
     @ApiResponses({
         @ApiResponse(

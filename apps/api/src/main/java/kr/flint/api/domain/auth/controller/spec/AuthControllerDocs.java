@@ -23,7 +23,7 @@ public interface AuthControllerDocs {
 
     @Operation(
             summary = "소셜 로그인",
-            description = "Authorization Code를 사용하여 소셜 로그인을 처리합니다. 기존 회원이면 JWT를 발급하고, 신규 회원이면 임시 토큰을 발급합니다."
+            description = "Authorization Code를 사용하여 소셜 로그인을 처리합니다. 기존 회원이면 JWT를 발급하고, 신규 회원이면 임시 토큰을 발급합니다. - 호주"
     )
     @ApiResponses({
             @ApiResponse(
@@ -40,7 +40,7 @@ public interface AuthControllerDocs {
 
     @Operation(
             summary = "회원가입",
-            description = "임시 토큰과 사용자 정보로 회원가입을 완료합니다."
+            description = "임시 토큰과 사용자 정보로 회원가입을 완료합니다. - 호주"
     )
     @ApiResponses({
             @ApiResponse(
@@ -67,7 +67,7 @@ public interface AuthControllerDocs {
 
     @Operation(
             summary = "토큰 갱신",
-            description = "Refresh Token으로 새로운 Access Token과 Refresh Token을 발급받습니다."
+            description = "Refresh Token으로 새로운 Access Token과 Refresh Token을 발급받습니다. - 호주"
     )
     @ApiResponses({
             @ApiResponse(
@@ -84,7 +84,7 @@ public interface AuthControllerDocs {
 
     @Operation(
             summary = "로그아웃",
-            description = "현재 세션(기기)에서 로그아웃합니다. Refresh Token을 무효화합니다."
+            description = "현재 세션(기기)에서 로그아웃합니다. Refresh Token을 무효화합니다. - 호주"
     )
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({
@@ -104,7 +104,7 @@ public interface AuthControllerDocs {
 
     @Operation(
             summary = "모든 세션 로그아웃",
-            description = "모든 세션(기기)에서 로그아웃합니다. 사용자의 모든 Refresh Token을 무효화합니다."
+            description = "모든 세션(기기)에서 로그아웃합니다. 사용자의 모든 Refresh Token을 무효화합니다. - 호주"
     )
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({

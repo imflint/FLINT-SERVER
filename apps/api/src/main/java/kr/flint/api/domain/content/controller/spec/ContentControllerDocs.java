@@ -20,7 +20,7 @@ public interface ContentControllerDocs {
 
 	@Operation(
 		summary = "콘텐츠별 OTT 목록 조회",
-		description = "특정 콘텐츠를 시청할 수 있는 OTT 플랫폼 목록을 조회합니다. 사용자가 구독 중인 OTT가 우선 표시됩니다."
+		description = "특정 콘텐츠를 시청할 수 있는 OTT 플랫폼 목록을 조회합니다. 사용자가 구독 중인 OTT가 우선 표시됩니다. - 재민"
 	)
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "조회 성공"),
@@ -38,7 +38,7 @@ public interface ContentControllerDocs {
 
 	@Operation(
 		summary = "북마크한 콘텐츠 목록 조회",
-		description = "현재 로그인한 사용자가 북마크한 콘텐츠 목록을 조회합니다."
+		description = "현재 로그인한 사용자가 북마크한 콘텐츠 목록을 조회합니다. - 재민"
 	)
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "조회 성공")
@@ -47,7 +47,7 @@ public interface ContentControllerDocs {
 
 	@Operation(
 		summary = "콘텐츠 검색",
-		description = "키워드로 콘텐츠를 검색합니다. TMDB API를 통해 검색 결과를 반환합니다."
+		description = "키워드로 콘텐츠를 검색합니다. TMDB API를 통해 검색 결과를 반환합니다. - 재민"
 	)
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "검색 성공")

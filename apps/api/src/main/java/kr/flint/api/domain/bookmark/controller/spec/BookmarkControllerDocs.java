@@ -18,7 +18,7 @@ public interface BookmarkControllerDocs {
 
 	@Operation(
 		summary = "콘텐츠 북마크 토글",
-		description = "콘텐츠를 북마크하거나 이미 북마크된 경우 해제합니다."
+		description = "콘텐츠를 북마크하거나 이미 북마크된 경우 해제합니다. - 재민"
 	)
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "토글 성공"),
@@ -36,7 +36,7 @@ public interface BookmarkControllerDocs {
 
 	@Operation(
 		summary = "컬렉션 북마크 토글",
-		description = "컬렉션을 북마크하거나 이미 북마크된 경우 해제합니다."
+		description = "컬렉션을 북마크하거나 이미 북마크된 경우 해제합니다. - 재민"
 	)
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "토글 성공"),
@@ -54,7 +54,7 @@ public interface BookmarkControllerDocs {
 
 	@Operation(
 		summary = "컬렉션 북마크 유저 조회",
-		description = "특정 컬렉션을 북마크한 유저 목록과 총 북마크 수를 조회합니다."
+		description = "특정 컬렉션을 북마크한 유저 목록과 총 북마크 수를 조회합니다. - 재민"
 	)
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "조회 성공"),
