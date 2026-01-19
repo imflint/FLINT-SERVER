@@ -46,7 +46,7 @@ public class CollectionQueryRepository {
 				cursor != null ? collection.id.lt(cursor) : null,
 				collection.isPublic.isTrue()
 			)
-			.orderBy(collection.id.desc())
+			.orderBy(collection.createdAt.desc())
 			.limit(size + 1L)
 			.fetch();
 	}
