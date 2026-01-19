@@ -1,6 +1,9 @@
 package kr.flint.bookmark.service;
 
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -60,6 +63,14 @@ public class BookmarkService {
 
 	public List<Long> getBookmarkedCollectionIds(final Long userId) {
 		return collectionBookmarkRepository.findCollectionIdsByUserId(userId);
+	}
+
+	// 북마크한 컬렉션 ID Set 조회 (비로그인 시 빈 Set 반환)
+	public Set<Long> getBookmarkedCollectionIdSet(final Long userId) {
+		if (userId == null) {
+			return Collections.emptySet();
+		}
+		return new HashSet<>(collectionBookmarkRepository.findCollectionIdsByUserId(userId));
 	}
 
 	@Transactional

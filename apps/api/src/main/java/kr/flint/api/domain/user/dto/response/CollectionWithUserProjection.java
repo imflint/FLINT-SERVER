@@ -5,9 +5,15 @@ public interface CollectionWithUserProjection {
 
     String getTitle();
 
+    String getDescription();
+
     String getImage();
+
+    Integer getBookmarkCount();
+
+    Long getUserId();
 
     String getProfileImage();
 
-    String getUserName();
+    String getNickname();
 }

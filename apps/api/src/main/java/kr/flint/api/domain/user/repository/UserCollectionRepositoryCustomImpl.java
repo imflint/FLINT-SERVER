@@ -1,6 +1,8 @@
 package kr.flint.api.domain.user.repository;
 
 import static kr.flint.collection.domain.QCollection.*;
+import static kr.flint.collection.domain.QCollectionContent.*;
+import static kr.flint.content.domain.QContent.*;
 import static kr.flint.user.domain.QUser.*;
 
 import java.util.List;
@@ -10,6 +12,8 @@ import org.springframework.util.CollectionUtils;
 import com.querydsl.core.types.Projections;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
+import kr.flint.api.domain.user.dto.response.CollectionContentImageProjection;
+import kr.flint.api.domain.user.dto.response.CollectionContentImageProjectionImpl;
 import kr.flint.api.domain.user.dto.response.CollectionWithUserProjection;
 import kr.flint.api.domain.user.dto.response.CollectionWithUserProjectionImpl;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +33,10 @@ public class UserCollectionRepositoryCustomImpl implements UserCollectionReposit
 			.select(Projections.constructor(CollectionWithUserProjectionImpl.class,
 				collection.id,
 				collection.title,
+				collection.description,
 				collection.image,
+				collection.bookmarkCount,
+				collection.userId,
 				user.profileImage,
 				user.nickname
 			))
@@ -52,7 +59,10 @@ public class UserCollectionRepositoryCustomImpl implements UserCollectionReposit
 			.select(Projections.constructor(CollectionWithUserProjectionImpl.class,
 				collection.id,
 				collection.title,
+				collection.description,
 				collection.image,
+				collection.bookmarkCount,
+				collection.userId,
 				user.profileImage,
 				user.nickname
 			))
@@ -78,7 +88,10 @@ public class UserCollectionRepositoryCustomImpl implements UserCollectionReposit
 			.select(Projections.constructor(CollectionWithUserProjectionImpl.class,
 				collection.id,
 				collection.title,
+				collection.description,
 				collection.image,
+				collection.bookmarkCount,
+				collection.userId,
 				user.profileImage,
 				user.nickname
 			))
@@ -101,7 +114,10 @@ public class UserCollectionRepositoryCustomImpl implements UserCollectionReposit
 			.select(Projections.constructor(CollectionWithUserProjectionImpl.class,
 				collection.id,
 				collection.title,
+				collection.description,
 				collection.image,
+				collection.bookmarkCount,
+				collection.userId,
 				user.profileImage,
 				user.nickname
 			))
@@ -112,6 +128,26 @@ public class UserCollectionRepositoryCustomImpl implements UserCollectionReposit
 				collection.isPublic.isTrue()
 			)
 			.orderBy(collection.id.desc())
+			.fetch();
+
+		return List.copyOf(result);
+	}
+
+	@Override
+	public List<CollectionContentImageProjection> findContentImagesByCollectionIds(List<Long> collectionIds) {
+		if (CollectionUtils.isEmpty(collectionIds)) {
+			return List.of();
+		}
+
+		List<CollectionContentImageProjectionImpl> result = queryFactory
+			.select(Projections.constructor(CollectionContentImageProjectionImpl.class,
+				collectionContent.collection.id,
+				content.poster
+			))
+			.from(collectionContent)
+			.join(content).on(collectionContent.contentId.eq(content.id))
+			.where(collectionContent.collection.id.in(collectionIds))
+			.orderBy(collectionContent.id.asc())
 			.fetch();
 
 		return List.copyOf(result);

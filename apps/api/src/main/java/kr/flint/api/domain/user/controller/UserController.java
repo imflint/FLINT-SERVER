@@ -98,20 +98,22 @@ public class UserController implements UserControllerDocs {
     @Override
     @GetMapping("/{userId}/collections")
     public ResponseEntity<SuccessResponse<UserCollectionsRes>> getUserCollections(
+            @CurrentUser Long currentUserId,
             @PathVariable Long userId
     ) {
         return ResponseEntity.ok(
-                SuccessResponse.of(SuccessCode.SUCCESS_COLLECTIONS_FETCH, userQueryFacade.getPublicCollections(userId))
+                SuccessResponse.of(SuccessCode.SUCCESS_COLLECTIONS_FETCH, userQueryFacade.getPublicCollections(currentUserId, userId))
         );
     }
 
     @Override
     @GetMapping("/{userId}/bookmarked-collections")
     public ResponseEntity<SuccessResponse<UserBookmarkedCollectionsRes>> getUserBookmarkedCollections(
+            @CurrentUser Long currentUserId,
             @PathVariable Long userId
     ) {
         return ResponseEntity.ok(
-                SuccessResponse.of(SuccessCode.SUCCESS_COLLECTIONS_FETCH, userQueryFacade.getPublicBookmarkedCollections(userId))
+                SuccessResponse.of(SuccessCode.SUCCESS_COLLECTIONS_FETCH, userQueryFacade.getPublicBookmarkedCollections(currentUserId, userId))
         );
     }
 

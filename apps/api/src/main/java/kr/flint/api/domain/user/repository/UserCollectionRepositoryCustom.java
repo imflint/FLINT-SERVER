@@ -2,6 +2,7 @@ package kr.flint.api.domain.user.repository;
 
 import java.util.List;
 
+import kr.flint.api.domain.user.dto.response.CollectionContentImageProjection;
 import kr.flint.api.domain.user.dto.response.CollectionWithUserProjection;
 
 public interface UserCollectionRepositoryCustom {
@@ -17,4 +18,7 @@ public interface UserCollectionRepositoryCustom {
 
 	// 타인 북마크 조회용 (공개만)
 	List<CollectionWithUserProjection> findPublicCollectionsWithUserByIdIn(List<Long> collectionIds);
+
+	// 컬렉션별 콘텐츠 이미지 조회
+	List<CollectionContentImageProjection> findContentImagesByCollectionIds(List<Long> collectionIds);
 }

@@ -100,21 +100,23 @@ public interface UserControllerDocs {
     );
 
     @Operation(summary = "사용자 컬렉션 조회 - 호주",
-               description = "특정 사용자가 생성한 공개 컬렉션을 조회합니다.")
+               description = "특정 사용자가 생성한 공개 컬렉션을 조회합니다. 본인의 북마크 여부가 포함")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "컬렉션 조회 성공", useReturnTypeSchema = true)
     })
     ResponseEntity<SuccessResponse<UserCollectionsRes>> getUserCollections(
+            @Parameter(hidden = true) Long currentUserId,
             @Parameter(description = "사용자 ID", example = "123456789")
             @PathVariable Long userId
     );
 
     @Operation(summary = "사용자 북마크 컬렉션 조회 - 호주",
-               description = "특정 사용자가 북마크한 공개 컬렉션을 조회합니다.")
+               description = "특정 사용자가 북마크한 공개 컬렉션을 조회합니다. 본인의 북마크 여부가 포함")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "북마크 컬렉션 조회 성공", useReturnTypeSchema = true)
     })
     ResponseEntity<SuccessResponse<UserBookmarkedCollectionsRes>> getUserBookmarkedCollections(
+            @Parameter(hidden = true) Long currentUserId,
             @Parameter(description = "사용자 ID", example = "123456789")
             @PathVariable Long userId
     );

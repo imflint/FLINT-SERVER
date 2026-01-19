@@ -1,12 +1,17 @@
 package kr.flint.api.domain.user.service;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import kr.flint.api.domain.bookmark.repository.BookmarkQueryRepository;
+import kr.flint.api.domain.user.dto.response.CollectionContentImageProjection;
 import kr.flint.api.domain.user.dto.response.CollectionWithUserProjection;
 import kr.flint.api.domain.user.dto.response.UserBookmarkedCollectionsRes;
 import kr.flint.api.domain.user.dto.response.UserCollectionsRes;
@@ -67,29 +72,63 @@ public class UserQueryFacade {
 
     public UserCollectionsRes getMyCollections(Long userId) {
         List<CollectionWithUserProjection> collections = userCollectionRepository.findAllCollectionsWithUserByUserId(userId);
-        return UserCollectionsRes.from(collections, cloudFrontUrlProvider::resolveUrl);
+        if (collections.isEmpty()) {
+            return new UserCollectionsRes(Collections.emptyList());
+        }
+
+        List<Long> collectionIds = collections.stream().map(CollectionWithUserProjection::getId).toList();
+        Map<Long, List<String>> contentImagesMap = buildContentImagesMap(collectionIds);
+        Set<Long> bookmarkedIds = bookmarkService.getBookmarkedCollectionIdSet(userId);
+
+        return UserCollectionsRes.from(collections, contentImagesMap, bookmarkedIds, cloudFrontUrlProvider::resolveUrl);
     }
 
-    public UserCollectionsRes getPublicCollections(Long userId) {
-        List<CollectionWithUserProjection> collections = userCollectionRepository.findPublicCollectionsWithUserByUserId(userId);
-        return UserCollectionsRes.from(collections, cloudFrontUrlProvider::resolveUrl);
+    public UserCollectionsRes getPublicCollections(Long currentUserId, Long targetUserId) {
+        List<CollectionWithUserProjection> collections = userCollectionRepository.findPublicCollectionsWithUserByUserId(targetUserId);
+        if (collections.isEmpty()) {
+            return new UserCollectionsRes(Collections.emptyList());
+        }
+
+        List<Long> collectionIds = collections.stream().map(CollectionWithUserProjection::getId).toList();
+        Map<Long, List<String>> contentImagesMap = buildContentImagesMap(collectionIds);
+        Set<Long> bookmarkedIds = bookmarkService.getBookmarkedCollectionIdSet(currentUserId);
+
+        return UserCollectionsRes.from(collections, contentImagesMap, bookmarkedIds, cloudFrontUrlProvider::resolveUrl);
     }
 
     public UserBookmarkedCollectionsRes getMyBookmarkedCollections(Long userId) {
         List<Long> collectionIds = bookmarkService.getBookmarkedCollectionIds(userId);
         if (collectionIds.isEmpty()) {
-            return UserBookmarkedCollectionsRes.from(Collections.emptyList(), cloudFrontUrlProvider::resolveUrl);
+            return new UserBookmarkedCollectionsRes(Collections.emptyList());
         }
+
         List<CollectionWithUserProjection> collections = userCollectionRepository.findAllCollectionsWithUserByIdIn(collectionIds);
-        return UserBookmarkedCollectionsRes.from(collections, cloudFrontUrlProvider::resolveUrl);
+        Map<Long, List<String>> contentImagesMap = buildContentImagesMap(collectionIds);
+        Set<Long> bookmarkedIds = bookmarkService.getBookmarkedCollectionIdSet(userId);
+
+        return UserBookmarkedCollectionsRes.from(collections, contentImagesMap, bookmarkedIds, cloudFrontUrlProvider::resolveUrl);
     }
 
-    public UserBookmarkedCollectionsRes getPublicBookmarkedCollections(Long userId) {
-        List<Long> collectionIds = bookmarkService.getBookmarkedCollectionIds(userId);
+    public UserBookmarkedCollectionsRes getPublicBookmarkedCollections(Long currentUserId, Long targetUserId) {
+        List<Long> collectionIds = bookmarkService.getBookmarkedCollectionIds(targetUserId);
         if (collectionIds.isEmpty()) {
-            return UserBookmarkedCollectionsRes.from(Collections.emptyList(), cloudFrontUrlProvider::resolveUrl);
+            return new UserBookmarkedCollectionsRes(Collections.emptyList());
         }
+
         List<CollectionWithUserProjection> collections = userCollectionRepository.findPublicCollectionsWithUserByIdIn(collectionIds);
-        return UserBookmarkedCollectionsRes.from(collections, cloudFrontUrlProvider::resolveUrl);
+        List<Long> publicCollectionIds = collections.stream().map(CollectionWithUserProjection::getId).toList();
+        Map<Long, List<String>> contentImagesMap = buildContentImagesMap(publicCollectionIds);
+        Set<Long> bookmarkedIds = bookmarkService.getBookmarkedCollectionIdSet(currentUserId);
+
+        return UserBookmarkedCollectionsRes.from(collections, contentImagesMap, bookmarkedIds, cloudFrontUrlProvider::resolveUrl);
+    }
+
+    private Map<Long, List<String>> buildContentImagesMap(List<Long> collectionIds) {
+        List<CollectionContentImageProjection> images = userCollectionRepository.findContentImagesByCollectionIds(collectionIds);
+        Map<Long, List<String>> map = new LinkedHashMap<>();
+        for (CollectionContentImageProjection img : images) {
+            map.computeIfAbsent(img.getCollectionId(), k -> new ArrayList<>()).add(img.getPoster());
+        }
+        return map;
     }
 }
