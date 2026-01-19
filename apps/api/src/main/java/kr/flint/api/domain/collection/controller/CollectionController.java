@@ -75,7 +75,7 @@ public class CollectionController  implements CollectionControllerDocs {
 	public ResponseEntity<SuccessResponse<GetCollectionListRes>> getRecentCollectionList(
 		@CurrentUser Long userId
 	){
-		List<GetCollectionDetailListRes> getCollectionDetailListRes = collectionQueryService.getRecentCollectionList(1L);
+		List<GetCollectionDetailListRes> getCollectionDetailListRes = collectionQueryService.getRecentCollectionList(userId);
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, new GetCollectionListRes(getCollectionDetailListRes)));
 	}
 
