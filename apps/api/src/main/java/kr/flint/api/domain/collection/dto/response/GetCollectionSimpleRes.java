@@ -4,14 +4,11 @@ import java.time.LocalDate;
 import java.util.function.Function;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 
 import kr.flint.collection.domain.Collection;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record GetCollectionSimpleRes(
-	@JsonSerialize(using = ToStringSerializer.class)
 	Long collectionId,
 	String imageUrl,
 	String title,

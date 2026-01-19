@@ -3,12 +3,9 @@ package kr.flint.api.domain.content.dto;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record GetContentDetailRes(
-	@JsonSerialize(using = ToStringSerializer.class)
 	Long id,
 	String title,
 	int year,
