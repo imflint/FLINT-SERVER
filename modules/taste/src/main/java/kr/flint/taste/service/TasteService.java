@@ -32,6 +32,10 @@ public class TasteService {
         return userKeywordRepository.findUserKeywordsWithDetails(userId);
     }
 
+    public boolean hasUserKeywords(Long userId) {
+        return userKeywordRepository.existsByUserId(userId);
+    }
+
 
 	//TODO : LV 대신 색상
 	@Transactional

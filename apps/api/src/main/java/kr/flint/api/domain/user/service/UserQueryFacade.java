@@ -55,7 +55,10 @@ public class UserQueryFacade {
 
 	@Transactional
     public UserKeywordsRes getUserKeywords(Long userId) {
-		userCommandFacade.callGpt(userId);
+		// 키워드가 없을 때만 GPT 호출
+		if (!tasteService.hasUserKeywords(userId)) {
+			userCommandFacade.callGpt(userId);
+		}
 
         List<UserKeywordProjection> keywords = tasteService.getUserKeywords(userId);
 		log.info("keywords: {}", keywords);
