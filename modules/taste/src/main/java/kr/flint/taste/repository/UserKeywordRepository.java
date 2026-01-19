@@ -12,7 +12,7 @@ import org.springframework.stereotype.Repository;
 import kr.flint.taste.dto.response.UserKeywordProjection;
 
 @Repository
-public interface UserKeywordRepository extends JpaRepository<UserKeyword, Long> {
+public interface UserKeywordRepository extends JpaRepository<UserKeyword, Long>, UserKeywordRepositoryCustom {
 
     List<UserKeyword> findByUserId(Long userId);
 

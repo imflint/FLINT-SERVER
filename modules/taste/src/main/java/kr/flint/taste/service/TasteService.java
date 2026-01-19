@@ -58,6 +58,6 @@ public class TasteService {
 				})
 					.toList();
 
-		userKeywordRepository.saveAll(userKeywordList);
+		userKeywordRepository.bulkUpsert(userId, userKeywordList);
 	}
 }
