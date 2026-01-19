@@ -20,15 +20,19 @@ public record SocialVerifyRes(
         @Schema(description = "사용자 ID (기존 회원인 경우에만 반환)", example = "123456789")
         Long userId,
 
+		@Schema(description = "사용자 nickname (기존 회원인 경우에만 반환)", example = "코코아")
+		String nickname,
+
         @Schema(description = "임시 토큰 (신규 회원인 경우에만 반환 - 회원가입 시 사용)", example = "temp_token_xxx")
         String tempToken
 ) {
-    public static SocialVerifyRes registered(String accessToken, String refreshToken, Long userId) {
+    public static SocialVerifyRes registered(String accessToken, String refreshToken, Long userId, String nickname) {
         return SocialVerifyRes.builder()
                 .isRegistered(true)
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .userId(userId)
+				.nickname(nickname)
                 .build();
     }
 

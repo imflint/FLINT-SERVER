@@ -50,7 +50,8 @@ public class AuthFacade {
             // 기존 회원 - 인증 정보 조회 후 토큰 발급
             UserAuthInfo authInfo = userService.getAuthInfo(result.userId());
             AuthTokens tokens = authService.issueTokens(authInfo.userId(), authInfo.role());
-            return SocialVerifyRes.registered(tokens.accessToken(), tokens.refreshToken(), authInfo.userId());
+            return SocialVerifyRes.registered(tokens.accessToken(), tokens.refreshToken(), authInfo.userId(),
+				authInfo.nickname());
         }
 
         // 신규 회원

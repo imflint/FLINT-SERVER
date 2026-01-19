@@ -38,7 +38,7 @@ public class UserService {
     // 인증용 사용자 정보 조회
     public UserAuthInfo getAuthInfo(Long userId) {
         User user = getById(userId);
-        return UserAuthInfo.of(user.getId(), user.getUserRole().name());
+        return UserAuthInfo.of(user.getId(), user.getNickname(), user.getUserRole().name());
     }
 
     @Transactional
@@ -49,7 +49,7 @@ public class UserService {
 
         User user = User.createFling(nickname);
         User saved = userRepository.save(user);
-        return UserAuthInfo.of(saved.getId(), saved.getUserRole().name());
+        return UserAuthInfo.of(saved.getId(), saved.getNickname(), saved.getUserRole().name());
     }
 	public List<UserSimpleRes> getUserInfoList(List<Long> userIdList) {
 		if (CollectionUtils.isEmpty(userIdList)) {
