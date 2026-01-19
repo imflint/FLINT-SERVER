@@ -17,17 +17,11 @@ import kr.flint.shared.exception.ProblemDetail;
 public interface BookmarkControllerDocs {
 
 	@Operation(
-		summary = "콘텐츠 북마크 토글",
+		summary = "콘텐츠 북마크 토글 - 재민",
 		description = "콘텐츠를 북마크하거나 이미 북마크된 경우 해제합니다."
 	)
 	@ApiResponses({
-		@ApiResponse(
-			responseCode = "200",
-			description = "토글 성공",
-			content = @Content(
-				schema = @Schema(implementation = BookmarkToggleSwaggerResponse.class)
-			)
-		),
+		@ApiResponse(responseCode = "200", description = "토글 성공", useReturnTypeSchema = true),
 		@ApiResponse(
 			responseCode = "404",
 			description = "존재하지 않는 콘텐츠",
@@ -41,17 +35,11 @@ public interface BookmarkControllerDocs {
 	);
 
 	@Operation(
-		summary = "컬렉션 북마크 토글",
+		summary = "컬렉션 북마크 토글 - 재민",
 		description = "컬렉션을 북마크하거나 이미 북마크된 경우 해제합니다."
 	)
 	@ApiResponses({
-		@ApiResponse(
-			responseCode = "200",
-			description = "토글 성공",
-			content = @Content(
-				schema = @Schema(implementation = BookmarkToggleSwaggerResponse.class)
-			)
-		),
+		@ApiResponse(responseCode = "200", description = "토글 성공", useReturnTypeSchema = true),
 		@ApiResponse(
 			responseCode = "404",
 			description = "존재하지 않는 컬렉션",
@@ -65,17 +53,11 @@ public interface BookmarkControllerDocs {
 	);
 
 	@Operation(
-		summary = "컬렉션 북마크 유저 조회",
+		summary = "컬렉션 북마크 유저 조회 - 재민",
 		description = "특정 컬렉션을 북마크한 유저 목록과 총 북마크 수를 조회합니다."
 	)
 	@ApiResponses({
-		@ApiResponse(
-			responseCode = "200",
-			description = "조회 성공",
-			content = @Content(
-				schema = @Schema(implementation = GetBookmarkedUserSwaggerResponse.class)
-			)
-		),
+		@ApiResponse(responseCode = "200", description = "조회 성공", useReturnTypeSchema = true),
 		@ApiResponse(
 			responseCode = "404",
 			description = "존재하지 않는 컬렉션",

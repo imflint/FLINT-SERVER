@@ -10,14 +10,18 @@ import java.util.Set;
 
 import static kr.flint.shared.storage.FileExtension.*;
 
-@Schema(description = "S3 저장 경로 타입", enumAsRef = true)
+@Schema(
+    description = """
+        S3 저장 경로 타입
+        - USER_PROFILE: 사용자 프로필 이미지 (허용: JPG, JPEG, PNG)
+        - LOGO_IMAGE: 키워드 로고 이미지 (허용: JPG, JPEG, PNG, SVG)
+        """,
+    enumAsRef = true
+)
 @Getter
 @RequiredArgsConstructor
 public enum StoragePathType implements StoragePath {
-
-    @Schema(description = "사용자 프로필 이미지 (허용: JPG, JPEG, PNG)")
     USER_PROFILE("user/profile", Extensions.IMAGE),
-    @Schema(description = "키워드 로고 이미지 (허용: JPG, JPEG, PNG, SVG)")
     LOGO_IMAGE("keywords/logo", Extensions.LOGO),
     ;
 

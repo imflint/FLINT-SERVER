@@ -13,13 +13,14 @@ import kr.flint.shared.dto.response.SuccessResponse;
 public interface HomeControllerDocs {
 
     @Operation(
-        summary = "추천 컬렉션 조회",
+        summary = "추천 컬렉션 조회 - 호주",
         description = "사용자 취향 키워드 기반 추천 컬렉션 목록(최대 10개)을 조회합니다."
     )
     @ApiResponses({
         @ApiResponse(
             responseCode = "200",
-            description = "추천 컬렉션 조회 성공"
+            description = "추천 컬렉션 조회 성공",
+            useReturnTypeSchema = true
         )
     })
     ResponseEntity<SuccessResponse<RecommendedCollectionsRes>> getRecommendedCollections(Long userId);

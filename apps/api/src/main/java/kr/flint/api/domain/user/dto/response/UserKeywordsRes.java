@@ -3,12 +3,13 @@ package kr.flint.api.domain.user.dto.response;
 import java.util.List;
 import java.util.function.Function;
 
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 import kr.flint.taste.dto.response.UserKeywordProjection;
 
 @Schema(description = "사용자 취향 키워드 응답")
 public record UserKeywordsRes(
-    @Schema(description = "키워드 목록")
+    @ArraySchema(schema = @Schema(implementation = KeywordItem.class))
     List<KeywordItem> keywords
 ) {
     public static UserKeywordsRes from(List<UserKeywordProjection> projections, Function<String, String> imageUrlResolver) {
@@ -20,7 +21,7 @@ public record UserKeywordsRes(
 
     @Schema(description = "키워드 항목")
     public record KeywordItem(
-		@Schema(description = "Color", example = "ORANGE")
+		@Schema(description = "키워드 색상 (PINK, GREEN, ORANGE, YELLOW, BLUE)", example = "ORANGE")
 		String color,
 		@Schema(description = "순위", example = "1")
 		int rank,
