@@ -16,11 +16,13 @@ import kr.flint.shared.dto.response.SuccessResponse;
 import kr.flint.user.dto.response.NicknameCheckResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
+@Validated
 public class UserController implements UserControllerDocs {
 
     private final UserQueryFacade userQueryFacade;
