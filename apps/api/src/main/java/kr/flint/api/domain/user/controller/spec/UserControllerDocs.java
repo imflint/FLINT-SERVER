@@ -69,7 +69,7 @@ public interface UserControllerDocs {
             @Parameter(hidden = true) Long userId
     );
 
-    @Operation(summary = "내 취향 키워드 재계산 - 호주",
+    @Operation(summary = "내 취향 키워드 재계산 - 재민",
                description = "GPT를 호출하여 로그인한 사용자의 취향 키워드를 다시 계산합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "취향 키워드 재계산 성공", useReturnTypeSchema = true)
