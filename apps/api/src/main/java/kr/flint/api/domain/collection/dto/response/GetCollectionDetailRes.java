@@ -15,7 +15,7 @@ public record GetCollectionDetailRes(
 	@Schema(description = "컬렉션 설명", example = "편하게 볼 수 있는 영화들을 모았습니다")
 	String description,
 	@Schema(description = "컬렉션 이미지 URL", example = "https://example.com/image.jpg")
-	String imageUrl,
+	String thumbnailUrl,
 	@Schema(description = "생성일", example = "2024-01-15")
 	LocalDate createdAt,
 	@Schema(description = "북마크 여부", example = "true")
@@ -46,7 +46,7 @@ public record GetCollectionDetailRes(
 		@Schema(description = "콘텐츠 제목", example = "눈물의 여왕")
 		String title,
 		@Schema(description = "썸네일 URL", example = "https://example.com/thumb.jpg")
-		String thumbnailUrl,
+		String imagelUrl,
 		@Schema(description = "감독/작가", example = "박지은")
 		String authorName,
 		@Schema(description = "북마크 여부", example = "false")
