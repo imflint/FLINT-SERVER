@@ -10,7 +10,7 @@ import kr.flint.collection.dto.CollectionCreateCommand;
 
 @Schema(description = "컬렉션 생성 요청")
 public record CreateCollectionReq(
-	@Schema(description = "컬렉션 대표 이미지 URL (선택)")
+	@Schema(description = "컬렉션 대표 이미지 URL (선택)", example = "collection/image/abc123.jpg")
 	@Nullable
 	String imageUrl,
 
