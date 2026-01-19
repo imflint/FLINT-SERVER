@@ -37,7 +37,7 @@ public class ContentController implements ContentControllerDocs {
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, getOttResponseList));
 	}
 
-	@GetMapping
+	@GetMapping("/bookmarks")
 	public ResponseEntity<SuccessResponse<List<GetContentDetailRes>>> getBookmarkContent(
 		@CurrentUser Long userId
 	){

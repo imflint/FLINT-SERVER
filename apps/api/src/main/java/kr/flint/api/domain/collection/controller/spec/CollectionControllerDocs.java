@@ -35,7 +35,7 @@ public interface CollectionControllerDocs {
 		)
 	})
 	ResponseEntity<SuccessResponse<?>> postCollection(
-		Long userId,
+		//Long userId,
 		@Parameter(description = "컬렉션 생성 요청 바디")
 		CreateCollectionReq createCollectionReq
 	);

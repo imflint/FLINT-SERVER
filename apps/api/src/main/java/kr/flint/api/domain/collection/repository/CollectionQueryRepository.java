@@ -2,6 +2,8 @@ package kr.flint.api.domain.collection.repository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -108,6 +110,7 @@ public class CollectionQueryRepository {
 				.select(Projections.constructor(
 					CollectionBaseRow.class,
 					collection.id,
+					content.poster,
 					collection.title,
 					collection.description,
 					collection.bookmarkCount,
@@ -123,6 +126,8 @@ public class CollectionQueryRepository {
 					collectionBookmark.collectionId.eq(collection.id)
 						.and(collectionBookmark.userId.eq(userId))
 				)
+				.join(collectionContent).on(collectionContent.collection.id.eq(collection.id))
+				.join(content).on(content.id.eq(collectionContent.contentId))
 				.where(recentViewedCollection.userId.eq(userId))
 				.orderBy(recentViewedCollection.createdAt.desc())
 				.fetch();
@@ -137,22 +142,28 @@ public class CollectionQueryRepository {
 				.select(Projections.constructor(
 					ContentImageRow.class,
 					collectionContent.collection.id,
-					content.poster // 너희 컬럼명에 맞게
+					content.poster
 				))
 				.from(collectionContent)
 				.join(content).on(content.id.eq(collectionContent.contentId))
 				.where(collectionContent.collection.id.in(collectionIds))
+				.orderBy(
+					collectionContent.collection.id.asc(),
+					collectionContent.id.asc()
+				)
 				.fetch();
 
-		Map<Long, List<String>> imageMap = imageRows.stream()
-			.collect(Collectors.groupingBy(
-				ContentImageRow::collectionId,
-				Collectors.mapping(ContentImageRow::contentImage, Collectors.toList())
-			));
-
+		Map<Long, List<String>> imageMap = new LinkedHashMap<>();
+		for (ContentImageRow row : imageRows) {
+			List<String> list = imageMap.computeIfAbsent(row.collectionId(), k -> new ArrayList<>());
+			if (list.size() < 2 && row.contentImage() != null) {
+				list.add(row.contentImage());
+			}
+		}
 		return baseRows.stream()
 			.map(r -> new GetCollectionDetailListRes(
 				r.collectionId(),
+				r.thumbnailUrl,
 				r.title(),
 				r.description(),
 				imageMap.getOrDefault(r.collectionId(), List.of()),
@@ -167,6 +178,7 @@ public class CollectionQueryRepository {
 
 	public record CollectionBaseRow(
 		Long collectionId,
+		String thumbnailUrl,
 		String title,
 		String description,
 		Integer bookmarkCount,

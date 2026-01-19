@@ -9,6 +9,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public record GetCollectionDetailListRes(
 	@Schema(description = "컬렉션 ID", example = "1")
 	Long collectionId,
+	@Schema(description = "컬렉션 썸네일", example = "https://example.com/thumbnail.jpg")
+	String thumbnailUrl,
 	@Schema(description = "컬렉션 제목", example = "주말에 보기 좋은 영화")
 	String title,
 	@Schema(description = "컬렉션 설명", example = "편하게 볼 수 있는 영화들")

@@ -12,7 +12,7 @@ public record GetContentDetailRes(
 	List<GetOttSimpleRes> getOttSimpleList
 ) {
 	public record GetOttSimpleRes(
-		Long ottId,
+		String ottName,
 		String logoUrl
 	) {
 	}

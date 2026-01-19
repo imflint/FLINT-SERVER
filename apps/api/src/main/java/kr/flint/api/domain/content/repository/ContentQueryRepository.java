@@ -34,7 +34,7 @@ public class ContentQueryRepository {
 				content.id,
 				content.title,
 				content.year,
-				ottProvider.id,
+				ottProvider.name,
 				ottProvider.logoUrl
 			)
 			.from(content)
@@ -62,7 +62,7 @@ public class ContentQueryRepository {
 			String title = row.get(content.title);
 			int year = row.get(content.year);
 
-			Long ottId = row.get(ottProvider.id);
+			String ottName = row.get(ottProvider.name);
 			String logoUrl = row.get(ottProvider.logoUrl);
 
 			contentMap.computeIfAbsent(contentId, id ->
@@ -75,8 +75,8 @@ public class ContentQueryRepository {
 			);
 
 			GetContentDetailRes dto = contentMap.get(contentId);
-			if (ottId != null) {
-				dto.getOttSimpleList().add(new GetContentDetailRes.GetOttSimpleRes(ottId, logoUrl));
+			if (ottName != null) {
+				dto.getOttSimpleList().add(new GetContentDetailRes.GetOttSimpleRes(ottName, logoUrl));
 			}
 
 		}
