@@ -40,7 +40,7 @@ public class ContentQueryRepository {
 
 		// 2) 컨텐츠 기본 정보
 		List<Tuple> contentRows = jpaQueryFactory
-			.select(content.id, content.title, content.year)
+			.select(content.id, content.title, content.year, content.poster)
 			.from(content)
 			.where(content.id.in(topContentIds))
 			.fetch();
@@ -53,12 +53,12 @@ public class ContentQueryRepository {
 			contentMap.put(id, new GetContentDetailRes(
 				id,
 				row.get(content.title),
+				row.get(content.poster),
 				row.get(content.year),
 				new ArrayList<>()
 			));
 		}
 
-		// 3) OTT 정보는 left join + ott_user 조건은 ON으로만 걸기 (WHERE에 걸면 left join이 죽음)
 		List<Tuple> ottRows = jpaQueryFactory
 			.select(
 				ottContent.contentId,

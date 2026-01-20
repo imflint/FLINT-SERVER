@@ -11,6 +11,7 @@ public record GetContentDetailRes(
 	@Schema(type = "string")
 	Long id,
 	String title,
+	String imageUrl,
 	int year,
 	List<GetOttSimpleRes> getOttSimpleList
 ) {
