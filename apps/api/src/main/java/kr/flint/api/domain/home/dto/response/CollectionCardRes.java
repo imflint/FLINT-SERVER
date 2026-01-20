@@ -29,7 +29,7 @@ public record CollectionCardRes(
     @Schema(description = "작성자 닉네임", example = "플린트")
     String nickname,
     @Schema(description = "작성자 프로필 URL", example = "https://example.com/profile.jpg")
-    String profileUrl
+    String profileImageUrl
 ) {
     public static CollectionCardRes from(
         CollectionCardDto dto,

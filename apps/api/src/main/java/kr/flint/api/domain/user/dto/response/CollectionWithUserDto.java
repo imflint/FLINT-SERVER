@@ -11,7 +11,7 @@ public record CollectionWithUserDto(
 	Integer bookmarkCount,
 	@Schema(type = "string")
 	Long userId,
-	String profileImage,
+	String profileImageUrl,
 	String nickname
 ) {
 }
