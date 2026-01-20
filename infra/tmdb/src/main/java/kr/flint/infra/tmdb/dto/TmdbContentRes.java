@@ -13,6 +13,9 @@ public record TmdbContentRes(
 	@JsonProperty("title")
 	String title,
 
+	@JsonProperty("name")
+	String name,
+
 	@JsonProperty("overview")
 	String overview,
 
@@ -28,4 +31,8 @@ public record TmdbContentRes(
 	@JsonProperty("media_type")
 	String mediaType
 ) {
+	// 영화는 title, TV는 name 필드 사용
+	public String resolvedTitle() {
+		return title != null ? title : name;
+	}
 }

@@ -77,9 +77,10 @@ public class ContentCommandFacade {
 					log.info("날짜 2: ", result.releaseDate());
 
 					int year = extractYearFromDate(result.releaseDate());
+					String resolvedTitle = result.resolvedTitle();
 					Content content = Content.create(
 						result.id(),
-						result.title(),
+						resolvedTitle,
 						year,
 						author,
 						result.overview(),
@@ -91,7 +92,7 @@ public class ContentCommandFacade {
 
 					return GetContentSearchRes.of(
 						result.id(),
-						result.title(),
+						resolvedTitle,
 						author,
 						posterUrl,
 						year
@@ -142,9 +143,10 @@ public class ContentCommandFacade {
 					tmdbGenreList = extractTvGenreList(result.id());
 				}
 
+				String resolvedTitle = result.resolvedTitle();
 				Content content = Content.create(
 					result.id(),
-					result.title(),
+					resolvedTitle,
 					year,
 					author,
 					result.overview(),
@@ -161,7 +163,7 @@ public class ContentCommandFacade {
 
 				return GetContentSearchRes.of(
 					result.id(),
-					result.title(),
+					resolvedTitle,
 					author,
 					posterUrl,
 					year
