@@ -92,7 +92,8 @@ public class CollectionQueryRepository {
 				content.bookmarkCount,
 
 				collectionContent.isSpoiler,
-				collectionContent.reason
+				collectionContent.reason,
+				content.year
 			))
 			.from(collectionContent)
 			.join(content).on(content.id.eq(collectionContent.contentId))

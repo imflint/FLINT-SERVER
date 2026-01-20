@@ -47,8 +47,8 @@ public record GetCollectionDetailRes(
 		String title,
 		@Schema(description = "썸네일 URL", example = "https://example.com/thumb.jpg")
 		String imageUrl,
-		@Schema(description = "감독/작가", example = "박지은")
-		String authorName,
+		@Schema(description = "감독/작가", example = "아자스")
+		String director,
 		@Schema(description = "북마크 여부", example = "false")
 		boolean isBookmarked,
 		@Schema(description = "북마크 수", example = "120")
@@ -56,6 +56,8 @@ public record GetCollectionDetailRes(
 		@Schema(description = "스포일러 포함 여부", example = "false")
 		boolean isSpoiler,
 		@Schema(description = "선정 이유", example = "감동적인 스토리")
-		String reason
-	){}
+		String reason,
+		@Schema(description = "개봉일", example = "2026")
+		int year
+		){}
 }
