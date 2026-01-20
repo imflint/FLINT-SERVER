@@ -23,7 +23,7 @@ public class OttContent extends Base {
 	@Column(nullable = false)
 	private Long contentId;
 
-	@Column(name = "content_url")
+	@Column(name = "content_url", columnDefinition = "TEXT")
 	private String contentUrl;
 
 	public static OttContent create(OttProvider ottProvider, Long contentId, String contentUrl) {
