@@ -28,7 +28,7 @@ public class SearchQueryFacade {
 				.map(GetContentSearchRes::from)
 				.toList();
 		}
-		List<Content> contentList = contentService.getContentByTitle(keyword);
+		List<Content> contentList = contentService.getContentByTitle(keyword).isEmpty() ? List.of() : contentService.getContentByTitle(keyword);
 		return contentList.stream()
 			.map(GetContentSearchRes::from)
 			.toList();
