@@ -11,7 +11,7 @@ public record UserProfileRes(
     @Schema(description = "닉네임", example = "홍길동")
     String nickname,
     @Schema(description = "프로필 이미지 URL")
-    String profileImage,
+    String profileImageUrl,
     @Schema(description = "플리너 여부", example = "false")
     boolean isFliner
 ) {
