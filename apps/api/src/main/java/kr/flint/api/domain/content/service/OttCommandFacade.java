@@ -25,7 +25,9 @@ public class OttCommandFacade {
 	public void mapContentOtt(Long contentId, Long tmdbId, String mediaType) {
 
 		try {
-			TmdbOttRes res = tmdbClient.getMovieWatchProviders(tmdbId);
+			TmdbOttRes res = "tv".equals(mediaType)
+				? tmdbClient.getTvWatchProviders(tmdbId)
+				: tmdbClient.getMovieWatchProviders(tmdbId);
 			var country = (res.results() == null) ? null : res.results().get("KR");
 			if (country == null || country.flatrate() == null)
 				return;
