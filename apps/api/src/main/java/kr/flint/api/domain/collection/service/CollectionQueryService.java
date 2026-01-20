@@ -43,6 +43,6 @@ public class CollectionQueryService {
 
 	public List<GetCollectionDetailListRes> getRecentCollectionList(final Long userId){
 		List<GetCollectionDetailListRes> collectionList = collectionQueryRepository.getCollectionDetailList(userId);
-		return collectionList.isEmpty() ? null : collectionList;
+		return collectionList.isEmpty() ? List.of() : collectionList;
 	}
 }

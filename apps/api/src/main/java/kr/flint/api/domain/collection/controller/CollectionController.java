@@ -31,7 +31,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/collections")
-public class CollectionController  implements CollectionControllerDocs {
+public class CollectionController implements CollectionControllerDocs {
 	private final CollectionCommandFacade collectionCommandFacade;
 	private final CollectionQueryFacade collectionQueryFacade;
 	private final CollectionQueryService collectionQueryService;
