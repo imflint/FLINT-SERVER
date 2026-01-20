@@ -7,7 +7,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "컬렉션 상세 응답")
 public record GetCollectionDetailListRes(
-	@Schema(description = "컬렉션 ID", example = "1")
+	@Schema(description = "컬렉션 ID", example = "1", type = "string")
 	Long id,
 	@Schema(description = "컬렉션 썸네일", example = "https://example.com/thumbnail.jpg")
 	String thumbnailUrl,
@@ -22,7 +22,7 @@ public record GetCollectionDetailListRes(
 	@Schema(description = "북마크 여부", example = "true")
 	Boolean isBookmarked,
 
-	@Schema(description = "작성자 ID", example = "123")
+	@Schema(description = "작성자 ID", example = "123", type = "string")
 	Long userId,
 	@Schema(description = "작성자 닉네임", example = "플린트")
 	String nickname,

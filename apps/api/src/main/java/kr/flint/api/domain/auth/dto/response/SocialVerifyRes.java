@@ -17,7 +17,7 @@ public record SocialVerifyRes(
         @Schema(description = "리프레시 토큰 (기존 회원인 경우에만 반환)", example = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...")
         String refreshToken,
 
-        @Schema(description = "사용자 ID (기존 회원인 경우에만 반환)", example = "123456789")
+        @Schema(description = "사용자 ID (기존 회원인 경우에만 반환)", example = "123456789", type = "string")
         Long userId,
 
 		@Schema(description = "사용자 nickname (기존 회원인 경우에만 반환)", example = "코코아")

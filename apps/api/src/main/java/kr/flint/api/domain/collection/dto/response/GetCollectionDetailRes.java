@@ -8,7 +8,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "컬렉션 상세 응답")
 public record GetCollectionDetailRes(
-	@Schema(description = "컬렉션 ID", example = "1")
+	@Schema(description = "컬렉션 ID", example = "1", type = "string")
 	Long id,
 	@Schema(description = "컬렉션 제목", example = "주말에 보기 좋은 영화")
 	String title,
@@ -29,7 +29,7 @@ public record GetCollectionDetailRes(
 ) {
 	@Schema(description = "컬렉션 작성자")
 	public record Author(
-		@Schema(description = "사용자 ID", example = "123")
+		@Schema(description = "사용자 ID", example = "123", type = "string")
 		Long id,
 		@Schema(description = "닉네임", example = "플린트")
 		String nickname,
@@ -41,7 +41,7 @@ public record GetCollectionDetailRes(
 
 	@Schema(description = "컬렉션 내 콘텐츠")
 	public record Content(
-		@Schema(description = "콘텐츠 ID", example = "456")
+		@Schema(description = "콘텐츠 ID", example = "456", type = "string")
 		Long id,
 		@Schema(description = "콘텐츠 제목", example = "눈물의 여왕")
 		String title,

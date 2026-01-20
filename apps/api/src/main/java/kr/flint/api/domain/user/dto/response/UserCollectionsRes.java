@@ -33,7 +33,7 @@ public record UserCollectionsRes(
 
     @Schema(description = "컬렉션 항목")
     public record CollectionItem(
-        @Schema(description = "컬렉션 ID", example = "1")
+        @Schema(description = "컬렉션 ID", example = "1", type = "string")
         Long id,
         @Schema(description = "컬렉션 썸네일 (첫 번째 작품 포스터)", example = "https://example.com/thumbnail.jpg")
         String thumbnailUrl,
@@ -47,7 +47,7 @@ public record UserCollectionsRes(
         Integer bookmarkCount,
         @Schema(description = "북마크 여부", example = "true")
         Boolean isBookmarked,
-        @Schema(description = "작성자 ID", example = "123")
+        @Schema(description = "작성자 ID", example = "123", type = "string")
         Long userId,
         @Schema(description = "작성자 닉네임", example = "플린트")
         String nickname,

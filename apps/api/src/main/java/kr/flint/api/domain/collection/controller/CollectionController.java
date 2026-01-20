@@ -39,7 +39,7 @@ public class CollectionController  implements CollectionControllerDocs {
 
 	@Override
 	@PostMapping
-	public ResponseEntity<SuccessResponse<?>> postCollection(
+	public ResponseEntity<SuccessResponse<Void>> postCollection(
 		@CurrentUser Long userId,
 		@Valid @RequestBody CreateCollectionReq createCollectionReq
 	){

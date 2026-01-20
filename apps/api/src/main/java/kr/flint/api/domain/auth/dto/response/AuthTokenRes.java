@@ -13,7 +13,7 @@ public record AuthTokenRes(
         @Schema(description = "리프레시 토큰 (액세스 토큰 갱신 시 사용)", example = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...")
         String refreshToken,
 
-        @Schema(description = "사용자 ID", example = "123456789")
+        @Schema(description = "사용자 ID", example = "123456789", type = "string")
         Long userId
 ) {
     public static AuthTokenRes from(AuthTokens tokens) {

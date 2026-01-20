@@ -5,10 +5,12 @@ import java.util.function.Function;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import kr.flint.collection.domain.Collection;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record GetCollectionSimpleRes(
+	@Schema(type = "string")
 	Long collectionId,
 	String imageUrl,
 	String title,

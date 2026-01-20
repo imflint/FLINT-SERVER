@@ -35,7 +35,7 @@ public interface CollectionControllerDocs {
 			content = @Content(schema = @Schema(implementation = ProblemDetail.class))
 		)
 	})
-	ResponseEntity<SuccessResponse<?>> postCollection(
+	ResponseEntity<SuccessResponse<Void>> postCollection(
 		Long userId,
 		@Parameter(description = "컬렉션 생성 요청 바디")
 		CreateCollectionReq createCollectionReq

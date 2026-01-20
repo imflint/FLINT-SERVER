@@ -6,7 +6,7 @@ import kr.flint.user.domain.UserRole;
 
 @Schema(description = "사용자 프로필 응답")
 public record UserProfileRes(
-    @Schema(description = "사용자 ID", example = "123456789")
+    @Schema(description = "사용자 ID", example = "123456789", type = "string")
     String id,
     @Schema(description = "닉네임", example = "홍길동")
     String nickname,
