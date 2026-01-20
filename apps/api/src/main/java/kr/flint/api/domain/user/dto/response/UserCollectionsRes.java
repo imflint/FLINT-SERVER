@@ -52,7 +52,7 @@ public record UserCollectionsRes(
         @Schema(description = "작성자 닉네임", example = "플린트")
         String nickname,
         @Schema(description = "작성자 프로필 URL", example = "https://example.com/profile.jpg")
-        String profileUrl
+        String profileImageUrl
     ) {
         public static CollectionItem from(
             CollectionWithUserDto dto,
@@ -73,7 +73,7 @@ public record UserCollectionsRes(
                 isBookmarked,
                 dto.userId(),
                 dto.nickname(),
-                imageUrlResolver.apply(dto.profileImage())
+                imageUrlResolver.apply(dto.profileImageUrl())
             );
         }
     }
