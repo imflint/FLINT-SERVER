@@ -26,7 +26,7 @@ public class BookmarkQueryFacade {
 		int bookmarkCount = bookmarkQueryService.getBookmarkCount(collectionId);
 		List<Long> userIdList = bookmarkQueryService.getBookmarkUserId(collectionId);
 
-		List<UserSimpleRes> userList = userService.getUserInfoList(userIdList);
+		List<UserSimpleRes> userList = userIdList.isEmpty() ? List.of() : userService.getUserInfoList(userIdList);
 
 		return GetBookmarkUserRes.of(bookmarkCount, userList);
 	}
