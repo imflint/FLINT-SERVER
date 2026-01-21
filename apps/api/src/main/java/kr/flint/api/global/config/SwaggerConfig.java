@@ -63,6 +63,41 @@ public class SwaggerConfig {
         return "integer".equals(schema.getType()) && "int64".equals(schema.getFormat());
     }
 
+	@Bean
+	public OpenApiCustomizer authPublicEndpointsCustomizer() {
+		return openApi -> {
+			if (openApi.getPaths() == null) return;
+
+			Map<String, List<String>> publicByMethod = Map.of(
+				"/api/v1/auth/social/verify", List.of("POST"),
+				"/api/v1/auth/logout", List.of("POST"),
+				"/api/v1/auth/signup", List.of("POST"),
+				"/api/v1/auth/refresh", List.of("POST"),
+				"/api/v1/bookmarks/{collectionId}", List.of("GET"),
+				"/api/v1/contents/search", List.of("GET"),
+				"/api/v1/search/contents", List.of("GET"),
+				"/api/v1/users/nickname/check", List.of("GET"),
+				"/api/v1/users/{userId}", List.of("GET"),
+				"/api/v1/users/{userId}/keywords", List.of("GET")
+			);
+
+			publicByMethod.forEach((path, methods) -> {
+				var item = openApi.getPaths().get(path);
+				if (item == null) return;
+
+				for (String m : methods) {
+					switch (m) {
+						case "GET" -> { if (item.getGet() != null) item.getGet().setSecurity(List.of()); }
+						case "POST" -> { if (item.getPost() != null) item.getPost().setSecurity(List.of()); }
+						case "PUT" -> { if (item.getPut() != null) item.getPut().setSecurity(List.of()); }
+						case "PATCH" -> { if (item.getPatch() != null) item.getPatch().setSecurity(List.of()); }
+						case "DELETE" -> { if (item.getDelete() != null) item.getDelete().setSecurity(List.of()); }
+					}
+				}
+			});
+		};
+	}
+
     @Bean
     public OpenAPI openAPI() {
         SecurityScheme bearerScheme = new SecurityScheme()
@@ -83,7 +118,7 @@ public class SwaggerConfig {
                 .servers(List.of(
                         new Server().url("/").description("Current Server")
                 ))
-                .components(new Components()
+			.components(new Components()
                         .addSecuritySchemes("bearerAuth", bearerScheme))
                 .addSecurityItem(securityRequirement);
     }
@@ -92,7 +127,8 @@ public class SwaggerConfig {
         return GroupedOpenApi.builder()
                 .group(group)
                 .pathsToMatch("/api/v1/**")
-                .packagesToScan(basePackage)
+				.addOpenApiCustomizer(authPublicEndpointsCustomizer())
+				.packagesToScan(basePackage)
                 .build();
     }
 }
