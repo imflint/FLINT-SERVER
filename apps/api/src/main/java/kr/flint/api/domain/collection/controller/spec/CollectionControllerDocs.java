@@ -54,7 +54,7 @@ public interface CollectionControllerDocs {
 		)
 	})
 	ResponseEntity<SuccessResponse<PaginationResponse<GetCollectionSimpleRes>>> discoverCollectionList(
-		@Parameter(description = "커서(마지막 아이템 기준)", example = "1", required = false)
+		@Parameter(description = "커서(마지막 아이템 기준)", example = "", required = false)
 		Long cursor,
 		@Parameter(description = "페이지 크기", example = "10")
 		int size

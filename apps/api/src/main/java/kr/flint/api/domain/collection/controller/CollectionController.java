@@ -52,7 +52,7 @@ public class CollectionController implements CollectionControllerDocs {
 	@Override
 	@GetMapping
 	public ResponseEntity<SuccessResponse<PaginationResponse<GetCollectionSimpleRes>>> discoverCollectionList(
-		@RequestParam(required = false) Long cursor,
+		@RequestParam(required = false, defaultValue = "") Long cursor,
 		@RequestParam(defaultValue = "10") int size
 	) {
 		PaginationResponse<GetCollectionSimpleRes> collectionList = collectionQueryFacade.getCollectionList(cursor, size);

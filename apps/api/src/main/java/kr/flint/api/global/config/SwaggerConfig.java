@@ -68,17 +68,18 @@ public class SwaggerConfig {
 		return openApi -> {
 			if (openApi.getPaths() == null) return;
 
-			Map<String, List<String>> publicByMethod = Map.of(
-				"/api/v1/auth/social/verify", List.of("POST"),
-				"/api/v1/auth/logout", List.of("POST"),
-				"/api/v1/auth/signup", List.of("POST"),
-				"/api/v1/auth/refresh", List.of("POST"),
-				"/api/v1/bookmarks/{collectionId}", List.of("GET"),
-				"/api/v1/contents/search", List.of("GET"),
-				"/api/v1/search/contents", List.of("GET"),
-				"/api/v1/users/nickname/check", List.of("GET"),
-				"/api/v1/users/{userId}", List.of("GET"),
-				"/api/v1/users/{userId}/keywords", List.of("GET")
+			Map<String, List<String>> publicByMethod = Map.ofEntries(
+				Map.entry("/api/v1/auth/social/verify", List.of("POST")),
+				Map.entry("/api/v1/auth/logout", List.of("POST")),
+				Map.entry("/api/v1/auth/signup", List.of("POST")),
+				Map.entry("/api/v1/auth/refresh", List.of("POST")),
+				Map.entry("/api/v1/bookmarks/{collectionId}", List.of("GET")),
+				Map.entry("/api/v1/contents/search", List.of("GET")),
+				Map.entry("/api/v1/search/contents", List.of("GET")),
+				Map.entry("/api/v1/users/nickname/check", List.of("GET")),
+				Map.entry("/api/v1/users/{userId}", List.of("GET")),
+				Map.entry("/api/v1/users/{userId}/keywords", List.of("GET")),
+				Map.entry("/api/v1/collections", List.of("GET"))
 			);
 
 			publicByMethod.forEach((path, methods) -> {
