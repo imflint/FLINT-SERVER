@@ -61,7 +61,6 @@ public class ContentController implements ContentControllerDocs {
 
 	}
 
-	@Override
 	@GetMapping("/{userId}/bookmarked-contents")
 	public ResponseEntity<SuccessResponse<GetContentListRes>> getUserBookmarkedContents(
 		@PathVariable Long userId

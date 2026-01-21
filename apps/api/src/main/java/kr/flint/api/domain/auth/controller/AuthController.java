@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import kr.flint.api.domain.auth.controller.spec.AuthControllerDocs;
 import kr.flint.api.domain.auth.service.AuthFacade;
+import kr.flint.api.domain.auth.dto.request.DevLoginReq;
 import kr.flint.api.domain.auth.dto.request.LogoutReq;
 import kr.flint.api.domain.auth.dto.request.RefreshTokenReq;
 import kr.flint.api.domain.auth.dto.request.SignupReq;
@@ -69,5 +70,15 @@ public class AuthController implements AuthControllerDocs {
         String accessToken = jwtProvider.extractToken(httpRequest.getHeader(HttpHeaders.AUTHORIZATION));
         authFacade.logoutAll(userId, accessToken);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * 개발용 로그인 (dev/local 환경에서만 사용)
+     * userId만으로 토큰을 발급받습니다.
+     */
+    @PostMapping("/dev/login")
+    public ResponseEntity<SuccessResponse<AuthTokenRes>> devLogin(@Valid @RequestBody DevLoginReq request) {
+        return ResponseEntity
+                .ok(SuccessResponse.of(SuccessCode.SUCCESS_LOGIN, authFacade.devLogin(request.userId())));
     }
 }
