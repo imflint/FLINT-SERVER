@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import kr.flint.api.domain.content.controller.spec.ContentControllerDocs;
 import kr.flint.api.domain.content.dto.GetContentDetailRes;
 import kr.flint.api.domain.content.dto.GetContentListRes;
+import kr.flint.api.domain.content.dto.GetOttListRes;
 import kr.flint.api.domain.search.dto.response.GetContentSearchRes;
 import kr.flint.api.domain.content.service.ContentCommandFacade;
 import kr.flint.api.domain.content.service.ContentQueryFacade;
@@ -31,12 +32,12 @@ public class ContentController implements ContentControllerDocs {
 
 	@Override
 	@GetMapping("/ott/{contentId}")
-	public ResponseEntity<SuccessResponse<List<GetOttResponse>>> getOttList(
+	public ResponseEntity<SuccessResponse<GetOttListRes>> getOttList(
 		@CurrentUser Long userId,
 		@PathVariable Long contentId
 	){
 		List<GetOttResponse> getOttResponseList = contentQueryFacade.getOttList(userId, contentId);
-		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, getOttResponseList));
+		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, new GetOttListRes(getOttResponseList)));
 	}
 
 	@Override

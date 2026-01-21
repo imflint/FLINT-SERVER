@@ -21,7 +21,8 @@ public class ContentQueryFacade {
 	private final ContentQueryRepository contentQueryRepository;
 
 	public List<GetOttResponse> getOttList(final Long userId, final Long contentId) {
-		return ottService.getOttList(userId, contentId);
+		List<GetOttResponse> ottList = ottService.getOttList(userId, contentId);
+		return ottList.isEmpty() ? List.of() : ottList;
 	}
 
 	public List<GetContentDetailRes> getContentDetailList(final Long userId) {
