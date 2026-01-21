@@ -4,7 +4,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import kr.flint.bookmark.repository.CollectionBookmarkRepository;
 import kr.flint.bookmark.service.BookmarkCommandService;
+import kr.flint.collection.repository.CollectionRepository;
 import kr.flint.collection.service.CollectionService;
 import kr.flint.content.service.ContentService;
 import kr.flint.user.service.UserService;
@@ -17,6 +19,8 @@ public class BookmarkCommandFacade {
 	private final ContentService contentService;
 	private final CollectionService collectionService;
 	private final UserService userService;
+	private final CollectionBookmarkRepository collectionBookmarkRepository;
+	private final CollectionRepository collectionRepository;
 
 	@Transactional
 	public boolean toggleContent(final Long userId, final Long contentId) {
@@ -32,12 +36,23 @@ public class BookmarkCommandFacade {
 	@Transactional
 	public boolean toggleCollection(final Long userId, final Long collectionId) {
 		userService.getById(userId);
-		boolean isBookmarked = bookmarkCommandService.toggleCollection(userId, collectionId);
 
-		if (isBookmarked) {collectionService.increaseBookmarkCount(collectionId);}
-		else {collectionService.decreaseBookmarkCount(collectionId);}
+		// 북마크가 되어있는 경우 영향 받은 row 1 -> 북마크 off
+		int deleted = collectionBookmarkRepository.deleteCollectionBookmarkByUserIdAndCollectionId(userId, collectionId);
+		if(deleted == 1){
+			collectionRepository.decBookmarkCount(collectionId);
+			return false;
+		}
 
-		return isBookmarked;
+		//북마크가 되어 있지 않은 경우 영향 받은 row 1 -> 북마크 on
+		int inserted = collectionBookmarkRepository.insertIgnore(userId, collectionId);
+		if(inserted == 1){
+			collectionRepository.incBookmarkCount(collectionId);
+			return true;
+		}
+
+		// 동시 요청으로 인해 이미 다른 스레드에서 북마크를 한 경우 -> 북마크 on
+		return true;
 	}
 
 }
