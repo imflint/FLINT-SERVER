@@ -7,12 +7,14 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import kr.flint.api.domain.content.dto.GetContentListRes;
 import kr.flint.api.domain.user.dto.response.UserCollectionsRes;
 import kr.flint.api.domain.user.dto.response.UserKeywordsRes;
 import kr.flint.api.domain.user.dto.response.UserProfileRes;
 import kr.flint.shared.dto.response.SuccessResponse;
 import kr.flint.user.dto.response.NicknameCheckResponse;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
 @Tag(name = "User", description = "사용자 API")
@@ -119,4 +121,17 @@ public interface UserControllerDocs {
             @Parameter(description = "사용자 ID", example = "123456789")
             @PathVariable Long userId
     );
+
+	@Operation(
+		summary = "다른 사용자의 북마크한 콘텐츠 목록 조회 - 재민",
+		description = "다른 사용자의 북마크한 콘텐츠 목록을 조회합니다."
+	)
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "조회 성공", useReturnTypeSchema = true)
+	})
+	@GetMapping("/{userId}/bookmarked-contents")
+	ResponseEntity<SuccessResponse<GetContentListRes>> getUserBookmarkedContents(
+		@Parameter(description = "다른 사용자 ID", example = "1")
+		@PathVariable Long userId
+	);
 }

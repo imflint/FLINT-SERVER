@@ -1,5 +1,10 @@
 package kr.flint.api.domain.user.controller;
 
+import java.util.List;
+
+import kr.flint.api.domain.content.dto.GetContentDetailRes;
+import kr.flint.api.domain.content.dto.GetContentListRes;
+import kr.flint.api.domain.content.service.ContentQueryFacade;
 import kr.flint.api.domain.user.controller.spec.UserControllerDocs;
 import kr.flint.api.domain.user.dto.response.UserCollectionsRes;
 import kr.flint.api.domain.user.dto.response.UserKeywordsRes;
@@ -23,6 +28,7 @@ public class UserController implements UserControllerDocs {
 
     private final UserQueryFacade userQueryFacade;
 	private final UserCommandFacade userCommandFacade;
+	private final ContentQueryFacade contentQueryFacade;
 
     @Override
     @GetMapping("/nickname/check")
@@ -124,5 +130,15 @@ public class UserController implements UserControllerDocs {
         userCommandFacade.callGpt(userId);
         return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_KEYWORDS_FETCH));
     }
+
+
+	@Override
+	@GetMapping("/{userId}/bookmarked-contents")
+	public ResponseEntity<SuccessResponse<GetContentListRes>> getUserBookmarkedContents(
+		@PathVariable Long userId
+	){
+		List<GetContentDetailRes> getContentDetailResList = contentQueryFacade.getContentDetailList(userId);
+		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, new GetContentListRes(getContentDetailResList)));
+	}
 
 }
