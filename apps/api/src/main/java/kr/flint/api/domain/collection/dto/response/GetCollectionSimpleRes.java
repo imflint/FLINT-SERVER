@@ -13,16 +13,14 @@ public record GetCollectionSimpleRes(
 	Long collectionId,
 	String imageUrl,
 	String title,
-	String description,
-	LocalDate createdAt
+	String description
 ) {
 	public static GetCollectionSimpleRes of(Collection collection, Function<String, String> imageUrlResolver) {
 		return new GetCollectionSimpleRes(
 			collection.getId(),
 			imageUrlResolver.apply(collection.getImage()),
 			collection.getTitle(),
-			collection.getDescription(),
-			null
+			collection.getDescription()
 		);
 	}
 
@@ -31,8 +29,7 @@ public record GetCollectionSimpleRes(
 			collection.getId(),
 			imageUrlResolver.apply(collection.getImage()),
 			collection.getTitle(),
-			collection.getDescription(),
-			collection.getCreatedAt().toLocalDate()
+			collection.getDescription()
 		);
 	}
 
@@ -41,8 +38,7 @@ public record GetCollectionSimpleRes(
 			collectionId,
 			imageUrlResolver.apply(imageUrl),
 			title,
-			description,
-			createdAt
+			description
 		);
 	}
 }

@@ -3,6 +3,8 @@ package kr.flint.api.domain.content.controller.spec;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -11,6 +13,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import kr.flint.api.domain.content.dto.GetContentListRes;
 import kr.flint.api.domain.content.dto.GetOttListRes;
 import kr.flint.ott.dto.GetOttResponse;
 import kr.flint.shared.dto.response.SuccessResponse;
@@ -49,7 +52,7 @@ public interface ContentControllerDocs {
 	@Operation(
 		summary = "콘텐츠 검색 - 재민",
 		description = "키워드로 콘텐츠를 검색합니다. TMDB API를 통해 검색 결과를 반환합니다.",
-        deprecated = true
+		deprecated = true
 	)
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "검색 성공", useReturnTypeSchema = true)
@@ -61,5 +64,18 @@ public interface ContentControllerDocs {
 		int cursor,
 		@Parameter(description = "페이지당 결과 수", example = "20")
 		int size
+	);
+
+	@Operation(
+		summary = "다른 사용자의 북마크한 콘텐츠 목록 조회 - 재민",
+		description = "다른 사용자의 북마크한 콘텐츠 목록을 조회합니다."
+	)
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "조회 성공", useReturnTypeSchema = true)
+	})
+	@GetMapping("/{userId}/bookmarked-contents")
+	ResponseEntity<SuccessResponse<GetContentListRes>> getUserBookmarkedContents(
+		@Parameter(description = "다른 사용자 ID", example = "1")
+		@PathVariable Long userId
 	);
 }
