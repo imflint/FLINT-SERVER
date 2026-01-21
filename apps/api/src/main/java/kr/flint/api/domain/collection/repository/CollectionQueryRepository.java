@@ -40,8 +40,7 @@ public class CollectionQueryRepository {
 				collection.id,
 				collection.image,
 				collection.title,
-				collection.description,
-				Expressions.nullExpression(LocalDate.class)
+				collection.description
 			))
 			.from(collection)
 			.where(
