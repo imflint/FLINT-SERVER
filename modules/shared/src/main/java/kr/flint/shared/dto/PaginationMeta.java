@@ -13,39 +13,14 @@ public record PaginationMeta(
         @Schema(description = "현재 페이지 반환된 아이템 수", example = "10")
         Integer returned,
 
-        // Offset 전용
-        @Schema(description = "현재 페이지 번호 (1부터 시작)", example = "1")
-        Integer currentPage,
-
-        @Schema(description = "전체 페이지 수", example = "10")
-        Integer totalPages,
-
-        @Schema(description = "전체 아이템 수", example = "100")
-        Long totalElements,
-
-        // Cursor 전용
         @Schema(description = "다음 페이지 커서")
         String nextCursor
 ) {
-
-    public static PaginationMeta ofOffset(int returned, int currentPage, int totalPages, long totalElements) {
-        return new PaginationMeta(
-                PageType.OFFSET,
-                returned,
-                currentPage,
-                totalPages,
-                totalElements,
-                null
-        );
-    }
 
     public static PaginationMeta ofCursor(int returned, String nextCursor) {
         return new PaginationMeta(
                 PageType.CURSOR,
                 returned,
-                null,
-                null,
-                null,
                 nextCursor
         );
     }

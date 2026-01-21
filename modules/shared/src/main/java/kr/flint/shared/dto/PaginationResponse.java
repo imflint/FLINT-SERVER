@@ -16,31 +16,6 @@ public record PaginationResponse<T>(
         PaginationMeta meta
 ) {
 
-    // =============== Offset 기반 ===============
-
-    public static <T> PaginationResponse<T> ofOffset(Page<T> page) {
-        int currentPage = page.getNumber() + 1; // 0-based to 1-based
-        int returned = page.getNumberOfElements();
-        int totalPages = page.getTotalPages();
-        long totalElements = page.getTotalElements();
-
-        return new PaginationResponse<>(
-                page.getContent(),
-                PaginationMeta.ofOffset(returned, currentPage, totalPages, totalElements)
-        );
-    }
-
-    /**
-     * 직접 생성
-     */
-    public static <T> PaginationResponse<T> ofOffset(List<T> data, int currentPage, int totalPages, long totalElements) {
-        return new PaginationResponse<>(
-                data,
-                PaginationMeta.ofOffset(data.size(), currentPage, totalPages, totalElements)
-        );
-    }
-
-    // ==================== Cursor 기반 ====================
 
     public static <T> PaginationResponse<T> ofCursor(SliceCursor<T> slice) {
         List<T> data = slice.items();

@@ -34,7 +34,7 @@ public class CollectionQueryService {
 
 		String nextCursor = hasNext
 			? String.valueOf(collectionList.get(collectionList.size() - 1).collectionId())
-			: null;
+			: "";
 
 		String currentCursor = cursor != null ? String.valueOf(cursor) : null;
 
