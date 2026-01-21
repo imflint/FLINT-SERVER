@@ -19,11 +19,11 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/bookmarks")
-public class BookmarkController  {
+public class BookmarkController implements BookmarkControllerDocs {
 	private final BookmarkCommandFacade bookmarkCommandFacade;
 	private final BookmarkQueryFacade bookmarkQueryFacade;
 
-	//@Override
+	@Override
 	@PostMapping("/contents/{contentId}")
 	public ResponseEntity<SuccessResponse<Boolean>> postContentBookmark(
 		@CurrentUser Long userId,
@@ -33,17 +33,17 @@ public class BookmarkController  {
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_UPDATE, isBookmarked));
 	}
 
-	//@Override
+	@Override
 	@PostMapping("/collections/{collectionId}")
 	public ResponseEntity<SuccessResponse<Boolean>> postCollectionBookmark(
-		//@CurrentUser Long userId,
+		@CurrentUser Long userId,
 		@PathVariable("collectionId") Long collectionId
 	){
-		boolean isBookmarked = bookmarkCommandFacade.toggleCollection(1L, collectionId);
+		boolean isBookmarked = bookmarkCommandFacade.toggleCollection(userId, collectionId);
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_UPDATE, isBookmarked));
 	}
 
-	//@Override
+	@Override
 	@GetMapping("/{collectionId}")
 	public ResponseEntity<SuccessResponse<GetBookmarkUserRes>> getBookmarkedUser(
 		@PathVariable("collectionId") Long collectionId
