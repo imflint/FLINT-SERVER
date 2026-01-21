@@ -66,16 +66,4 @@ public interface ContentControllerDocs {
 		int size
 	);
 
-	@Operation(
-		summary = "다른 사용자의 북마크한 콘텐츠 목록 조회 - 재민",
-		description = "다른 사용자의 북마크한 콘텐츠 목록을 조회합니다."
-	)
-	@ApiResponses({
-		@ApiResponse(responseCode = "200", description = "조회 성공", useReturnTypeSchema = true)
-	})
-	@GetMapping("/{userId}/bookmarked-contents")
-	ResponseEntity<SuccessResponse<GetContentListRes>> getUserBookmarkedContents(
-		@Parameter(description = "다른 사용자 ID", example = "1")
-		@PathVariable Long userId
-	);
 }
