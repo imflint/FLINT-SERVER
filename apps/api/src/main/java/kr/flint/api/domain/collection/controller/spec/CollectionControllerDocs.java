@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import kr.flint.api.domain.collection.dto.response.CreateCollectionRes;
 import kr.flint.api.domain.collection.dto.response.GetCollectionDetailListRes;
 import kr.flint.api.domain.collection.dto.response.GetCollectionDetailRes;
 import kr.flint.api.domain.collection.dto.request.CreateCollectionReq;
@@ -35,7 +36,7 @@ public interface CollectionControllerDocs {
 			content = @Content(schema = @Schema(implementation = ProblemDetail.class))
 		)
 	})
-	ResponseEntity<SuccessResponse<Void>> postCollection(
+	ResponseEntity<SuccessResponse<CreateCollectionRes>> postCollection(
 		Long userId,
 		@Parameter(description = "컬렉션 생성 요청 바디")
 		CreateCollectionReq createCollectionReq
