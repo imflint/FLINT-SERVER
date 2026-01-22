@@ -1,17 +1,16 @@
 package kr.flint.api.domain.collection.repository;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Repository;
 
 import com.querydsl.core.types.Projections;
-import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
 import kr.flint.api.domain.collection.dto.response.GetCollectionDetailListRes;
@@ -33,15 +32,11 @@ import static kr.flint.content.domain.QContent.content;
 public class CollectionQueryRepository {
 	private final JPAQueryFactory jpaQueryFactory;
 
+	// 탐색 - 컬렉션 목록 조회 (각 컬렉션에서 랜덤 작품의 정보 반환)
 	public List<GetCollectionSimpleRes> getCollectionSimpleList(Long cursor, int size){
-		return jpaQueryFactory
-			.select(Projections.constructor(
-				GetCollectionSimpleRes.class,
-				collection.id,
-				collection.image,
-				collection.title,
-				collection.description
-			))
+		// 컬렉션 ID 목록 조회
+		List<Long> collectionIds = jpaQueryFactory
+			.select(collection.id)
 			.from(collection)
 			.where(
 				cursor != null ? collection.id.lt(cursor) : null,
@@ -50,7 +45,51 @@ public class CollectionQueryRepository {
 			.orderBy(collection.createdAt.desc())
 			.limit(size + 1L)
 			.fetch();
+
+		if (collectionIds.isEmpty()) {
+			return List.of();
+		}
+
+		// 해당 컬렉션들의 content 정보 조회
+		List<CollectionContentInfoRow> contentRows = jpaQueryFactory
+			.select(Projections.constructor(
+				CollectionContentInfoRow.class,
+				collectionContent.collection.id,
+				content.poster,
+				content.title,
+				content.description
+			))
+			.from(collectionContent)
+			.join(content).on(content.id.eq(collectionContent.contentId))
+			.where(collectionContent.collection.id.in(collectionIds))
+			.fetch();
+
+		// 컬렉션별로 그룹핑
+		Map<Long, List<CollectionContentInfoRow>> contentMap = contentRows.stream()
+			.collect(Collectors.groupingBy(CollectionContentInfoRow::collectionId));
+
+		// 각 컬렉션마다 랜덤 작품 선택하여 DTO 생성
+		return collectionIds.stream()
+			.map(collectionId -> {
+				List<CollectionContentInfoRow> contents = contentMap.get(collectionId);
+				int randomIndex = ThreadLocalRandom.current().nextInt(contents.size());
+				CollectionContentInfoRow selected = contents.get(randomIndex);
+				return new GetCollectionSimpleRes(
+					collectionId,
+					selected.poster(),
+					selected.contentTitle(),
+					selected.contentDescription()
+				);
+			})
+			.toList();
 	}
+
+	public record CollectionContentInfoRow(
+		Long collectionId,
+		String poster,
+		String contentTitle,
+		String contentDescription
+	) {}
 
 	//Collection 상세조회 중 상단 부분
 	public GetCollectionHeader getHeader(Long collectionId, Long userId){

@@ -27,18 +27,13 @@ public class CollectionQueryService {
 			? fetchedCollections.subList(0, size)
 			: fetchedCollections;
 
-		// S3 key를 CloudFront URL로 변환
-		List<GetCollectionSimpleRes> resolvedList = collectionList.stream()
-			.map(c -> c.withResolvedImageUrl(cloudFrontUrlProvider::resolveUrl))
-			.toList();
-
 		String nextCursor = hasNext
-			? String.valueOf(collectionList.get(collectionList.size() - 1).collectionId())
+			? String.valueOf(collectionList.getLast().collectionId())
 			: "";
 
 		String currentCursor = cursor != null ? String.valueOf(cursor) : null;
 
-		return SliceCursor.of(resolvedList, currentCursor, nextCursor);
+		return SliceCursor.of(collectionList, currentCursor, nextCursor);
 	}
 
 	public List<GetCollectionDetailListRes> getRecentCollectionList(final Long userId){
