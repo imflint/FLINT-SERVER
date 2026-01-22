@@ -50,9 +50,9 @@ public interface CollectionBookmarkRepository extends JpaRepository<CollectionBo
 
 	@Modifying
 	@Query(value = """
-		INSERT IGNORE INTO collection_bookmark(user_id, collection_id)
-		VALUES (:userId, :collectionId)
+		INSERT IGNORE INTO collection_bookmark(id, user_id, collection_id)
+		VALUES (:id, :userId, :collectionId)
 """, nativeQuery = true)
-	int insertIgnore(@Param("userId")Long userId, @Param("collectionId")Long collectionId);
+	int insertIgnore(@Param("id") Long id, @Param("userId") Long userId, @Param("collectionId") Long collectionId);
 
 }
