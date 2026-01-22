@@ -108,6 +108,16 @@ public class AuthFacade {
     }
 
     /**
+     * 개발용 로그인 (dev/local 환경에서만 사용)
+     */
+    @Transactional
+    public AuthTokenRes devLogin(Long userId) {
+        UserAuthInfo authInfo = userService.getAuthInfo(userId);
+        AuthTokens tokens = authService.issueTokens(authInfo.userId(), authInfo.role());
+        return AuthTokenRes.from(tokens);
+    }
+
+    /**
      * 소셜 제공자별 사용자 정보 조회
      * - accessToken -> Mobile (토큰으로 직접 조회)
      * - code -> Web (코드, 토큰 교환, 조회)
