@@ -44,7 +44,7 @@ public class CollectionController implements CollectionControllerDocs {
 		@CurrentUser Long userId,
 		@Valid @RequestBody CreateCollectionReq createCollectionReq
 	){
-		Long collectionId = collectionCommandFacade.createCollection(1L, createCollectionReq);
+		Long collectionId = collectionCommandFacade.createCollection(userId, createCollectionReq);
 		return ResponseEntity
 			.status(SuccessCode.SUCCESS_CREATE.getHttpStatus())
 			.body(SuccessResponse.of(SuccessCode.SUCCESS_CREATE, new CreateCollectionRes(collectionId)));
