@@ -108,7 +108,9 @@ public class AuthFacade {
      * 모든 세션 탈퇴
      */
     public void withdraw(Long userId, String accessToken) {
-		userService.getById(userId);
+
+		//User 삭제
+		userService.deleteUser(userId);
 
 		//토큰 삭제
         authService.withdraw(userId, accessToken);
@@ -125,8 +127,6 @@ public class AuthFacade {
 		//ott 삭제
 		ottService.deleteUserOtts(userId);
 
-		//User 삭제
-		userService.deleteUser(userId);
 
     }
 
