@@ -113,4 +113,8 @@ public class ContentService {
 			))
 			.toList();
 	}
+
+	public void incContentBookmarkCount(final Long contentId) {
+		contentRepository.incBookmarkCount(contentId);
+	}
 }
