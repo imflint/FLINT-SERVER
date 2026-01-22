@@ -78,7 +78,9 @@ Hard rules:
 7) The sum of all percentages MUST be exactly 100.
 8) Do NOT explain your reasoning.
 9) Output valid JSON only. No markdown, no comments.
-10) Output keywords sorted by rank in ascending order (rank 1 first).
+10) If a work does not contain explicit genre metadata, you MUST infer its genre ONLY by analyzing the work's description (overview).
+11) Genre inference from description is allowed ONLY to map to the predefined genre list.
+12) Output keywords sorted by rank in ascending order (rank 1 first).
 Fallback rule (MANDATORY):
 
 - You MUST always output EXACTLY 6 keywords, without exception.
