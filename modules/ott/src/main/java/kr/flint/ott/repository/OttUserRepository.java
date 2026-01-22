@@ -22,14 +22,15 @@ public interface OttUserRepository extends JpaRepository<OttUser, Long> {
     )
     from OttUser ou
     join ou.ottProvider op
+    join OttContent oc
+        on oc.ottProvider = op
     where ou.userId = :userId
-      and op.id in (
-          select oc.ottProvider.id
-          from OttContent oc
-          where oc.contentId = :contentId
-      )
+      and oc.contentId = :contentId
 """)
-	List<GetOttResponse> getSubscribeOttList(Long userId, Long contentId);
+	List<GetOttResponse> getSubscribeOttList(
+		@Param("userId") Long userId,
+		@Param("contentId") Long contentId
+	);
 
 	void deleteAllByUserId(Long userId);
 }
