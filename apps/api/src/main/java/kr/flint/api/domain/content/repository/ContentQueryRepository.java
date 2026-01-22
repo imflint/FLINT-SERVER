@@ -60,7 +60,7 @@ public class ContentQueryRepository {
 		}
 
 		List<Tuple> ottRows = jpaQueryFactory
-			.select(
+			.selectDistinct(
 				ottContent.contentId,
 				ottProvider.name,
 				ottProvider.logoUrl
