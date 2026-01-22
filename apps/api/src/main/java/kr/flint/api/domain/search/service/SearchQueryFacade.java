@@ -23,21 +23,15 @@ public class SearchQueryFacade {
 
 	public List<GetContentSearchRes> searchContent(final String keyword) {
 		if (!StringUtils.hasText(keyword)) {
-//			List<Content> contentSearchResList = contentService.getAllContent();
-//			return contentSearchResList.stream()
-//				.map(GetContentSearchRes::from)
-//				.toList();
-            return contentService.getRecentContent(20).stream()
-                    .map(GetContentSearchRes::from)
-                    .toList();
+			List<Content> contentSearchResList = contentService.getAllContent();
+			return contentSearchResList.stream()
+				.map(GetContentSearchRes::from)
+				.toList();
 		}
-        return contentService.getContentByTitle(keyword, 20).stream()
-                .map(GetContentSearchRes::from)
-                .toList();
-//		List<Content> contentList = contentService.getContentByTitle(keyword).isEmpty() ? List.of() : contentService.getContentByTitle(keyword);
-//		return contentList.stream()
-//			.map(GetContentSearchRes::from)
-//			.toList();
+		List<Content> contentList = contentService.getContentByTitle(keyword).isEmpty() ? List.of() : contentService.getContentByTitle(keyword);
+		return contentList.stream()
+			.map(GetContentSearchRes::from)
+			.toList();
 	}
 
 	public PaginationResponse<BookmarkedCollectionSearchRes> searchBookmarkedCollections(
