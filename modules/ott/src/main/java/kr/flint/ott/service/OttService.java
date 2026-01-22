@@ -40,4 +40,8 @@ public class OttService {
 
 		ottUserRepository.saveAll(ottUsers);
 	}
+
+	public void deleteUserOtts(final Long userId) {
+		ottUserRepository.deleteAllByUserId(userId);
+	}
 }

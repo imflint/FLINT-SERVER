@@ -67,7 +67,18 @@ public class AuthController implements AuthControllerDocs {
             HttpServletRequest httpRequest
     ) {
         String accessToken = jwtProvider.extractToken(httpRequest.getHeader(HttpHeaders.AUTHORIZATION));
-        authFacade.logoutAll(userId, accessToken);
+        authFacade.withdraw(userId, accessToken);
         return ResponseEntity.noContent().build();
     }
+
+	@Override
+	@DeleteMapping("/withdraw")
+	public ResponseEntity<SuccessResponse<Void>> withdraw(
+		@CurrentUser Long userId,
+		HttpServletRequest httpRequest
+	){
+		String accessToken = jwtProvider.extractToken(httpRequest.getHeader(HttpHeaders.AUTHORIZATION));
+		authFacade.withdraw(userId, accessToken);
+		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_DELETE));
+	}
 }

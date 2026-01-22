@@ -59,4 +59,9 @@ public class BookmarkCommandService {
 
 		contentBookmarkRepository.saveAll(bookmarks);
 	}
+
+	public void deleteBookmarkByUser(final Long userId){
+		collectionBookmarkRepository.deleteAllByUserId(userId);
+		contentBookmarkRepository.deleteAllByUserId(userId);
+	}
 }

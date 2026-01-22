@@ -44,4 +44,5 @@ public interface UserKeywordRepository extends JpaRepository<UserKeyword, Long>,
 	boolean existsByUserId(Long userId);
 
 	void deleteAllByUserId(Long userId);
+
 }

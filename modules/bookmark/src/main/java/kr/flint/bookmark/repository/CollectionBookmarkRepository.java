@@ -55,4 +55,5 @@ public interface CollectionBookmarkRepository extends JpaRepository<CollectionBo
 """, nativeQuery = true)
 	int insertIgnore(@Param("userId")Long userId, @Param("collectionId")Long collectionId);
 
+	void deleteAllByUserId(Long userId);
 }

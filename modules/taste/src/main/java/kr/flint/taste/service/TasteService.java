@@ -14,6 +14,7 @@ import kr.flint.taste.dto.response.KeywordSimpleRes;
 import kr.flint.taste.dto.response.UserKeywordProjection;
 import kr.flint.taste.exception.TasteErrorCode;
 import kr.flint.taste.exception.TasteExecption;
+import kr.flint.taste.repository.CollectionKeywordRepository;
 import kr.flint.taste.repository.KeywordRepository;
 import kr.flint.taste.repository.UserKeywordRepository;
 import lombok.RequiredArgsConstructor;
@@ -27,8 +28,9 @@ public class TasteService {
 
     private final UserKeywordRepository userKeywordRepository;
 	private final KeywordRepository keywordRepository;
+	private final CollectionKeywordRepository collectionKeywordRepository;
 
-    public List<UserKeywordProjection> getUserKeywords(Long userId) {
+	public List<UserKeywordProjection> getUserKeywords(Long userId) {
         return userKeywordRepository.findUserKeywordsWithDetails(userId);
     }
 
@@ -63,5 +65,10 @@ public class TasteService {
 					.toList();
 
 		userKeywordRepository.bulkUpsert(userId, userKeywordList);
+	}
+
+	@Transactional
+	public void deleteUserKeywords(final Long userId) {
+		userKeywordRepository.deleteAllByUserId(userId);
 	}
 }

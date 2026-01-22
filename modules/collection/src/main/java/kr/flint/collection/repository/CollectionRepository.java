@@ -33,4 +33,8 @@ public interface CollectionRepository extends JpaRepository<Collection, Long> {
         WHERE id = :collectionId
         """, nativeQuery = true)
 	int decBookmarkCount(@Param("collectionId") Long collectionId);
+
+	List<Collection> deleteAllByUserId(Long userId);
+
+	List<Collection> findAllByUserId(Long userId);
 }

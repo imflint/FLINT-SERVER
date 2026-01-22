@@ -17,4 +17,6 @@ public interface CollectionContentRepository extends JpaRepository<CollectionCon
 	// 컬렉션의 콘텐츠 ID 목록 조회
 	@Query("SELECT cc.contentId FROM CollectionContent cc WHERE cc.collection.id = :collectionId")
 	List<Long> findContentIdsByCollectionId(@Param("collectionId") Long collectionId);
+
+	void deleteAllByCollection(Collection collection);
 }

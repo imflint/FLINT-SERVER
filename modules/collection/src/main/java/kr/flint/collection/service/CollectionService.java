@@ -11,7 +11,6 @@ import kr.flint.collection.domain.CollectionContent;
 import kr.flint.collection.domain.RecentViewedCollection;
 import kr.flint.collection.dto.CollectionCreateCommand;
 import kr.flint.collection.event.CollectionContentAddedEvent;
-import kr.flint.collection.event.CollectionContentRemovedEvent;
 import kr.flint.collection.exception.CollectionErrorCode;
 import kr.flint.collection.exception.CollectionException;
 import kr.flint.collection.repository.CollectionContentRepository;
@@ -87,5 +86,13 @@ public class CollectionService {
 					RecentViewedCollection.create(userId, collection)
 				)
 			);
+	}
+
+	@Transactional
+	public void deleteCollectionByUser(final Long userId){
+		List<Collection> collectionList = collectionRepository.findAllByUserId(userId);
+		collectionList.forEach(collectionContentRepository::deleteAllByCollection);
+		recentViewedCollectionRepository.deleteAllByUserId(userId);
+		collectionRepository.deleteAllByUserId(userId);
 	}
 }

@@ -14,6 +14,7 @@ import kr.flint.auth.jwt.JwtProvider;
 import kr.flint.auth.jwt.AccessTokenBlacklist;
 import kr.flint.auth.repository.RefreshTokenRepository;
 import kr.flint.auth.exception.AuthException;
+import kr.flint.auth.repository.UserIdentityRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -31,8 +32,9 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final AccessTokenBlacklist accessTokenBlacklist;
     private final UserIdentityService userIdentityService;
+	private final UserIdentityRepository userIdentityRepository;
 
-    // 소셜 사용자 정보로 로그인/회원가입 분기 처리
+	// 소셜 사용자 정보로 로그인/회원가입 분기 처리
     public SocialVerifyResult verifySocialUser(AuthProvider provider, SocialUserInfo userInfo) {
         Optional<UserIdentity> existingIdentity = userIdentityService
                 .findByProviderAndProviderUserId(provider, userInfo.providerUserId());
@@ -119,7 +121,7 @@ public class AuthService {
 
     // 전체 로그아웃 (모든 Refresh Token 무효화)
     @Transactional
-    public void logoutAll(Long userId, String accessToken) {
+    public void withdraw(Long userId, String accessToken) {
         // Access Token Blacklist 추가
         if (accessToken != null) {
             long remainingTtl = jwtProvider.getRemainingTtlSeconds(accessToken);
@@ -130,5 +132,7 @@ public class AuthService {
 
         // 모든 Refresh Token 삭제
         refreshTokenRepository.deleteAllByUserId(userId);
+		userIdentityRepository.deleteAllByUserId(userId);
     }
+
 }
