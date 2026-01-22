@@ -47,9 +47,9 @@ cloud:
 
 jwt:
   secret: ${jwt.secret}
-  access-expiration: 14d
-  refresh-expiration: 30d
-  temp-expiration: 30m
+  access-expiration: 1400000000000000000
+  refresh-expiration: 300000000000000
+  temp-expiration: 30000000000000
 
 oauth:
   kakao:
