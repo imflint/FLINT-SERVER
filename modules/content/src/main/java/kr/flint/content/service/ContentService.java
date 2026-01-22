@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -77,8 +78,16 @@ public class ContentService {
 		return contentRepository.findAllByTitleContaining(title);
 	}
 
+	public List<Content> getContentByTitle(final String title, final int limit) {
+		return contentRepository.findAllByTitleContaining(title, PageRequest.of(0, limit));
+	}
+
 	public List<Content> getAllContent() {
 		return contentRepository.findAll();
+	}
+
+	public List<Content> getRecentContent(final int limit) {
+		return contentRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(0, limit));
 	}
 
 	// 콘텐츠 ID 목록으로 콘텐츠 + 장르 정보 조회

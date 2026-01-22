@@ -15,4 +15,7 @@ public interface HomeCollectionRepositoryCustom {
     List<Long> findAllFlinerIds();
 
     List<CollectionBasicProjection> findPublicCollectionsByFlinerIds(List<Long> flinerIds);
+
+    // 인기순(북마크 수) 공개 컬렉션 ID 조회
+    List<Long> findPopularPublicCollectionIds(int limit);
 }

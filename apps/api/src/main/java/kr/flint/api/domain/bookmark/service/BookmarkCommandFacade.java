@@ -1,9 +1,9 @@
 package kr.flint.api.domain.bookmark.service;
 
 import org.springframework.stereotype.Component;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import io.hypersistence.tsid.TSID;
 import kr.flint.bookmark.repository.CollectionBookmarkRepository;
 import kr.flint.bookmark.service.BookmarkCommandService;
 import kr.flint.collection.repository.CollectionRepository;
@@ -33,6 +33,7 @@ public class BookmarkCommandFacade {
 		return isBookmarked;
 	}
 
+    // TODO: 동시성 이슈 처리 필요
 	@Transactional
 	public boolean toggleCollection(final Long userId, final Long collectionId) {
 		userService.getById(userId);
@@ -45,7 +46,8 @@ public class BookmarkCommandFacade {
 		}
 
 		//북마크가 되어 있지 않은 경우 영향 받은 row 1 -> 북마크 on
-		int inserted = collectionBookmarkRepository.insertIgnore(userId, collectionId);
+		Long id = TSID.Factory.getTsid().toLong();
+		int inserted = collectionBookmarkRepository.insertIgnore(id, userId, collectionId);
 		if(inserted == 1){
 			collectionRepository.incBookmarkCount(collectionId);
 			return true;

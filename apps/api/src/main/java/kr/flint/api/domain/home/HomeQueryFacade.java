@@ -3,7 +3,6 @@ package kr.flint.api.domain.home;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -17,7 +16,6 @@ import kr.flint.api.domain.home.dto.response.CollectionCardRes;
 import kr.flint.api.domain.home.dto.response.RecommendedCollectionsRes;
 import kr.flint.api.domain.home.port.CollectionRecommendationPort;
 import kr.flint.api.domain.home.repository.HomeCollectionRepository;
-import kr.flint.api.domain.home.service.RecommendationCacheService;
 import kr.flint.bookmark.service.BookmarkQueryService;
 import kr.flint.infra.storage.cloudfront.CloudFrontUrlProvider;
 import lombok.RequiredArgsConstructor;
@@ -33,25 +31,13 @@ public class HomeQueryFacade {
 
     private final CollectionRecommendationPort recommendationPort;
     private final HomeCollectionRepository homeCollectionRepository;
-    private final RecommendationCacheService cacheService;
     private final BookmarkQueryService bookmarkQueryService;
     private final CloudFrontUrlProvider cloudFrontUrlProvider;
 
     // 추천 컬렉션 조회
     public RecommendedCollectionsRes getRecommendedCollections(Long userId) {
-        Optional<List<Long>> cached = cacheService.getCachedRecommendations(userId);
-        List<Long> collectionIds;
-
-        if (cached.isPresent()) {
-            collectionIds = cacheService.getShuffledOrder(cached.get());
-            log.debug("캐시 히트. userId={}", userId);
-        } else {
-            collectionIds = recommendationPort.recommend(userId, MAX_RECOMMENDED_COLLECTIONS);
-            if (!collectionIds.isEmpty()) {
-                cacheService.cacheRecommendations(userId, collectionIds);
-            }
-            log.debug("캐시 미스. userId={}, recommendations={}", userId, collectionIds.size());
-        }
+        List<Long> collectionIds = recommendationPort.recommend(userId, MAX_RECOMMENDED_COLLECTIONS);
+        log.debug("추천 컬렉션 조회. userId={}, count={}", userId, collectionIds.size());
 
         if (collectionIds.isEmpty()) {
             return RecommendedCollectionsRes.from(List.of());

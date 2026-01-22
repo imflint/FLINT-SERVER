@@ -37,26 +37,47 @@ public class FlinerKeywordRecommendation implements CollectionRecommendationPort
 
 	@Override
 	public List<Long> recommend(Long userId, int maxSize) {
-		// 사용자 키워드 ID 목록 조회
+		List<Long> result = new ArrayList<>();
+
+		// 사용자 키워드 기반 추천 시도
 		Set<Long> userKeywordIds = new HashSet<>(userKeywordRepository.findKeywordIdsByUserId(userId));
-		if (userKeywordIds.isEmpty()) {
-			log.debug("사용자 키워드가 없습니다. userId={}", userId);
-			return List.of();
+		if (!userKeywordIds.isEmpty()) {
+			List<Long> flinerIds = homeCollectionRepository.findAllFlinerIds();
+			if (!flinerIds.isEmpty()) {
+				List<FlinerMatch> flinerMatches = calculateFlinerMatches(flinerIds, userKeywordIds);
+				if (!flinerMatches.isEmpty()) {
+					assignLatestCollections(flinerMatches);
+					result.addAll(adjustToLimit(flinerMatches, maxSize));
+				}
+			}
 		}
 
-		List<Long> flinerIds = homeCollectionRepository.findAllFlinerIds();
-		if (flinerIds.isEmpty()) {
-			log.debug("Fliner가 없습니다.");
-			return List.of();
+		// Fallback: 추천 결과가 maxSize보다 적으면 인기순으로 채우기
+		if (result.size() < maxSize) {
+			result = fillWithPopularCollections(result, maxSize);
+			log.debug("인기순 Fallback 적용. userId={}, resultSize={}", userId, result.size());
 		}
 
-		List<FlinerMatch> flinerMatches = calculateFlinerMatches(flinerIds, userKeywordIds);
-		if (flinerMatches.isEmpty()) {
-			return List.of();
-		}
-		assignLatestCollections(flinerMatches);
+		return result;
+	}
 
-		return adjustToLimit(flinerMatches, maxSize);
+	// 인기순 컬렉션으로 부족한 슬롯 채우기
+	private List<Long> fillWithPopularCollections(List<Long> currentResult, int maxSize) {
+		Set<Long> existingIds = new HashSet<>(currentResult);
+
+		// 이미 추천된 것 제외를 위해 여유있게 조회
+		List<Long> popularIds = homeCollectionRepository.findPopularPublicCollectionIds(maxSize + currentResult.size());
+
+		List<Long> filled = new ArrayList<>(currentResult);
+		for (Long id : popularIds) {
+			if (filled.size() >= maxSize) break;
+			if (!existingIds.contains(id)) {
+				filled.add(id);
+				existingIds.add(id);
+			}
+		}
+
+		return filled;
 	}
 
 	// Fliner-사용자 키워드 중복률 계산 (Jaccard 유사도)

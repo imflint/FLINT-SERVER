@@ -53,6 +53,13 @@ public class TasteService {
 
 
 		List<UserKeyword> userKeywordList = gptKeywordList.stream()
+				.filter(keywordRes -> {
+					boolean exists = keywordMap.containsKey(keywordRes.name());
+					if (!exists) {
+						log.warn("DB에 없는 키워드 무시: {}", keywordRes.name());
+					}
+					return exists;
+				})
 				.map(keywordRes -> {
 					Keyword keyword = keywordMap.get(keywordRes.name());
 					return UserKeyword.create(
@@ -62,7 +69,7 @@ public class TasteService {
 						keywordRes.rank()
 					);
 				})
-					.toList();
+				.toList();
 
 		userKeywordRepository.bulkUpsert(userId, userKeywordList);
 	}

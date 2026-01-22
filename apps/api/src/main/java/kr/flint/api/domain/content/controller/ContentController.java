@@ -60,4 +60,12 @@ public class ContentController implements ContentControllerDocs {
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, searchRes));
 
 	}
+
+	@GetMapping("/{userId}/bookmarked-contents")
+	public ResponseEntity<SuccessResponse<GetContentListRes>> getUserBookmarkedContents(
+		@PathVariable Long userId
+	){
+		List<GetContentDetailRes> getContentDetailResList = contentQueryFacade.getContentDetailList(userId);
+		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, new GetContentListRes(getContentDetailResList)));
+	}
 }
