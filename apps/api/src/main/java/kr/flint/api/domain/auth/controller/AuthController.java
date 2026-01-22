@@ -68,10 +68,20 @@ public class AuthController implements AuthControllerDocs {
             HttpServletRequest httpRequest
     ) {
         String accessToken = jwtProvider.extractToken(httpRequest.getHeader(HttpHeaders.AUTHORIZATION));
-        authFacade.logoutAll(userId, accessToken);
+        authFacade.withdraw(userId, accessToken);
         return ResponseEntity.noContent().build();
     }
 
+	@Override
+	@DeleteMapping("/withdraw")
+	public ResponseEntity<SuccessResponse<Void>> withdraw(
+		@CurrentUser Long userId,
+		HttpServletRequest httpRequest
+	){
+		String accessToken = jwtProvider.extractToken(httpRequest.getHeader(HttpHeaders.AUTHORIZATION));
+		authFacade.withdraw(userId, accessToken);
+		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_DELETE));
+	}
     /**
      * 개발용 로그인 (dev/local 환경에서만 사용)
      * userId만으로 토큰을 발급받습니다.

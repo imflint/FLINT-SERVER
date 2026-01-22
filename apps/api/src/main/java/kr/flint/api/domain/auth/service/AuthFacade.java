@@ -21,7 +21,9 @@ import kr.flint.auth.exception.AuthException;
 import kr.flint.auth.service.AuthService;
 import kr.flint.auth.service.UserIdentityService;
 import kr.flint.bookmark.service.BookmarkCommandService;
+import kr.flint.collection.service.CollectionService;
 import kr.flint.ott.service.OttService;
+import kr.flint.taste.service.TasteService;
 import kr.flint.user.dto.response.UserAuthInfo;
 import kr.flint.user.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -37,8 +39,10 @@ public class AuthFacade {
     private final BookmarkCommandService bookmarkCommandService;
     private final OttService ottService;
     private final ApplicationEventPublisher eventPublisher;
+	private final CollectionService collectionService;
+	private final TasteService tasteService;
 
-    /**
+	/**
      * 소셜 로그인
      */
     @Transactional
@@ -101,10 +105,29 @@ public class AuthFacade {
     }
 
     /**
-     * 모든 세션 로그아웃
+     * 모든 세션 탈퇴
      */
-    public void logoutAll(Long userId, String accessToken) {
-        authService.logoutAll(userId, accessToken);
+    public void withdraw(Long userId, String accessToken) {
+		userService.getById(userId);
+
+		//토큰 삭제
+        authService.withdraw(userId, accessToken);
+
+		//컬렉션 삭제
+		collectionService.deleteCollectionByUser(userId);
+
+		//북마크 삭제
+		bookmarkCommandService.deleteBookmarkByUser(userId);
+
+		//취향 키워드 삭제
+		tasteService.deleteUserKeywords(userId);
+
+		//ott 삭제
+		ottService.deleteUserOtts(userId);
+
+		//User 삭제
+		userService.deleteUser(userId);
+
     }
 
     /**

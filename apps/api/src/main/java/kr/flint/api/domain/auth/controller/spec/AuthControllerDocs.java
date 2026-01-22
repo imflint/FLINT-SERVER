@@ -119,4 +119,22 @@ public interface AuthControllerDocs {
             )
     })
     ResponseEntity<Void> logoutAll(Long userId, HttpServletRequest httpRequest);
+
+	@Operation(
+		summary = "회원탈퇴 - 재민",
+		description = "Authorization Code를 사용하여 회원탈퇴를 처리합니다."
+	)
+	@ApiResponses({
+		@ApiResponse(
+			responseCode = "200",
+			description = "회원탈퇴 성공",
+			useReturnTypeSchema = true
+		),
+		@ApiResponse(
+			responseCode = "401",
+			description = "소셜 인증 실패",
+			content = @Content(schema = @Schema(implementation = ProblemDetail.class))
+		)
+	})
+	ResponseEntity<SuccessResponse<Void>> withdraw(Long userId, HttpServletRequest httpRequest);
 }

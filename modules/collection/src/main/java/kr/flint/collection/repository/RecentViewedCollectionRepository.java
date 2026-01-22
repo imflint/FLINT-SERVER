@@ -9,4 +9,6 @@ import kr.flint.collection.domain.RecentViewedCollection;
 
 public interface RecentViewedCollectionRepository extends JpaRepository<RecentViewedCollection, Long> {
 	Optional<RecentViewedCollection> findByUserIdAndCollection(Long userId, Collection collection);
+
+	void deleteAllByUserId(Long userId);
 }
