@@ -22,6 +22,7 @@ import kr.flint.auth.service.AuthService;
 import kr.flint.auth.service.UserIdentityService;
 import kr.flint.bookmark.service.BookmarkCommandService;
 import kr.flint.collection.service.CollectionService;
+import kr.flint.content.service.ContentService;
 import kr.flint.ott.service.OttService;
 import kr.flint.taste.service.TasteService;
 import kr.flint.user.dto.response.UserAuthInfo;
@@ -41,6 +42,7 @@ public class AuthFacade {
     private final ApplicationEventPublisher eventPublisher;
 	private final CollectionService collectionService;
 	private final TasteService tasteService;
+	private final ContentService contentService;
 
 	/**
      * 소셜 로그인
@@ -73,6 +75,7 @@ public class AuthFacade {
         userIdentityService.create(authInfo.userId(), payload.provider(), payload.providerUserId());
 
         bookmarkCommandService.createContentBookmarks(authInfo.userId(), request.favoriteContentIds());
+		request.favoriteContentIds().forEach(contentService::incContentBookmarkCount);
         ottService.createUserOtts(authInfo.userId(), request.subscribedOttIds());
 
         // 비동기 취향 분석 이벤트 발행 (트랜잭션 커밋 후 처리)

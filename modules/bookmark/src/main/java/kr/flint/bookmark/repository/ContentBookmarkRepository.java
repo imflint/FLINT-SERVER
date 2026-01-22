@@ -19,4 +19,6 @@ public interface ContentBookmarkRepository extends JpaRepository<ContentBookmark
 	List<ContentBookmark> findAllByUserId(Long userId);
 
 	void deleteAllByUserId(Long userId);
+
+
 }
