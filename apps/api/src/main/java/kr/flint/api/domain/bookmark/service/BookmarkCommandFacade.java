@@ -33,6 +33,7 @@ public class BookmarkCommandFacade {
 		return isBookmarked;
 	}
 
+    // TODO: 동시성 이슈 처리 필요
 	@Transactional
 	public boolean toggleCollection(final Long userId, final Long collectionId) {
 		userService.getById(userId);

@@ -102,4 +102,15 @@ public class HomeCollectionRepositoryCustomImpl implements HomeCollectionReposit
 
         return List.copyOf(result);
     }
+
+    @Override
+    public List<Long> findPopularPublicCollectionIds(int limit) {
+        return queryFactory
+            .select(collection.id)
+            .from(collection)
+            .where(collection.isPublic.isTrue())
+            .orderBy(collection.bookmarkCount.desc(), collection.createdAt.desc())
+            .limit(limit)
+            .fetch();
+    }
 }
