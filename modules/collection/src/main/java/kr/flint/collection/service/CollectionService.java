@@ -29,7 +29,7 @@ public class CollectionService {
 	private final ApplicationEventPublisher eventPublisher;
 
 	@Transactional
-	public void createCollection(final Long userId, final CollectionCreateCommand command, final String contentUrl) {
+	public Long createCollection(final Long userId, final CollectionCreateCommand command, final String contentUrl) {
 		Collection newCollection = Collection.create(
 			command.title(),
 			command.description(),
@@ -55,6 +55,8 @@ public class CollectionService {
 		collectionContentList.forEach(content ->
 			eventPublisher.publishEvent(new CollectionContentAddedEvent(savedCollection.getId(), content.getContentId()))
 		);
+
+		return savedCollection.getId();
 	}
 
 	public Collection getCollectionById(final Long collectionId) {

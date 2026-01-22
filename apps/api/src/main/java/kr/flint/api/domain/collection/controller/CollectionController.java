@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
 import kr.flint.api.domain.collection.controller.spec.CollectionControllerDocs;
+import kr.flint.api.domain.collection.dto.response.CreateCollectionRes;
 import kr.flint.api.domain.collection.dto.response.GetCollectionDetailListRes;
 import kr.flint.api.domain.collection.dto.response.GetCollectionDetailRes;
 import kr.flint.api.domain.collection.dto.response.GetCollectionListRes;
@@ -39,14 +40,14 @@ public class CollectionController implements CollectionControllerDocs {
 
 	@Override
 	@PostMapping
-	public ResponseEntity<SuccessResponse<Void>> postCollection(
+	public ResponseEntity<SuccessResponse<CreateCollectionRes>> postCollection(
 		@CurrentUser Long userId,
 		@Valid @RequestBody CreateCollectionReq createCollectionReq
 	){
-		collectionCommandFacade.createCollection(userId, createCollectionReq);
+		Long collectionId = collectionCommandFacade.createCollection(1L, createCollectionReq);
 		return ResponseEntity
 			.status(SuccessCode.SUCCESS_CREATE.getHttpStatus())
-			.body(SuccessResponse.of(SuccessCode.SUCCESS_CREATE));
+			.body(SuccessResponse.of(SuccessCode.SUCCESS_CREATE, new CreateCollectionRes(collectionId)));
 	}
 
 	@Override

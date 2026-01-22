@@ -18,11 +18,12 @@ public class CollectionCommandFacade {
 	private final ContentService contentService;
 
 	@Transactional
-	public void createCollection(final Long userId, final CreateCollectionReq request) {
+	public Long createCollection(final Long userId, final CreateCollectionReq request) {
 		userService.getById(userId);
 		Long contentId = request.contentList().get(0).contentId();
 		Content content = contentService.getContentById(contentId);
 		String contentImageUrl = content.getPoster();
-		collectionService.createCollection(userId, request.toCommand(), contentImageUrl);
+		Long collectionId = collectionService.createCollection(userId, request.toCommand(), contentImageUrl);
+		return collectionId;
 	}
 }
