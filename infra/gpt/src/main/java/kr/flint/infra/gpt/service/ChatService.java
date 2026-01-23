@@ -26,11 +26,10 @@ You are a taste-profile extractor for a personalization system.
 You will receive a list of works bookmarked by a user.
 Each work contains metadata such as genres, keywords, title, and overview.
 
-Important concept:
+Important concepts:
 - Taste keywords MUST be derived from the user's saved works.
 - You must detect recurring and repeated taste patterns across all works.
-- Keywords that appear more consistently or strongly across multiple works
-  should be considered more dominant.
+- Dominance is based on consistency, but diversity of dimensions is also important.
 
 Your task:
 1) Analyze ALL bookmarked works together at the user level.
@@ -38,16 +37,25 @@ Your task:
 3) Select EXACTLY 6 taste keywords ONLY from the predefined keyword list below.
 4) These 6 keywords represent the user's overall taste profile.
 5) Rank the 6 keywords from most dominant (rank 1) to least dominant (rank 6).
-6) Assign a percentage to EACH keyword that represents its relative weight
-   within the user's overall taste profile.
+6) Assign a percentage to EACH keyword that represents its relative weight.
+
+⚠️ Diversity constraint (MANDATORY):
+- Avoid selecting too many keywords from the same level (LV).
+- You SHOULD aim to distribute keywords across DIFFERENT levels (LV1–LV5) when possible.
+- If multiple keywords are similarly dominant, prefer the one that introduces a NEW level.
+- Overuse of Genre (LV1) keywords is discouraged unless strongly unavoidable.
 
 How to determine ranking and percentage:
-- Ranking is based on overall dominance and consistency across works.
-- Percentages represent relative dominance within the 6 selected keywords.
-- Percentages are NOT raw counts and NOT strict statistical frequency.
-- Percentages must be normalized so that the total equals exactly 100.
+- Ranking is based on dominance, recurrence, and expressive value.
+- Percentages represent relative importance, not raw frequency.
+- Percentages must sum to exactly 100.
 
-Predefined taste keywords (you can ONLY choose from these):
+Genre inference rule:
+- If a work does NOT contain explicit genre metadata,
+  you MUST infer its genre ONLY by analyzing its description (overview).
+- Genre inference is allowed ONLY to map to the predefined genre list.
+
+Predefined taste keywords (ONLY selectable options):
 
 --------------------------------------------------
 LV1. Genre :
@@ -67,30 +75,21 @@ LV5. Cultural Context :
 
 --------------------------------------------------
 
-Hard rules:
+Hard rules (ABSOLUTE):
 1) You MUST choose only from the predefined keywords above.
-2) Exact match only. No synonyms, no paraphrasing, no translation.
+2) Exact match only. No synonyms, paraphrasing, or translation.
 3) Select EXACTLY 6 keywords.
-4) Each keyword must be supported by repeated or strong evidence
-   across multiple works.
-5) Assign rank from 1 (most dominant) to 6 (least dominant).
-6) Assign an integer percentage to EACH keyword.
-7) The sum of all percentages MUST be exactly 100.
-8) Do NOT explain your reasoning.
-9) Output valid JSON only. No markdown, no comments.
-10) If a work does not contain explicit genre metadata, you MUST infer its genre ONLY by analyzing the work's description (overview).
-11) Genre inference from description is allowed ONLY to map to the predefined genre list.
-12) Output keywords sorted by rank in ascending order (rank 1 first).
-Fallback rule (MANDATORY):
+4) Assign rank 1–6 (1 = most dominant).
+5) Assign an integer percentage to EACH keyword.
+6) The sum of all percentages MUST be exactly 100.
+7) Output valid JSON only. No markdown, no comments.
+8) Output keywords sorted by rank ascending (rank 1 first).
 
-- You MUST always output EXACTLY 6 keywords, without exception.
-- If fewer than 6 keywords are strongly supported by evidence,
-  you MUST still select additional keywords from the predefined list
-  that are the closest or weakest matches.
-- In such cases, weaker keywords MUST be ranked lower
-  (higher rank number) and assigned smaller percentages.
-- Lack of strong evidence is NOT a reason to output fewer than 6 keywords.
-- Never output fewer or more than 6 keywords under any circumstances.
+Fallback rule (MANDATORY):
+- You MUST always output EXACTLY 6 keywords.
+- If strong evidence is limited, select weaker but plausible keywords.
+- Weaker keywords MUST be ranked lower and given smaller percentages.
+- Lack of evidence is NOT a reason to reduce diversity or output fewer keywords.
 
 Output format (JSON ONLY):
 
@@ -104,8 +103,7 @@ Output format (JSON ONLY):
       "percent": number
     }
   ]
-}
-""";
+}""";
 
 	public GptKeywordDto callGptForTaste(List<TasteWorkMetaDto> tasteWorkMetaDtoList) {
 		try {
