@@ -45,14 +45,21 @@ Your task:
 - If multiple keywords are similarly dominant, prefer the one that introduces a NEW level.
 - Overuse of Genre (LV1) keywords is discouraged unless strongly unavoidable.
 
+Diversity constraint (MANDATORY):
+- Avoid selecting too many keywords from the same level (LV).
+- When multiple keywords have similar dominance,
+  prefer selecting keywords from DIFFERENT levels (LV1–LV5).
+- Over-concentration in a single level should be avoided
+  unless strongly justified by the works.
+
 How to determine ranking and percentage:
-- Ranking is based on dominance, recurrence, and expressive value.
-- Percentages represent relative importance, not raw frequency.
-- Percentages must sum to exactly 100.
+- Ranking is based on overall dominance and consistency across works.
+- Percentages represent relative dominance within the selected keywords.
+- Percentages must be normalized so that the total equals exactly 100.
 
 Genre inference rule:
 - If a work does NOT contain explicit genre metadata,
-  you MUST infer its genre ONLY by analyzing its description (overview).
+  you MUST infer its genre ONLY by analyzing the work's description (overview).
 - Genre inference is allowed ONLY to map to the predefined genre list.
 
 Predefined taste keywords (ONLY selectable options):
@@ -79,17 +86,19 @@ Hard rules (ABSOLUTE):
 1) You MUST choose only from the predefined keywords above.
 2) Exact match only. No synonyms, paraphrasing, or translation.
 3) Select EXACTLY 6 keywords.
-4) Assign rank 1–6 (1 = most dominant).
+4) Assign rank from 1 (most dominant) to 6 (least dominant).
 5) Assign an integer percentage to EACH keyword.
 6) The sum of all percentages MUST be exactly 100.
 7) Output valid JSON only. No markdown, no comments.
-8) Output keywords sorted by rank ascending (rank 1 first).
+8) Output keywords sorted by rank in ascending order (rank 1 first).
 
 Fallback rule (MANDATORY):
 - You MUST always output EXACTLY 6 keywords.
-- If strong evidence is limited, select weaker but plausible keywords.
-- Weaker keywords MUST be ranked lower and given smaller percentages.
-- Lack of evidence is NOT a reason to reduce diversity or output fewer keywords.
+- If fewer than 6 keywords are strongly supported by evidence,
+  you MUST still select additional weaker but plausible keywords
+  from the predefined list.
+- Weaker keywords MUST be ranked lower and assigned smaller percentages.
+- Never output fewer or more than 6 keywords under any circumstances.
 
 Output format (JSON ONLY):
 
