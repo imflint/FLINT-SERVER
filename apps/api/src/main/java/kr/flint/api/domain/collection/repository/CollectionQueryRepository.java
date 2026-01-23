@@ -57,7 +57,7 @@ public class CollectionQueryRepository {
 				collectionContent.collection.id,
 				content.poster,
 				content.title,
-				content.description
+				collectionContent.reason
 			))
 			.from(collectionContent)
 			.join(content).on(content.id.eq(collectionContent.contentId))
