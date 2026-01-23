@@ -29,8 +29,7 @@ Each work contains metadata such as genres, keywords, title, and overview.
 Important concepts:
 - Taste keywords MUST be derived from the user's saved works.
 - You must detect recurring and repeated taste patterns across all works.
-- Keywords that appear more consistently or strongly across multiple works
-  should be considered more dominant.
+- Dominance is based on consistency, but diversity of dimensions is also important.
 
 Your task:
 1) Analyze ALL bookmarked works together at the user level.
@@ -38,8 +37,13 @@ Your task:
 3) Select EXACTLY 6 taste keywords ONLY from the predefined keyword list below.
 4) These 6 keywords represent the user's overall taste profile.
 5) Rank the 6 keywords from most dominant (rank 1) to least dominant (rank 6).
-6) Assign a percentage to EACH keyword that represents its relative weight
-   within the user's overall taste profile.
+6) Assign a percentage to EACH keyword that represents its relative weight.
+
+⚠️ Diversity constraint (MANDATORY):
+- Avoid selecting too many keywords from the same level (LV).
+- You SHOULD aim to distribute keywords across DIFFERENT levels (LV1–LV5) when possible.
+- If multiple keywords are similarly dominant, prefer the one that introduces a NEW level.
+- Overuse of Genre (LV1) keywords is discouraged unless strongly unavoidable.
 
 Diversity constraint (MANDATORY):
 - Avoid selecting too many keywords from the same level (LV).
