@@ -18,6 +18,7 @@ import kr.flint.api.domain.collection.dto.response.GetCollectionDetailRes;
 import kr.flint.api.domain.collection.dto.response.GetCollectionSimpleRes;
 import lombok.RequiredArgsConstructor;
 
+import static kr.flint.api.common.query.CollectionQueryConditions.*;
 import static kr.flint.bookmark.domain.QContentBookmark.*;
 import static kr.flint.collection.domain.QCollection.collection;
 import static kr.flint.collection.domain.QCollectionContent.*;
@@ -34,13 +35,15 @@ public class CollectionQueryRepository {
 
 	// 탐색 - 컬렉션 목록 조회 (각 컬렉션에서 랜덤 작품의 정보 반환)
 	public List<GetCollectionSimpleRes> getCollectionSimpleList(Long cursor, int size){
-		// 컬렉션 ID 목록 조회
+		// 컬렉션 ID 목록 조회 (description 10자 이상 + reason 10자 이상인 작품이 있는 컬렉션만)
 		List<Long> collectionIds = jpaQueryFactory
 			.select(collection.id)
 			.from(collection)
 			.where(
 				cursor != null ? collection.id.lt(cursor) : null,
-				collection.isPublic.isTrue()
+				collection.isPublic.isTrue(),
+				hasValidDescription(),
+				hasContentWithValidReason()
 			)
 			.orderBy(collection.createdAt.desc())
 			.limit(size + 1L)
@@ -50,7 +53,7 @@ public class CollectionQueryRepository {
 			return List.of();
 		}
 
-		// 해당 컬렉션들의 content 정보 조회
+		// 해당 컬렉션들의 content 정보 조회 (reason 10자 이상인 작품만)
 		List<CollectionContentInfoRow> contentRows = jpaQueryFactory
 			.select(Projections.constructor(
 				CollectionContentInfoRow.class,
@@ -61,7 +64,11 @@ public class CollectionQueryRepository {
 			))
 			.from(collectionContent)
 			.join(content).on(content.id.eq(collectionContent.contentId))
-			.where(collectionContent.collection.id.in(collectionIds))
+			.where(
+				collectionContent.collection.id.in(collectionIds),
+				collectionContent.reason.isNotNull(),
+				collectionContent.reason.length().goe(REASON_MIN_LENGTH)
+			)
 			.fetch();
 
 		// 컬렉션별로 그룹핑
@@ -70,6 +77,7 @@ public class CollectionQueryRepository {
 
 		// 각 컬렉션마다 랜덤 작품 선택하여 DTO 생성
 		return collectionIds.stream()
+			.filter(collectionId -> contentMap.containsKey(collectionId))
 			.map(collectionId -> {
 				List<CollectionContentInfoRow> contents = contentMap.get(collectionId);
 				int randomIndex = ThreadLocalRandom.current().nextInt(contents.size());

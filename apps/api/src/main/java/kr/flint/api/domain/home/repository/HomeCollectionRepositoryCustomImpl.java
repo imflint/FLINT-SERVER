@@ -1,5 +1,6 @@
 package kr.flint.api.domain.home.repository;
 
+import static kr.flint.api.common.query.CollectionQueryConditions.*;
 import static kr.flint.collection.domain.QCollection.*;
 import static kr.flint.collection.domain.QCollectionContent.*;
 import static kr.flint.content.domain.QContent.*;
@@ -10,8 +11,6 @@ import java.util.List;
 import org.springframework.util.CollectionUtils;
 
 import com.querydsl.core.types.Projections;
-import com.querydsl.core.types.dsl.BooleanExpression;
-import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
 import kr.flint.api.domain.home.dto.projection.CollectionBasicProjection;
@@ -120,24 +119,5 @@ public class HomeCollectionRepositoryCustomImpl implements HomeCollectionReposit
             .orderBy(collection.bookmarkCount.desc(), collection.createdAt.desc())
             .limit(limit)
             .fetch();
-    }
-
-    // 컬렉션 소개(description)가 비어있지 않은지 확인
-    private BooleanExpression hasValidDescription() {
-        return collection.description.isNotNull()
-            .and(collection.description.ne(""));
-    }
-
-    // 최소 하나의 작품에 추천 이유(reason)가 있는지 확인
-    private BooleanExpression hasContentWithValidReason() {
-        return JPAExpressions
-            .selectOne()
-            .from(collectionContent)
-            .where(
-                collectionContent.collection.id.eq(collection.id),
-                collectionContent.reason.isNotNull(),
-                collectionContent.reason.ne("")
-            )
-            .exists();
     }
 }
