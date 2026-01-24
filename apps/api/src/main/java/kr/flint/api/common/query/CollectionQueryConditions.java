@@ -12,16 +12,16 @@ import static kr.flint.collection.domain.QCollectionContent.collectionContent;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class CollectionQueryConditions {
 
-	public static final int DESCRIPTION_MIN_LENGTH = 10;
+	public static final int DESCRIPTION_MIN_LENGTH = 5;
 	public static final int REASON_MIN_LENGTH = 10;
 
-	// 컬렉션 소개(description)가 10자 이상인지 확인
+	// 컬렉션 소개가 5자 이상
 	public static BooleanExpression hasValidDescription() {
 		return collection.description.isNotNull()
 			.and(collection.description.length().goe(DESCRIPTION_MIN_LENGTH));
 	}
 
-	// 최소 하나의 작품에 추천 이유(reason)가 10자 이상인지 확인
+	// 작품의 추천 이유가 10자 이상
 	public static BooleanExpression hasContentWithValidReason() {
 		return JPAExpressions
 			.selectOne()
