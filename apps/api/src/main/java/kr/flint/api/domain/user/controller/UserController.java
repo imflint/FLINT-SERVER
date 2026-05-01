@@ -2,10 +2,12 @@ package kr.flint.api.domain.user.controller;
 
 import java.util.List;
 
+import jakarta.validation.Valid;
 import kr.flint.api.domain.content.dto.GetContentDetailRes;
 import kr.flint.api.domain.content.dto.GetContentListRes;
 import kr.flint.api.domain.content.service.ContentQueryFacade;
 import kr.flint.api.domain.user.controller.spec.UserControllerDocs;
+import kr.flint.api.domain.user.dto.request.UpdateProfileImageReq;
 import kr.flint.api.domain.user.dto.response.UserCollectionsRes;
 import kr.flint.api.domain.user.dto.response.UserKeywordsRes;
 import kr.flint.api.domain.user.dto.response.UserProfileRes;
@@ -131,6 +133,16 @@ public class UserController implements UserControllerDocs {
         return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_KEYWORDS_FETCH));
     }
 
+
+    @Override
+    @PutMapping("/me/profile-image")
+    public ResponseEntity<SuccessResponse<Void>> updateProfileImage(
+            @CurrentUser Long userId,
+            @Valid @RequestBody UpdateProfileImageReq request
+    ) {
+        userCommandFacade.updateProfileImage(userId, request.profileImage());
+        return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_UPDATE));
+    }
 
 	@Override
 	@GetMapping("/{userId}/bookmarked-contents")

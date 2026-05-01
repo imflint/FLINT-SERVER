@@ -59,6 +59,12 @@ public class UserService {
 	}
 
 	@Transactional
+	public void updateProfileImage(Long userId, String profileImage) {
+		User user = getById(userId);
+		user.updateProfile(profileImage);
+	}
+
+	@Transactional
 	public void deleteUser(Long userId){
 		userRepository.deleteById(userId);
 	}

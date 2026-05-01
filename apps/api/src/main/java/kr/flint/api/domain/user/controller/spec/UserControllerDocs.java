@@ -5,9 +5,11 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import kr.flint.api.domain.content.dto.GetContentListRes;
+import kr.flint.api.domain.user.dto.request.UpdateProfileImageReq;
 import kr.flint.api.domain.user.dto.response.UserCollectionsRes;
 import kr.flint.api.domain.user.dto.response.UserKeywordsRes;
 import kr.flint.api.domain.user.dto.response.UserProfileRes;
@@ -16,6 +18,7 @@ import kr.flint.user.dto.response.NicknameCheckResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 
 @Tag(name = "User", description = "사용자 API")
 public interface UserControllerDocs {
@@ -77,6 +80,16 @@ public interface UserControllerDocs {
     })
     ResponseEntity<SuccessResponse<Void>> recalculateKeyword(
             @Parameter(hidden = true) Long userId
+    );
+
+    @Operation(summary = "프로필 이미지 수정",
+               description = "로그인한 사용자의 프로필 이미지를 등록 또는 수정합니다. S3 presigned URL로 업로드 후 반환받은 키를 전달합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "프로필 이미지 수정 성공", useReturnTypeSchema = true)
+    })
+    ResponseEntity<SuccessResponse<Void>> updateProfileImage(
+            @Parameter(hidden = true) Long userId,
+            @Valid @RequestBody UpdateProfileImageReq request
     );
 
     // === 타인 조회 (인증 선택) ===
