@@ -4,21 +4,27 @@ package kr.flint.infra.gpt.service;
 import java.util.List;
 
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.stereotype.Service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import kr.flint.infra.gpt.dto.GptKeywordDto;
 import kr.flint.infra.gpt.dto.TasteWorkMetaDto;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ChatService {
 	private final ChatClient chatClient;
+	private final ObjectMapper objectMapper;
 
-	ObjectMapper objectMapper = new ObjectMapper();
+	// gpt-4o-mini 가격 (USD per 1M tokens)
+	private static final double INPUT_PRICE_PER_MILLION = 0.15;
+	private static final double OUTPUT_PRICE_PER_MILLION = 0.60;
 
 	private final static String SYSTEM_PROMPT = """
 You are a taste-profile extractor for a personalization system.
@@ -125,14 +131,38 @@ Output format (JSON ONLY):
 			%s
 			""".formatted(worksJson);
 
-			return chatClient.prompt()
+			ChatResponse response = chatClient.prompt()
 				.system(SYSTEM_PROMPT)
 				.user(userPrompt)
 				.call()
-				.entity(GptKeywordDto.class);
+				.chatResponse();
+
+			logTokenUsage(response);
+
+			String content = response.getResult().getOutput().getText();
+			return objectMapper.readValue(content, GptKeywordDto.class);
 		} catch (Exception e) {
 			throw new RuntimeException("Error calling gpt for taste keywords", e);
 		}
+	}
+
+	private void logTokenUsage(ChatResponse response) {
+		Usage usage = response.getMetadata().getUsage();
+		int inputTokens = usage.getPromptTokens();
+		int outputTokens = usage.getCompletionTokens();
+		int totalTokens = usage.getTotalTokens();
+
+		double inputCost = (inputTokens / 1_000_000.0) * INPUT_PRICE_PER_MILLION;
+		double outputCost = (outputTokens / 1_000_000.0) * OUTPUT_PRICE_PER_MILLION;
+		double totalCost = inputCost + outputCost;
+
+		log.info("[GPT 사용량] tokens: input={}, output={}, total={} | cost: ${} (input=${}, output=${})",
+			inputTokens,
+			outputTokens,
+			totalTokens,
+			String.format("%.6f", totalCost),
+			String.format("%.6f", inputCost),
+			String.format("%.6f", outputCost));
 	}
 
 }
