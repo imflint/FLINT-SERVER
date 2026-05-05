@@ -38,11 +38,10 @@ public record CollectionCardRes(
         Function<String, String> imageUrlResolver
     ) {
         List<String> resolvedImages = CollectionImageProcessor.limitAndResolveImages(contentPosters, imageUrlResolver);
-        String thumbnail = CollectionImageProcessor.selectThumbnail(resolvedImages);
 
         return new CollectionCardRes(
             dto.id(),
-            thumbnail,
+            imageUrlResolver.apply(dto.image()),
             dto.title(),
             dto.description(),
             resolvedImages,

@@ -2,6 +2,7 @@ package kr.flint.api.domain.collection.dto.response;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.function.Function;
 
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -47,6 +48,8 @@ public record GetCollectionDetailRes(
 		String title,
 		@Schema(description = "썸네일 URL", example = "https://example.com/thumb.jpg")
 		String imageUrl,
+		@Schema(description = "작품별 커스텀 이미지 URL (선택)", example = "https://example.com/custom.jpg")
+		String customImageUrl,
 		@Schema(description = "감독/작가", example = "아자스")
 		String director,
 		@Schema(description = "북마크 여부", example = "false")
@@ -59,5 +62,20 @@ public record GetCollectionDetailRes(
 		String reason,
 		@Schema(description = "개봉일", example = "2026")
 		int year
-		){}
+		){
+		public Content resolveImages(Function<String, String> imageUrlResolver) {
+			return new Content(
+				id,
+				title,
+				imageUrlResolver.apply(imageUrl),
+				imageUrlResolver.apply(customImageUrl),
+				director,
+				isBookmarked,
+				bookmarkCount,
+				isSpoiler,
+				reason,
+				year
+			);
+		}
+	}
 }

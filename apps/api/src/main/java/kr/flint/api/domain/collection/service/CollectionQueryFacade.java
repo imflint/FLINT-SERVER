@@ -31,7 +31,10 @@ public class CollectionQueryFacade {
 
 	public GetCollectionDetailRes getCollectionDetail(final Long collectionId, final Long userId){
 		CollectionQueryRepository.GetCollectionHeader header = collectionQueryRepository.getHeader(collectionId, userId);
-		List<GetCollectionDetailRes.Content> contentList = collectionQueryRepository.getContentList(collectionId, userId);
+		List<GetCollectionDetailRes.Content> contentList = collectionQueryRepository.getContentList(collectionId, userId)
+			.stream()
+			.map(content -> content.resolveImages(cloudFrontUrlProvider::resolveUrl))
+			.toList();
 
 		if(header == null){
 			throw new CollectionException(CollectionErrorCode.COLLECTION_NOT_FOUND);

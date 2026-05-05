@@ -23,10 +23,11 @@ public record CollectionCreateCommand(
     public record ContentInput(
             Long contentId,
             boolean isSpoiler,
-            String reason
+            String reason,
+            String customImage
     ) {
-        public static ContentInput of(Long contentId, boolean isSpoiler, String reason) {
-            return new ContentInput(contentId, isSpoiler, reason);
+        public static ContentInput of(Long contentId, boolean isSpoiler, String reason, String customImage) {
+            return new ContentInput(contentId, isSpoiler, reason, customImage);
         }
     }
 }

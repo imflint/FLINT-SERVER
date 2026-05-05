@@ -71,7 +71,7 @@ public class HomeQueryFacade {
         return contentImages.stream()
             .collect(Collectors.groupingBy(
                 CollectionContentImageDto::collectionId,
-                Collectors.mapping(CollectionContentImageDto::poster, Collectors.toCollection(ArrayList::new))
+                Collectors.mapping(CollectionContentImageDto::image, Collectors.toCollection(ArrayList::new))
             ));
     }
 }
