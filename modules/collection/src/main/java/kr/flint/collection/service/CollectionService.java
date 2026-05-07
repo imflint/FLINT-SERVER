@@ -44,7 +44,8 @@ public class CollectionService {
 				savedCollection,
 				content.contentId(),
 				content.isSpoiler(),
-				content.reason()
+				content.reason(),
+				content.customImage()
 			))
 			.toList();
 

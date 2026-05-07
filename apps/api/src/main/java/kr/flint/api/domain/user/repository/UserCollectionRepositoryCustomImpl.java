@@ -132,6 +132,7 @@ public class UserCollectionRepositoryCustomImpl implements UserCollectionReposit
 		return queryFactory
 			.select(Projections.constructor(CollectionContentImageDto.class,
 				collectionContent.collection.id,
+				collectionContent.customImage,
 				content.poster
 			))
 			.from(collectionContent)

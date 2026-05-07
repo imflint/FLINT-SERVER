@@ -35,7 +35,7 @@ public record UserCollectionsRes(
     public record CollectionItem(
         @Schema(description = "컬렉션 ID", example = "1", type = "string")
         Long id,
-        @Schema(description = "컬렉션 썸네일 (첫 번째 작품 포스터)", example = "https://example.com/thumbnail.jpg")
+        @Schema(description = "컬렉션 썸네일", example = "https://example.com/thumbnail.jpg")
         String thumbnailUrl,
         @Schema(description = "컬렉션 제목", example = "주말에 보기 좋은 영화")
         String title,
@@ -61,11 +61,10 @@ public record UserCollectionsRes(
             Function<String, String> imageUrlResolver
         ) {
             List<String> resolvedImages = CollectionImageProcessor.limitAndResolveImages(contentPosters, imageUrlResolver);
-            String thumbnail = CollectionImageProcessor.selectThumbnail(resolvedImages);
 
             return new CollectionItem(
                 dto.id(),
-                thumbnail,
+                imageUrlResolver.apply(dto.image()),
                 dto.title(),
                 dto.description(),
                 resolvedImages,
