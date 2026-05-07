@@ -114,13 +114,25 @@ jobs:
           name: app-jar
           path: artifact
 
+      - name: Prepare deployment files
+        run: |
+          mkdir -p deploy-files
+          API_JAR="$(find artifact -name 'flint-api-0.0.1-SNAPSHOT.jar' -type f | head -n 1)"
+          if [ -z "$API_JAR" ]; then
+            echo "flint-api JAR not found in downloaded artifact"
+            find artifact -maxdepth 5 -type f
+            exit 1
+          fi
+          cp "$API_JAR" deploy-files/flint-api-0.0.1-SNAPSHOT.jar
+          ls -la deploy-files
+
       - name: Deploy JAR to EC2
         uses: appleboy/scp-action@v1.0.0
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "artifact/flint-api-0.0.1-SNAPSHOT.jar"
+          source: "deploy-files/flint-api-0.0.1-SNAPSHOT.jar"
           target: "/home/ubuntu/deploy"
           strip_components: 1
 
