@@ -59,6 +59,21 @@ public class UserService {
 	}
 
 	@Transactional
+	public void updateProfileImage(Long userId, String profileImage) {
+		User user = getById(userId);
+		user.updateProfile(profileImage);
+	}
+
+	@Transactional
+	public void updateNickname(Long userId, String nickname) {
+		if (existsByNickname(nickname)) {
+			throw new UserException(UserErrorCode.DUPLICATE_NICKNAME);
+		}
+		User user = getById(userId);
+		user.updateNickname(nickname);
+	}
+
+	@Transactional
 	public void deleteUser(Long userId){
 		userRepository.deleteById(userId);
 	}

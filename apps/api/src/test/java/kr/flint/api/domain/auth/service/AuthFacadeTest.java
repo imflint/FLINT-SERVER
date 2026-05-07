@@ -19,10 +19,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
 import kr.flint.api.domain.auth.dto.request.SignupReq;
+import kr.flint.api.domain.auth.dto.request.SocialVerifyReq;
+import kr.flint.api.global.oauth.client.AppleOAuthClient;
 import kr.flint.api.global.oauth.client.KakaoOAuthClient;
 import kr.flint.auth.dto.AuthTokens;
 import kr.flint.auth.dto.TempTokenPayload;
 import kr.flint.auth.enums.AuthProvider;
+import kr.flint.auth.exception.AuthErrorCode;
+import kr.flint.auth.exception.AuthException;
 import kr.flint.auth.service.AuthService;
 import kr.flint.auth.service.UserIdentityService;
 import kr.flint.bookmark.service.BookmarkCommandService;
@@ -52,6 +56,9 @@ class AuthFacadeTest {
 	private KakaoOAuthClient kakaoOAuthClient;
 
 	@Mock
+	private AppleOAuthClient appleOAuthClient;
+
+	@Mock
 	private BookmarkCommandService bookmarkCommandService;
 
 	@Mock
@@ -74,6 +81,26 @@ class AuthFacadeTest {
 
 	@InjectMocks
 	private AuthFacade authFacade;
+
+	@Nested
+	@DisplayName("verifySocialCode")
+	class VerifySocialCode {
+
+		@Test
+		@DisplayName("Apple authorization code 플로우는 지원하지 않는다")
+		void appleAuthorizationCodeUnsupported() {
+			// given
+			SocialVerifyReq request = new SocialVerifyReq(AuthProvider.APPLE, "authorization-code", null);
+
+			// when & then
+			assertThatThrownBy(() -> authFacade.verifySocialCode(request))
+				.isInstanceOf(AuthException.class)
+				.extracting("errorCode")
+				.isEqualTo(AuthErrorCode.UNSUPPORTED_SOCIAL_FLOW);
+			verify(appleOAuthClient, never()).getUserInfoByCode("authorization-code");
+			verify(appleOAuthClient, never()).getUserInfoByIdentityToken(null);
+		}
+	}
 
 	@Nested
 	@DisplayName("signup")

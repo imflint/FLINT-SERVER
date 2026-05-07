@@ -15,6 +15,8 @@ import static kr.flint.shared.storage.FileExtension.*;
         S3 저장 경로 타입
         - USER_PROFILE: 사용자 프로필 이미지 (허용: JPG, JPEG, PNG)
         - LOGO_IMAGE: 키워드 로고 이미지 (허용: JPG, JPEG, PNG, SVG)
+        - COLLECTION_THUMBNAIL: 컬렉션 대표 이미지 (허용: JPG, JPEG, PNG)
+        - COLLECTION_CONTENT: 컬렉션 작품별 커스텀 이미지 (허용: JPG, JPEG, PNG)
         """,
     enumAsRef = true
 )
@@ -23,6 +25,8 @@ import static kr.flint.shared.storage.FileExtension.*;
 public enum StoragePathType implements StoragePath {
     USER_PROFILE("user/profile", Extensions.IMAGE),
     LOGO_IMAGE("keywords/logo", Extensions.LOGO),
+    COLLECTION_THUMBNAIL("collection/thumbnail", Extensions.IMAGE),
+    COLLECTION_CONTENT("collection/content", Extensions.IMAGE),
     ;
 
     private final String path;

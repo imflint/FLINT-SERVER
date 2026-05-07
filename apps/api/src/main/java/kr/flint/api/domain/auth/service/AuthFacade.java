@@ -10,6 +10,7 @@ import kr.flint.api.domain.auth.dto.request.SocialVerifyReq;
 import kr.flint.api.domain.auth.dto.response.AuthTokenRes;
 import kr.flint.api.domain.auth.dto.response.SocialVerifyRes;
 import kr.flint.api.domain.auth.event.UserSignedUpEvent;
+import kr.flint.api.global.oauth.client.AppleOAuthClient;
 import kr.flint.api.global.oauth.client.KakaoOAuthClient;
 import kr.flint.auth.dto.AuthTokens;
 import kr.flint.auth.dto.SocialUserInfo;
@@ -38,6 +39,7 @@ public class AuthFacade {
     private final UserService userService;
     private final UserIdentityService userIdentityService;
     private final KakaoOAuthClient kakaoOAuthClient;
+    private final AppleOAuthClient appleOAuthClient;
     private final BookmarkCommandService bookmarkCommandService;
     private final OttService ottService;
     private final ApplicationEventPublisher eventPublisher;
@@ -146,19 +148,19 @@ public class AuthFacade {
         return AuthTokenRes.from(tokens);
     }
 
-    /**
-     * 소셜 제공자별 사용자 정보 조회
-     * - accessToken -> Mobile (토큰으로 직접 조회)
-     * - code -> Web (코드, 토큰 교환, 조회)
-     */
+    // 소셜 제공자별 사용자 정보 조회
+    // accessToken -> Mobile (토큰으로 직접 조회), code -> Web (코드→토큰 교환→조회)
     private SocialUserInfo getSocialUserInfo(SocialVerifyReq request) {
-        if (request.provider() != AuthProvider.KAKAO) {
-            throw new AuthException(AuthErrorCode.UNSUPPORTED_PROVIDER);
-        }
-
-        if (request.hasAccessToken()) {
-            return kakaoOAuthClient.getUserInfoByAccessToken(request.accessToken());
-        }
-        return kakaoOAuthClient.getUserInfoByCode(request.code());
+        return switch (request.provider()) {
+            case KAKAO -> request.hasAccessToken()
+                    ? kakaoOAuthClient.getUserInfoByAccessToken(request.accessToken())
+                    : kakaoOAuthClient.getUserInfoByCode(request.code());
+            case APPLE -> {
+                if (!request.hasAccessToken()) {
+                    throw new AuthException(AuthErrorCode.UNSUPPORTED_SOCIAL_FLOW);
+                }
+                yield appleOAuthClient.getUserInfoByIdentityToken(request.accessToken());
+            }
+        };
     }
 }

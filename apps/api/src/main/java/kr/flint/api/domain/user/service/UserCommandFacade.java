@@ -29,5 +29,11 @@ public class UserCommandFacade {
 			.toList();
 		tasteService.matchUserKeywords(userId, keywordResList);
 	}
-    // TODO: 프로필 수정, 회원 탈퇴 등 Command 작업 추가 예정
+	public void updateProfileImage(Long userId, String profileImage) {
+		userService.updateProfileImage(userId, profileImage);
+	}
+
+	public void updateNickname(Long userId, String nickname) {
+		userService.updateNickname(userId, nickname);
+	}
 }

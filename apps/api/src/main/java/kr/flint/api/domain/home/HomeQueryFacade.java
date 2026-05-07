@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import kr.flint.api.domain.home.dto.projection.CollectionCardDto;
 import kr.flint.api.domain.home.dto.projection.CollectionContentImageDto;
@@ -71,7 +72,10 @@ public class HomeQueryFacade {
         return contentImages.stream()
             .collect(Collectors.groupingBy(
                 CollectionContentImageDto::collectionId,
-                Collectors.mapping(CollectionContentImageDto::poster, Collectors.toCollection(ArrayList::new))
+                Collectors.mapping(
+                    CollectionContentImageDto::image,
+                    Collectors.filtering(StringUtils::hasText, Collectors.toCollection(ArrayList::new))
+                )
             ));
     }
 }

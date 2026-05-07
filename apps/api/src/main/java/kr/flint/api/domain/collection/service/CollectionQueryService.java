@@ -26,6 +26,14 @@ public class CollectionQueryService {
 		List<GetCollectionSimpleRes> collectionList = hasNext
 			? fetchedCollections.subList(0, size)
 			: fetchedCollections;
+		List<GetCollectionSimpleRes> resolvedCollectionList = collectionList.stream()
+			.map(collection -> new GetCollectionSimpleRes(
+				collection.collectionId(),
+				cloudFrontUrlProvider.resolveUrl(collection.imageUrl()),
+				collection.contentTitle(),
+				collection.contentDescription()
+			))
+			.toList();
 
 		String nextCursor = hasNext
 			? String.valueOf(collectionList.getLast().collectionId())
@@ -33,11 +41,26 @@ public class CollectionQueryService {
 
 		String currentCursor = cursor != null ? String.valueOf(cursor) : null;
 
-		return SliceCursor.of(collectionList, currentCursor, nextCursor);
+		return SliceCursor.of(resolvedCollectionList, currentCursor, nextCursor);
 	}
 
 	public List<GetCollectionDetailListRes> getRecentCollectionList(final Long userId){
 		List<GetCollectionDetailListRes> collectionList = collectionQueryRepository.getCollectionDetailList(userId);
-		return collectionList.isEmpty() ? List.of() : collectionList;
+		return collectionList.stream()
+			.map(collection -> new GetCollectionDetailListRes(
+				collection.id(),
+				cloudFrontUrlProvider.resolveUrl(collection.thumbnailUrl()),
+				collection.title(),
+				collection.description(),
+				collection.imageList().stream()
+					.map(cloudFrontUrlProvider::resolveUrl)
+					.toList(),
+				collection.bookmarkCount(),
+				collection.isBookmarked(),
+				collection.userId(),
+				collection.nickname(),
+				cloudFrontUrlProvider.resolveUrl(collection.profileImageUrl())
+			))
+			.toList();
 	}
 }

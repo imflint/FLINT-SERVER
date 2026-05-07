@@ -36,8 +36,12 @@ public class CollectionQueryRepository {
 	// 탐색 - 컬렉션 목록 조회 (각 컬렉션에서 랜덤 작품의 정보 반환)
 	public List<GetCollectionSimpleRes> getCollectionSimpleList(Long cursor, int size){
 		// 컬렉션 ID 목록 조회 (description 10자 이상 + reason 10자 이상인 작품이 있는 컬렉션만)
-		List<Long> collectionIds = jpaQueryFactory
-			.select(collection.id)
+		List<CollectionSimpleRow> collectionRows = jpaQueryFactory
+			.select(Projections.constructor(
+				CollectionSimpleRow.class,
+				collection.id,
+				collection.image
+			))
 			.from(collection)
 			.where(
 				cursor != null ? collection.id.lt(cursor) : null,
@@ -49,16 +53,19 @@ public class CollectionQueryRepository {
 			.limit(size + 1L)
 			.fetch();
 
-		if (collectionIds.isEmpty()) {
+		if (collectionRows.isEmpty()) {
 			return List.of();
 		}
+
+		List<Long> collectionIds = collectionRows.stream()
+			.map(CollectionSimpleRow::collectionId)
+			.toList();
 
 		// 해당 컬렉션들의 content 정보 조회 (reason 10자 이상인 작품만)
 		List<CollectionContentInfoRow> contentRows = jpaQueryFactory
 			.select(Projections.constructor(
 				CollectionContentInfoRow.class,
 				collectionContent.collection.id,
-				content.poster,
 				content.title,
 				collectionContent.reason
 			))
@@ -76,15 +83,15 @@ public class CollectionQueryRepository {
 			.collect(Collectors.groupingBy(CollectionContentInfoRow::collectionId));
 
 		// 각 컬렉션마다 랜덤 작품 선택하여 DTO 생성
-		return collectionIds.stream()
-			.filter(collectionId -> contentMap.containsKey(collectionId))
-			.map(collectionId -> {
-				List<CollectionContentInfoRow> contents = contentMap.get(collectionId);
+		return collectionRows.stream()
+			.filter(row -> contentMap.containsKey(row.collectionId()))
+			.map(row -> {
+				List<CollectionContentInfoRow> contents = contentMap.get(row.collectionId());
 				int randomIndex = ThreadLocalRandom.current().nextInt(contents.size());
 				CollectionContentInfoRow selected = contents.get(randomIndex);
 				return new GetCollectionSimpleRes(
-					collectionId,
-					selected.poster(),
+					row.collectionId(),
+					row.imageUrl(),
 					selected.contentTitle(),
 					selected.contentDescription()
 				);
@@ -92,9 +99,13 @@ public class CollectionQueryRepository {
 			.toList();
 	}
 
+	public record CollectionSimpleRow(
+		Long collectionId,
+		String imageUrl
+	) {}
+
 	public record CollectionContentInfoRow(
 		Long collectionId,
-		String poster,
 		String contentTitle,
 		String contentDescription
 	) {}
@@ -132,6 +143,7 @@ public class CollectionQueryRepository {
 				content.id,
 				content.title,
 				content.poster,
+				collectionContent.customImage,
 				content.author,
 
 				contentBookmark.id.isNotNull(),
@@ -197,6 +209,7 @@ public class CollectionQueryRepository {
 				.select(Projections.constructor(
 					ContentImageRow.class,
 					collectionContent.collection.id,
+					collectionContent.customImage,
 					content.poster
 				))
 				.from(collectionContent)
@@ -210,11 +223,12 @@ public class CollectionQueryRepository {
 
 		Map<Long, List<String>> imageMap = new LinkedHashMap<>();
 		for (ContentImageRow row : imageRows) {
-			if (row.contentImage() == null) continue;
+			String image = row.image();
+			if (image == null) continue;
 
 			List<String> list = imageMap.computeIfAbsent(row.collectionId(), k -> new ArrayList<>());
 			if (list.size() < 2) {
-				list.add(row.contentImage());
+				list.add(image);
 			}
 		}
 
@@ -249,8 +263,13 @@ public class CollectionQueryRepository {
 
 	public record ContentImageRow(
 		Long collectionId,
-		String contentImage
-	) {}
+		String customImage,
+		String poster
+	) {
+		public String image() {
+			return customImage != null && !customImage.isBlank() ? customImage : poster;
+		}
+	}
 
 	public record GetCollectionHeader(
 		Long collectionId,
