@@ -26,6 +26,7 @@ import kr.flint.collection.service.CollectionService;
 import kr.flint.content.service.ContentService;
 import kr.flint.ott.service.OttService;
 import kr.flint.taste.service.TasteService;
+import kr.flint.terms.service.TermsService;
 import kr.flint.user.dto.response.UserAuthInfo;
 import kr.flint.user.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +46,7 @@ public class AuthFacade {
 	private final CollectionService collectionService;
 	private final TasteService tasteService;
 	private final ContentService contentService;
+	private final TermsService termsService;
 
 	/**
      * 소셜 로그인
@@ -75,6 +77,7 @@ public class AuthFacade {
 
         UserAuthInfo authInfo = userService.create(request.nickname());
         userIdentityService.create(authInfo.userId(), payload.provider(), payload.providerUserId());
+        termsService.validateAndCreateAgreements(authInfo.userId(), request.agreedTermsIds());
 
         bookmarkCommandService.createContentBookmarks(authInfo.userId(), request.favoriteContentIds());
 		request.favoriteContentIds().forEach(contentService::incContentBookmarkCount);

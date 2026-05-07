@@ -25,6 +25,7 @@ dependencies {
     implementation project(':modules:taste')
     implementation project(':modules:search')
     implementation project(':modules:ott')
+    implementation project(':modules:terms')
 
     implementation project(':infra:redis')
     implementation project(':infra:storage')

@@ -1,0 +1,38 @@
+spring:
+  config:
+    import:
+      - aws-parameterstore:/config/flint-api/
+      - aws-parameterstore:/config/flint-api/dev/
+
+  datasource:
+    url: ${database.url}
+    username: ${database.username}
+    password: ${database.password}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+decorator:
+  datasource:
+    p6spy:
+      enable-logging: true
+      multiline: true
+      logging: slf4j
+
+jwt:
+  secret: ${jwt.secret}
+  access-expiration: 1400000000000000000
+  refresh-expiration: 9000000000000000000
+  temp-expiration: 9000000000000000000
+
+logging:
+  level:
+    kr.flint: debug

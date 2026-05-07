@@ -1,0 +1,52 @@
+spring:
+  application:
+    name: flint-admin-api
+
+  config:
+    import:
+      - optional:file:.env[.properties]
+
+  threads:
+    virtual:
+      enabled: true
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+        default_batch_fetch_size: 100
+
+  jackson:
+    default-property-inclusion: non_null
+
+server:
+  port: 8081
+  shutdown: graceful
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+  endpoint:
+    health:
+      show-details: never
+
+decorator:
+  datasource:
+    p6spy:
+      enable-logging: false
+      multiline: true
+      logging: slf4j

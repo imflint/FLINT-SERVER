@@ -1,0 +1,36 @@
+package kr.flint.admin.domain.terms.controller;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import jakarta.validation.Valid;
+import kr.flint.admin.domain.terms.controller.spec.TermsAdminControllerDocs;
+import kr.flint.admin.domain.terms.dto.request.TermsCreateReq;
+import kr.flint.admin.domain.terms.service.TermsCommandFacade;
+import kr.flint.admin.global.security.annotation.CurrentUser;
+import kr.flint.shared.dto.response.SuccessCode;
+import kr.flint.shared.dto.response.SuccessResponse;
+import kr.flint.terms.dto.response.TermsRes;
+import lombok.RequiredArgsConstructor;
+
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/admin/terms")
+public class TermsAdminController implements TermsAdminControllerDocs {
+
+	private final TermsCommandFacade termsCommandFacade;
+
+	@Override
+	@PostMapping
+	public ResponseEntity<SuccessResponse<TermsRes>> createTerms(
+		@CurrentUser Long adminUserId,
+		@Valid @RequestBody TermsCreateReq request
+	) {
+		return ResponseEntity
+			.status(SuccessCode.SUCCESS_CREATE.getHttpStatus())
+			.body(SuccessResponse.of(SuccessCode.SUCCESS_CREATE, termsCommandFacade.createTerms(adminUserId, request)));
+	}
+}
