@@ -82,8 +82,8 @@ class UserQueryFacadeTest {
                 )));
             when(userCollectionRepository.findContentImagesByCollectionIds(List.of(collectionId)))
                 .thenReturn(List.of(
-                    new CollectionContentImageDto(collectionId, null),
-                    new CollectionContentImageDto(collectionId, "poster.jpg")
+                    new CollectionContentImageDto(collectionId, null, null),
+                    new CollectionContentImageDto(collectionId, null, "poster.jpg")
                 ));
             when(bookmarkQueryService.getBookmarkedCollectionIdSet(userId)).thenReturn(Set.of());
             when(cloudFrontUrlProvider.resolveUrl(nullable(String.class)))
