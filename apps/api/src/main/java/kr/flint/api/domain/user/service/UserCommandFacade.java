@@ -29,6 +29,10 @@ public class UserCommandFacade {
 			.toList();
 		tasteService.matchUserKeywords(userId, keywordResList);
 	}
+	public void updateProfileImage(Long userId, String profileImage) {
+		userService.updateProfileImage(userId, profileImage);
+	}
+
 	public void updateNickname(Long userId, String nickname) {
 		userService.updateNickname(userId, nickname);
 	}

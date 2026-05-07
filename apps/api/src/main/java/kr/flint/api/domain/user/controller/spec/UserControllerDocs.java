@@ -10,6 +10,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import kr.flint.api.domain.content.dto.GetContentListRes;
 import kr.flint.api.domain.user.dto.request.UpdateNicknameReq;
+import kr.flint.api.domain.user.dto.request.UpdateProfileImageReq;
 import kr.flint.api.domain.user.dto.response.UserCollectionsRes;
 import kr.flint.api.domain.user.dto.response.UserKeywordsRes;
 import kr.flint.api.domain.user.dto.response.UserProfileRes;
@@ -91,6 +92,16 @@ public interface UserControllerDocs {
     })
     ResponseEntity<SuccessResponse<Void>> recalculateKeyword(
             @Parameter(hidden = true) Long userId
+    );
+
+    @Operation(summary = "프로필 이미지 수정",
+               description = "로그인한 사용자의 프로필 이미지를 등록 또는 수정합니다. S3 presigned URL로 업로드 후 반환받은 키를 전달합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "프로필 이미지 수정 성공", useReturnTypeSchema = true)
+    })
+    ResponseEntity<SuccessResponse<Void>> updateProfileImage(
+            @Parameter(hidden = true) Long userId,
+            @Valid @RequestBody UpdateProfileImageReq request
     );
 
     // === 타인 조회 (인증 선택) ===
