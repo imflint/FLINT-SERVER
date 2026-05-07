@@ -67,8 +67,8 @@ public record GetCollectionDetailRes(
 			return new Content(
 				id,
 				title,
-				imageUrlResolver.apply(imageUrl),
-				imageUrlResolver.apply(customImageUrl),
+				resolveNullableImage(imageUrl, imageUrlResolver),
+				resolveNullableImage(customImageUrl, imageUrlResolver),
 				director,
 				isBookmarked,
 				bookmarkCount,
@@ -76,6 +76,10 @@ public record GetCollectionDetailRes(
 				reason,
 				year
 			);
+		}
+
+		private static String resolveNullableImage(String imageUrl, Function<String, String> imageUrlResolver) {
+			return imageUrl == null ? null : imageUrlResolver.apply(imageUrl);
 		}
 	}
 }
