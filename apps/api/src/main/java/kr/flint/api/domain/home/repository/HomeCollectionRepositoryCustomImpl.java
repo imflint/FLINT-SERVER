@@ -61,6 +61,7 @@ public class HomeCollectionRepositoryCustomImpl implements HomeCollectionReposit
         return queryFactory
             .select(Projections.constructor(CollectionContentImageDto.class,
                 collectionContent.collection.id,
+                collectionContent.customImage,
                 content.poster
             ))
             .from(collectionContent)

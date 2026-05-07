@@ -2,6 +2,7 @@ package kr.flint.api.domain.collection.service;
 
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import kr.flint.api.domain.collection.dto.request.CreateCollectionReq;
 import kr.flint.collection.service.CollectionService;
@@ -20,10 +21,10 @@ public class CollectionCommandFacade {
 	@Transactional
 	public Long createCollection(final Long userId, final CreateCollectionReq request) {
 		userService.getById(userId);
-		Long contentId = request.contentList().get(0).contentId();
+		Long contentId = request.contentList().getFirst().contentId();
 		Content content = contentService.getContentById(contentId);
-		String contentImageUrl = content.getPoster();
-		Long collectionId = collectionService.createCollection(userId, request.toCommand(), contentImageUrl);
+		String imageUrl = StringUtils.hasText(request.imageUrl()) ? request.imageUrl() : content.getPoster();
+		Long collectionId = collectionService.createCollection(userId, request.toCommand(), imageUrl);
 		return collectionId;
 	}
 }

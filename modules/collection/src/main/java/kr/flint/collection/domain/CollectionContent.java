@@ -1,6 +1,5 @@
 package kr.flint.collection.domain;
 
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -41,7 +40,16 @@ public class CollectionContent extends Base {
 	@Column(nullable = false)
 	private String reason;
 
-	public static CollectionContent create(Collection collection, Long contentId, boolean isSpoiler, String reason) {
-		return new CollectionContent(collection, contentId, isSpoiler, reason);
+	@Column(name = "custom_image")
+	private String customImage;
+
+	public static CollectionContent create(
+		Collection collection,
+		Long contentId,
+		boolean isSpoiler,
+		String reason,
+		String customImage
+	) {
+		return new CollectionContent(collection, contentId, isSpoiler, reason, customImage);
 	}
 }

@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import kr.flint.api.domain.content.dto.GetContentListRes;
+import kr.flint.api.domain.user.dto.request.UpdateNicknameReq;
 import kr.flint.api.domain.user.dto.request.UpdateProfileImageReq;
 import kr.flint.api.domain.user.dto.response.UserCollectionsRes;
 import kr.flint.api.domain.user.dto.response.UserKeywordsRes;
@@ -71,6 +72,17 @@ public interface UserControllerDocs {
     })
     ResponseEntity<SuccessResponse<UserCollectionsRes>> getMyBookmarkedCollections(
             @Parameter(hidden = true) Long userId
+    );
+
+    @Operation(summary = "닉네임 변경",
+               description = "로그인한 사용자의 닉네임을 변경합니다. 2-10자, 영문/숫자/한글/밑줄만 허용됩니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "닉네임 변경 성공", useReturnTypeSchema = true),
+            @ApiResponse(responseCode = "409", description = "이미 사용 중인 닉네임")
+    })
+    ResponseEntity<SuccessResponse<Void>> updateNickname(
+            @Parameter(hidden = true) Long userId,
+            @Valid @RequestBody UpdateNicknameReq request
     );
 
     @Operation(summary = "내 취향 키워드 재계산 - 재민",
