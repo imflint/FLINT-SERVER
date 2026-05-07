@@ -2,6 +2,7 @@ package kr.flint.auth.jwt;
 
 import static org.assertj.core.api.Assertions.*;
 
+import java.io.IOException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
@@ -11,6 +12,7 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -56,6 +58,11 @@ class AppleIdentityTokenVerifierTest {
 		RestClient restClient = RestClient.builder().build();
 		verifier = new AppleIdentityTokenVerifier(TEST_CLIENT_ID, jwksUrl, Duration.ofHours(24), restClient);
 		objectMapper = new ObjectMapper();
+	}
+
+	@AfterEach
+	void tearDown() throws IOException {
+		mockWebServer.shutdown();
 	}
 
 	@Test
@@ -126,6 +133,21 @@ class AppleIdentityTokenVerifierTest {
 				.isInstanceOf(AuthException.class);
 	}
 
+	@Test
+	@DisplayName("빈 캐시에서 JWKS 조회 실패 시 백오프 동안 원격 조회를 반복하지 않는다")
+	void verifyAndExtractSubject_jwksFailureWithEmptyCache_appliesBackoff() throws Exception {
+		enqueueJwksErrorResponse();
+		enqueueJwksResponse();
+		String token = createValidIdentityToken();
+
+		assertThatThrownBy(() -> verifier.verifyAndExtractSubject(token))
+				.isInstanceOf(AuthException.class);
+		assertThatThrownBy(() -> verifier.verifyAndExtractSubject(token))
+				.isInstanceOf(AuthException.class);
+
+		assertThat(mockWebServer.getRequestCount()).isEqualTo(1);
+	}
+
 	private String createValidIdentityToken() {
 		return Jwts.builder()
 				.header().keyId(kid).and()
@@ -157,5 +179,11 @@ class AppleIdentityTokenVerifierTest {
 		mockWebServer.enqueue(new MockResponse()
 				.setBody(jwksJson)
 				.addHeader("Content-Type", "application/json"));
+	}
+
+	private void enqueueJwksErrorResponse() {
+		mockWebServer.enqueue(new MockResponse()
+				.setResponseCode(500)
+				.setBody("apple jwks unavailable"));
 	}
 }

@@ -8,14 +8,14 @@ import org.springframework.util.StringUtils;
 
 @Schema(description = "소셜 로그인 인증 요청")
 public record SocialVerifyReq(
-        @Schema(description = "소셜 로그인 제공자 (KAKAO, APPLE, GOOGLE)", example = "KAKAO", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "소셜 로그인 제공자 (KAKAO, APPLE)", example = "KAKAO", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotNull(message = "소셜 로그인 제공자는 필수입니다.")
         AuthProvider provider,
 
-        @Schema(description = "인가 코드 (Web 로그인 시 사용)", example = "authorization_code_from_oauth")
+        @Schema(description = "인가 코드 (Kakao Web 로그인 시 사용)", example = "authorization_code_from_oauth")
         String code,
 
-        @Schema(description = "액세스 토큰 (Mobile 로그인 시 사용 - SDK에서 직접 발급받은 토큰)", example = "access_token_from_sdk")
+        @Schema(description = "Kakao accessToken 또는 Apple identityToken (Mobile 로그인 시 사용)", example = "access_token_from_sdk")
         String accessToken
 ) {
         @AssertTrue(message = "code 또는 accessToken 중 하나는 필수입니다.")

@@ -152,9 +152,12 @@ public class AuthFacade {
             case KAKAO -> request.hasAccessToken()
                     ? kakaoOAuthClient.getUserInfoByAccessToken(request.accessToken())
                     : kakaoOAuthClient.getUserInfoByCode(request.code());
-            case APPLE -> request.hasAccessToken()
-                    ? appleOAuthClient.getUserInfoByIdentityToken(request.accessToken())
-                    : appleOAuthClient.getUserInfoByCode(request.code());
+            case APPLE -> {
+                if (!request.hasAccessToken()) {
+                    throw new AuthException(AuthErrorCode.UNSUPPORTED_SOCIAL_FLOW);
+                }
+                yield appleOAuthClient.getUserInfoByIdentityToken(request.accessToken());
+            }
         };
     }
 }

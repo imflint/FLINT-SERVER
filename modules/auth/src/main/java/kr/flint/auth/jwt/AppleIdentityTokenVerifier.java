@@ -27,6 +27,7 @@ public class AppleIdentityTokenVerifier {
 
 	private static final String APPLE_ISSUER = "https://appleid.apple.com";
 	private static final Duration MIN_REFRESH_INTERVAL = Duration.ofMinutes(5);
+	private static final Duration REFRESH_FAILURE_BACKOFF = Duration.ofSeconds(30);
 
 	private final String clientId;
 	private final String jwksUrl;
@@ -36,6 +37,7 @@ public class AppleIdentityTokenVerifier {
 	private volatile Map<String, RSAPublicKey> cachedKeys = Map.of();
 	private volatile Instant cacheExpiry = Instant.MIN;
 	private volatile Instant lastRefreshTime = Instant.MIN;
+	private volatile Instant lastRefreshFailureTime = Instant.MIN;
 
 	public AppleIdentityTokenVerifier(String clientId, String jwksUrl, Duration jwksCacheTtl, RestClient restClient) {
 		this.clientId = clientId;
@@ -70,18 +72,25 @@ public class AppleIdentityTokenVerifier {
 	}
 
 	private Map<String, RSAPublicKey> getApplePublicKeys() {
-		if (Instant.now().isBefore(cacheExpiry) && !cachedKeys.isEmpty()) {
+		Instant now = Instant.now();
+		if (isCacheFresh(now)) {
 			return cachedKeys;
 		}
 		return refreshApplePublicKeys();
 	}
 
 	private synchronized Map<String, RSAPublicKey> refreshApplePublicKeys() {
-		if (Instant.now().isBefore(cacheExpiry) && !cachedKeys.isEmpty()) {
+		Instant now = Instant.now();
+		if (isCacheFresh(now)) {
 			return cachedKeys;
 		}
 
-		if (Instant.now().isBefore(lastRefreshTime.plus(MIN_REFRESH_INTERVAL)) && !cachedKeys.isEmpty()) {
+		if (isInFailureBackoff(now)) {
+			log.warn("Apple JWKS 갱신 실패 백오프 적용 중: cachedKeyCount={}", cachedKeys.size());
+			return cachedKeysOrThrow();
+		}
+
+		if (now.isBefore(lastRefreshTime.plus(MIN_REFRESH_INTERVAL)) && !cachedKeys.isEmpty()) {
 			return cachedKeys;
 		}
 
@@ -100,19 +109,38 @@ public class AppleIdentityTokenVerifier {
 				}
 			});
 
+			if (keys.isEmpty()) {
+				throw new IllegalStateException("Apple JWKS에 RSA 공개키가 없습니다.");
+			}
+
+			Instant refreshedAt = Instant.now();
 			cachedKeys = keys;
-			cacheExpiry = Instant.now().plus(jwksCacheTtl);
-			lastRefreshTime = Instant.now();
+			cacheExpiry = refreshedAt.plus(jwksCacheTtl);
+			lastRefreshTime = refreshedAt;
+			lastRefreshFailureTime = Instant.MIN;
 
 			log.info("Apple JWKS 갱신 완료: {}개 키 캐시됨", keys.size());
 			return keys;
-		} catch (RestClientException e) {
+		} catch (RestClientException | JwtException | IllegalStateException e) {
+			lastRefreshFailureTime = Instant.now();
 			log.error("Apple JWKS 조회 실패: {}", e.getMessage());
-			if (!cachedKeys.isEmpty()) {
-				return cachedKeys;
-			}
-			throw new AuthException(AuthErrorCode.SOCIAL_AUTH_SERVER_ERROR);
+			return cachedKeysOrThrow();
 		}
+	}
+
+	private boolean isCacheFresh(Instant now) {
+		return now.isBefore(cacheExpiry) && !cachedKeys.isEmpty();
+	}
+
+	private boolean isInFailureBackoff(Instant now) {
+		return now.isBefore(lastRefreshFailureTime.plus(REFRESH_FAILURE_BACKOFF));
+	}
+
+	private Map<String, RSAPublicKey> cachedKeysOrThrow() {
+		if (!cachedKeys.isEmpty()) {
+			return cachedKeys;
+		}
+		throw new AuthException(AuthErrorCode.SOCIAL_AUTH_SERVER_ERROR);
 	}
 
 	private class AppleKeyLocator extends LocatorAdapter<Key> {

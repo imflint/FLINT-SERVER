@@ -9,6 +9,7 @@ import java.util.Set;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import kr.flint.api.domain.bookmark.repository.BookmarkQueryRepository;
 import kr.flint.api.domain.user.dto.response.CollectionContentImageDto;
@@ -124,7 +125,9 @@ public class UserQueryFacade {
         List<CollectionContentImageDto> images = userCollectionRepository.findContentImagesByCollectionIds(collectionIds);
         Map<Long, List<String>> map = new LinkedHashMap<>();
         for (CollectionContentImageDto img : images) {
-            map.computeIfAbsent(img.collectionId(), k -> new ArrayList<>()).add(img.poster());
+            if (StringUtils.hasText(img.poster())) {
+                map.computeIfAbsent(img.collectionId(), k -> new ArrayList<>()).add(img.poster());
+            }
         }
         return map;
     }

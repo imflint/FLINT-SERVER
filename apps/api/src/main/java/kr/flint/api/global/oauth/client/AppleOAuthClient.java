@@ -22,6 +22,6 @@ public class AppleOAuthClient {
 
 	// Web 플로우 미구현
 	public SocialUserInfo getUserInfoByCode(String authorizationCode) {
-		throw new AuthException(AuthErrorCode.UNSUPPORTED_PROVIDER);
+		throw new AuthException(AuthErrorCode.UNSUPPORTED_SOCIAL_FLOW);
 	}
 }
