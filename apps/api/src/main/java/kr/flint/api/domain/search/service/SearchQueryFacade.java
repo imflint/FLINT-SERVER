@@ -13,6 +13,7 @@ import kr.flint.shared.dto.SliceCursor;
 import kr.flint.api.domain.search.dto.response.GetContentSearchRes;
 import kr.flint.content.domain.Content;
 import kr.flint.content.service.ContentService;
+import kr.flint.infra.storage.cloudfront.CloudFrontUrlProvider;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -20,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 public class SearchQueryFacade {
 	private final ContentService contentService;
 	private final SearchQueryRepository searchQueryRepository;
+	private final CloudFrontUrlProvider cloudFrontUrlProvider;
 
 	public List<GetContentSearchRes> searchContent(final String keyword) {
 		if (!StringUtils.hasText(keyword)) {
@@ -45,11 +47,20 @@ public class SearchQueryFacade {
 
 		boolean hasNext = results.size() > size;
 		List<BookmarkedCollectionSearchRes> data = hasNext ? results.subList(0, size) : results;
+		List<BookmarkedCollectionSearchRes> resolvedData = data.stream()
+			.map(result -> new BookmarkedCollectionSearchRes(
+				result.bookmarkId(),
+				result.collectionId(),
+				cloudFrontUrlProvider.resolveUrl(result.imageUrl()),
+				result.title(),
+				result.description()
+			))
+			.toList();
 		String nextCursor = hasNext && !data.isEmpty()
 			? String.valueOf(data.get(data.size() - 1).bookmarkId())
 			: null;
 
-		return PaginationResponse.ofCursor(SliceCursor.of(data, null, nextCursor));
+		return PaginationResponse.ofCursor(SliceCursor.of(resolvedData, null, nextCursor));
 		}
 
 

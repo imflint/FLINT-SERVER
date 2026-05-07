@@ -29,6 +29,7 @@ public record CreateCollectionReq(
 
 	@Schema(description = "컬렉션에 추가할 작품 목록", requiredMode = Schema.RequiredMode.REQUIRED)
 	@NotNull(message = "작품은 필수 입력값입니다")
+	@Size(min = 1, message = "작품은 1개 이상 입력해야 합니다")
 	List<AddContentReq> contentList
 ) {
 

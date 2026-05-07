@@ -125,8 +125,9 @@ public class UserQueryFacade {
         List<CollectionContentImageDto> images = userCollectionRepository.findContentImagesByCollectionIds(collectionIds);
         Map<Long, List<String>> map = new LinkedHashMap<>();
         for (CollectionContentImageDto img : images) {
-            if (StringUtils.hasText(img.poster())) {
-                map.computeIfAbsent(img.collectionId(), k -> new ArrayList<>()).add(img.poster());
+            String image = img.image();
+            if (StringUtils.hasText(image)) {
+                map.computeIfAbsent(img.collectionId(), k -> new ArrayList<>()).add(image);
             }
         }
         return map;
