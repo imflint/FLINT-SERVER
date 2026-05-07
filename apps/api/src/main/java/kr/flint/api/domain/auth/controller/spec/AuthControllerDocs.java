@@ -41,7 +41,7 @@ public interface AuthControllerDocs {
 
     @Operation(
             summary = "회원가입 - 호주",
-            description = "임시 토큰과 사용자 정보로 회원가입을 완료합니다."
+            description = "임시 토큰, 사용자 정보, 필수 약관 동의 정보로 회원가입을 완료합니다."
     )
     @ApiResponses({
             @ApiResponse(

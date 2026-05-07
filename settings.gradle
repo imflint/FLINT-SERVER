@@ -1,6 +1,7 @@
 rootProject.name = 'flint-api'
 
 include 'apps:api'
+include 'apps:admin-api'
 
 include 'modules:shared'
 include 'modules:user'
@@ -11,6 +12,7 @@ include 'modules:bookmark'
 include 'modules:taste'
 include 'modules:ott'
 include 'modules:search'
+include 'modules:terms'
 
 include 'infra:redis'
 include 'infra:storage'

@@ -1,0 +1,36 @@
+spring:
+  config:
+    import:
+      - aws-parameterstore:/config/flint-api/
+      - aws-parameterstore:/config/flint-api/prod/
+
+  datasource:
+    url: ${database.url}
+    username: ${database.username}
+    password: ${database.password}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    show-sql: false
+
+  data:
+    redis:
+      host: ${redis.host}
+      port: ${redis.port:6379}
+      password: ${redis.password:}
+      database: ${redis.database:0}
+
+decorator:
+  datasource:
+    p6spy:
+      enable-logging: false
+
+jwt:
+  secret: ${jwt.secret}
+  access-expiration: 1h
+  refresh-expiration: 14d
+  temp-expiration: 30m
+
+logging:
+  level:
+    kr.flint: info

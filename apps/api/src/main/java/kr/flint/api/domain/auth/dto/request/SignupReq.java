@@ -2,6 +2,8 @@ package kr.flint.api.domain.auth.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
@@ -23,6 +25,10 @@ public record SignupReq(
         List<Long> favoriteContentIds,
 
         @Schema(description = "구독 중인 OTT 서비스 ID 목록", example = "[1, 2]")
-        List<Long> subscribedOttIds
+        List<Long> subscribedOttIds,
+
+        @Schema(description = "동의한 약관 ID 목록", example = "[1, 2]", requiredMode = Schema.RequiredMode.REQUIRED)
+        @NotEmpty(message = "동의한 약관 ID 목록은 필수입니다.")
+        List<@NotNull(message = "약관 ID는 null일 수 없습니다.") Long> agreedTermsIds
 ) {
 }
