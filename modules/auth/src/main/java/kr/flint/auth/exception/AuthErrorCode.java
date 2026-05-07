@@ -29,6 +29,7 @@ public enum AuthErrorCode implements AppError {
     SOCIAL_AUTH_INVALID_CODE(HttpStatus.BAD_REQUEST, "AUTH.SOCIAL_AUTH_INVALID_CODE", "Invalid Authorization Code", "유효하지 않은 인가 코드입니다."),
     SOCIAL_AUTH_SERVER_ERROR(HttpStatus.SERVICE_UNAVAILABLE, "AUTH.SOCIAL_AUTH_SERVER_ERROR", "Social Provider Error", "소셜 로그인 서버에 문제가 발생했습니다."),
     UNSUPPORTED_PROVIDER(HttpStatus.BAD_REQUEST, "AUTH.UNSUPPORTED_PROVIDER", "Unsupported Provider", "지원하지 않는 소셜 로그인 제공자입니다."),
+    UNSUPPORTED_SOCIAL_FLOW(HttpStatus.BAD_REQUEST, "AUTH.UNSUPPORTED_SOCIAL_FLOW", "Unsupported Social Flow", "지원하지 않는 소셜 로그인 방식입니다."),
 
     // 서버 에러
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "AUTH.INTERNAL_SERVER_ERROR", "Internal Server Error", "서버 내부 오류가 발생했습니다.");

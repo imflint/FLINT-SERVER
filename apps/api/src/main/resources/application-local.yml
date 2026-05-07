@@ -74,6 +74,12 @@ oauth:
     user-info-url: https://kapi.kakao.com/v2/user/me
     connect-timeout: 5s
     read-timeout: 10s
+  apple:
+    client-id: ${APPLE_CLIENT_ID}
+    jwks-url: https://appleid.apple.com/auth/keys
+    connect-timeout: 5s
+    read-timeout: 10s
+    jwks-cache-ttl: 24h
 
 logging:
   level:
