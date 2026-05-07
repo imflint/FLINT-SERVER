@@ -15,6 +15,7 @@ NGINX_CONF="/etc/nginx/conf.d/flint-upstream.conf"
 HEALTH_CHECK_PATH="/actuator/health"
 MAX_RETRY=12
 RETRY_INTERVAL=5
+LOG_LINES_ON_FAILURE=120
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
@@ -79,21 +80,50 @@ start_app() {
     log "Application starting on port $port (PID: $!)"
 }
 
+print_app_log_tail() {
+    local port="$1"
+    local log_file="$DEPLOY_PATH/app-$port.log"
+
+    if [ -f "$log_file" ]; then
+        log "Last $LOG_LINES_ON_FAILURE lines from $log_file:"
+        tail -n "$LOG_LINES_ON_FAILURE" "$log_file" || true
+    else
+        log "Application log not found: $log_file"
+    fi
+}
+
 # 헬스체크
 health_check() {
     local port="$1"
+    local health_response="/tmp/$APP_NAME-health-$port.out"
+    local http_code
     log "Health checking on port $port..."
 
     for i in $(seq 1 "$MAX_RETRY"); do
-        if curl -sf "http://localhost:$port$HEALTH_CHECK_PATH" > /dev/null 2>&1; then
+        http_code=$(curl -sS \
+            --connect-timeout 2 \
+            --max-time 5 \
+            -o "$health_response" \
+            -w "%{http_code}" \
+            "http://localhost:$port$HEALTH_CHECK_PATH" 2>/dev/null || true)
+
+        if [[ "$http_code" =~ ^2 ]]; then
             log "Health check passed on port $port"
+            rm -f "$health_response"
             return 0
         fi
-        log "Waiting for application... ($i/$MAX_RETRY)"
+
+        if [ -s "$health_response" ]; then
+            log "Waiting for application... ($i/$MAX_RETRY, HTTP $http_code, body: $(tr '\n' ' ' < "$health_response"))"
+        else
+            log "Waiting for application... ($i/$MAX_RETRY, HTTP $http_code)"
+        fi
         sleep "$RETRY_INTERVAL"
     done
 
     log "Health check failed on port $port"
+    print_app_log_tail "$port"
+    rm -f "$health_response"
     return 1
 }
 
