@@ -140,7 +140,7 @@ public class UserController implements UserControllerDocs {
     public ResponseEntity<SuccessResponse<Void>> recalculateKeyword(
             @CurrentUser Long userId
     ) {
-        userCommandFacade.callGpt(userId);
+        userCommandFacade.recalculateKeywordOnDemand(userId);
         return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_KEYWORDS_FETCH));
     }
 

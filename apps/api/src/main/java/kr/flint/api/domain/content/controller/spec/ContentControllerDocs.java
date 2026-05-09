@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import kr.flint.api.domain.content.dto.GetContentListRes;
 import kr.flint.api.domain.content.dto.GetOttListRes;
+import kr.flint.api.domain.content.dto.SearchGenre;
 import kr.flint.ott.dto.GetOttResponse;
 import kr.flint.shared.dto.response.SuccessResponse;
 import kr.flint.shared.exception.ProblemDetail;
@@ -51,8 +52,12 @@ public interface ContentControllerDocs {
 
 	@Operation(
 		summary = "콘텐츠 검색 - 재민",
-		description = "키워드로 콘텐츠를 검색합니다. TMDB API를 통해 검색 결과를 반환합니다.",
-		deprecated = true
+		description = """
+			- `genre` 지정 시: 로컬 DB에서 해당 장르 작품을 인기순(북마크 많은 순)으로 페이지네이션해 반환합니다.
+			- `keyword` 지정 시(genre 없음): TMDB API로 검색합니다.
+			- 둘 다 없을 시: TMDB 인기 영화를 반환합니다.
+			- `genre`와 `keyword`가 동시에 들어오면 `genre`가 우선합니다.
+			"""
 	)
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "검색 성공", useReturnTypeSchema = true)
@@ -60,6 +65,8 @@ public interface ContentControllerDocs {
 	ResponseEntity<?> searchContent(
 		@Parameter(description = "검색 키워드", example = "눈물의 여왕")
 		String keyword,
+		@Parameter(description = "장르 필터 (액션/로맨스/SF/드라마/코미디/호러)", example = "ACTION")
+		SearchGenre genre,
 		@Parameter(description = "페이지 번호 (1부터 시작)", example = "1")
 		int cursor,
 		@Parameter(description = "페이지당 결과 수", example = "20")

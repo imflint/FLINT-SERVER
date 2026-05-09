@@ -1,7 +1,10 @@
 package kr.flint.content.service;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.PageRequest;
@@ -12,6 +15,8 @@ import org.springframework.util.CollectionUtils;
 import kr.flint.content.domain.Content;
 import kr.flint.content.domain.ContentGenre;
 import kr.flint.content.domain.Genre;
+import kr.flint.content.domain.MediaType;
+import kr.flint.content.dto.ContentUpsertCommand;
 import kr.flint.content.dto.ContentWithGenres;
 import kr.flint.content.exception.ContentErrorCode;
 import kr.flint.content.exception.ContentException;
@@ -59,6 +64,60 @@ public class ContentService {
 
 		return savedContent;
 	}
+
+	// 배치 적재용: 이미 존재하면 메타데이터 갱신, 없으면 신규 생성. 장르는 정규화 후 ContentGenre 동기화.
+	@Transactional
+	public Content upsertWithGenres(final ContentUpsertCommand command) {
+		Content content = contentRepository.findByTmdbIdAndMediaType(command.tmdbId(), command.mediaType())
+			.map(existing -> {
+				existing.updateMetadata(
+					command.title(),
+					command.year(),
+					command.author(),
+					command.description(),
+					command.poster()
+				);
+				return existing;
+			})
+			.orElseGet(() -> contentRepository.save(Content.create(
+				command.tmdbId(),
+				command.mediaType(),
+				command.title(),
+				command.year(),
+				command.author(),
+				command.description(),
+				command.poster()
+			)));
+
+		syncGenres(content, command.genreNames());
+		return content;
+	}
+
+	private void syncGenres(Content content, List<String> genreNames) {
+		if (CollectionUtils.isEmpty(genreNames)) {
+			return;
+		}
+
+		Map<String, Genre> resolved = new HashMap<>();
+		for (String name : new HashSet<>(genreNames)) {
+			Genre genre = genreRepository.findByName(name)
+				.orElseGet(() -> genreRepository.save(Genre.create(name)));
+			resolved.put(name, genre);
+		}
+
+		Set<Long> alreadyLinked = contentGenreRepository.findAllByContentIdsWithGenre(List.of(content.getId())).stream()
+			.map(cg -> cg.getGenre().getId())
+			.collect(Collectors.toSet());
+
+		List<ContentGenre> toAdd = resolved.values().stream()
+			.filter(g -> !alreadyLinked.contains(g.getId()))
+			.map(g -> ContentGenre.create(content, g))
+			.toList();
+		if (!toAdd.isEmpty()) {
+			contentGenreRepository.saveAll(toAdd);
+		}
+	}
+
 	public boolean checkGenre(final String genre) {
 		log.info("checkGenre {}", genre);
 		return genreRepository.existsByName(genre);
@@ -69,8 +128,8 @@ public class ContentService {
 			.orElseThrow(() -> new ContentException(ContentErrorCode.GENRE_NOT_FOUND));
 	}
 
-	public Content getContentByTmdbId(final Long tmdbId) {
-		return contentRepository.findContentByTmdbId(tmdbId)
+	public Content getContentByTmdbIdAndMediaType(final Long tmdbId, final MediaType mediaType) {
+		return contentRepository.findByTmdbIdAndMediaType(tmdbId, mediaType)
 			.orElse(null);
 	}
 

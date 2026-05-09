@@ -2,6 +2,8 @@ package kr.flint.api.domain.content.repository;
 
 import static kr.flint.bookmark.domain.QContentBookmark.*;
 import static kr.flint.content.domain.QContent.*;
+import static kr.flint.content.domain.QContentGenre.*;
+import static kr.flint.content.domain.QGenre.*;
 import static kr.flint.ott.domain.QOttContent.*;
 import static kr.flint.ott.domain.QOttProvider.*;
 import static kr.flint.ott.domain.QOttUser.*;
@@ -17,6 +19,7 @@ import com.querydsl.core.Tuple;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
 import kr.flint.api.domain.content.dto.GetContentDetailRes;
+import kr.flint.api.domain.search.dto.response.GetContentSearchRes;
 import kr.flint.api.domain.search.dto.response.GetSearchBookmarkContentRes;
 import lombok.RequiredArgsConstructor;
 
@@ -159,5 +162,35 @@ public class ContentQueryRepository {
 		}
 
 		return new ArrayList<>(contentMap.values());
+	}
+
+	// 장르별 인기순(bookmarkCount desc) 조회. size+1 fetch 후 호출처가 hasNext 판정.
+	public List<GetContentSearchRes> findPopularByGenreName(String genreName, int page, int size) {
+		int safePage = Math.max(page, 1);
+		return jpaQueryFactory
+			.select(
+				content.id,
+				content.title,
+				content.author,
+				content.poster,
+				content.year
+			)
+			.from(content)
+			.join(contentGenre).on(contentGenre.content.eq(content))
+			.join(contentGenre.genre, genre)
+			.where(genre.name.eq(genreName))
+			.orderBy(content.bookmarkCount.desc(), content.id.desc())
+			.offset((long) (safePage - 1) * size)
+			.limit(size + 1L)
+			.fetch()
+			.stream()
+			.map(row -> GetContentSearchRes.of(
+				row.get(content.id),
+				row.get(content.title),
+				row.get(content.author),
+				row.get(content.poster),
+				row.get(content.year) == null ? 0 : row.get(content.year)
+			))
+			.toList();
 	}
 }

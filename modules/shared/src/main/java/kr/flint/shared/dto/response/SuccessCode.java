@@ -11,6 +11,7 @@ public enum SuccessCode {
 	/* 201 CREATED */
 	SUCCESS_CREATE(HttpStatus.CREATED, "생성이 완료되었습니다"),
 	SUCCESS_SIGNUP(HttpStatus.CREATED, "회원가입이 완료되었습니다"),
+	SUCCESS_REPORT(HttpStatus.CREATED, "신고가 접수되었습니다"),
 
 	/* 200 OK */
 	SUCCESS_UPDATE(HttpStatus.OK, "업데이트가 완료되었습니다"),
@@ -22,6 +23,7 @@ public enum SuccessCode {
 	SUCCESS_KEYWORDS_FETCH(HttpStatus.OK, "취향 키워드 조회가 완료되었습니다"),
 	SUCCESS_COLLECTIONS_FETCH(HttpStatus.OK, "컬렉션 조회가 완료되었습니다"),
 	SUCCESS_RECOMMENDED_COLLECTIONS_FETCH(HttpStatus.OK, "추천 컬렉션 조회가 완료되었습니다"),
+	SUCCESS_POPULAR_COLLECTIONS_FETCH(HttpStatus.OK, "인기 컬렉션 조회가 완료되었습니다"),
 
 	/* 204 NO CONTENT */
 	SUCCESS_LOGOUT(HttpStatus.NO_CONTENT, "로그아웃이 완료되었습니다");
