@@ -11,6 +11,12 @@ PROFILE="dev"
 BLUE_PORT=8080
 GREEN_PORT=8081
 
+# Batch (단일 인스턴스, blue-green 미적용 — 사용자 트래픽 없음)
+BATCH_JAR_NAME="flint-batch-0.0.1-SNAPSHOT.jar"
+NEW_BATCH_JAR_PATH="/home/ubuntu/deploy/$BATCH_JAR_NAME"
+BATCH_BACKUP_JAR="$DEPLOY_PATH/flint-batch-backup.jar"
+BATCH_PORT=8082
+
 NGINX_CONF="/etc/nginx/conf.d/flint-upstream.conf"
 HEALTH_CHECK_PATH="/actuator/health"
 MAX_RETRY=12
@@ -226,5 +232,69 @@ deploy() {
     log "New active port: $inactive_port"
 }
 
-# 실행
+# Batch 앱 시작 (단일 인스턴스, log: batch-<port>.log)
+start_batch_app() {
+    local port="$1"
+    log "Starting batch application on port $port"
+
+    cd "$DEPLOY_PATH" || { log "ERROR: Failed to cd to $DEPLOY_PATH"; return 1; }
+    nohup java -jar "$BATCH_JAR_NAME" \
+        --spring.profiles.active="$PROFILE" \
+        --server.port="$port" \
+        > "batch-$port.log" 2>&1 &
+
+    log "Batch starting on port $port (PID: $!)"
+}
+
+# Batch 롤백: 새 배포 실패 시 백업 jar로 복구 후 재기동
+rollback_batch() {
+    log "Rolling back batch..."
+    kill_app_on_port "$BATCH_PORT"
+    if [ -f "$BATCH_BACKUP_JAR" ]; then
+        cp "$BATCH_BACKUP_JAR" "$DEPLOY_PATH/$BATCH_JAR_NAME"
+        log "Restored batch JAR from backup"
+        start_batch_app "$BATCH_PORT" || true
+    fi
+}
+
+# Batch 배포: kill → 새 jar 시작 → health check. blue-green 없음(다운타임 허용).
+deploy_batch() {
+    if [ ! -f "$NEW_BATCH_JAR_PATH" ]; then
+        log "No new batch JAR at $NEW_BATCH_JAR_PATH — skipping batch deploy"
+        return 0
+    fi
+
+    log "=== Batch Deployment Start ==="
+
+    if [ -f "$DEPLOY_PATH/$BATCH_JAR_NAME" ]; then
+        log "Backing up current batch JAR..."
+        cp "$DEPLOY_PATH/$BATCH_JAR_NAME" "$BATCH_BACKUP_JAR"
+    fi
+
+    log "Copying new batch JAR..."
+    cp "$NEW_BATCH_JAR_PATH" "$DEPLOY_PATH/$BATCH_JAR_NAME"
+
+    kill_app_on_port "$BATCH_PORT"
+
+    if ! start_batch_app "$BATCH_PORT"; then
+        log "Failed to start batch application"
+        rollback_batch
+        return 1
+    fi
+
+    if ! health_check "$BATCH_PORT"; then
+        log "Batch health check failed!"
+        rollback_batch
+        return 1
+    fi
+
+    rm -f "$NEW_BATCH_JAR_PATH"
+    log "=== Batch Deployment completed successfully ==="
+    return 0
+}
+
+# 실행 — api(blue-green) 우선, 그 후 batch. batch 실패는 전체 배포를 실패시키지 않음.
 deploy
+if ! deploy_batch; then
+    log "WARNING: Batch deploy failed but API deploy succeeded. Investigate batch logs."
+fi
