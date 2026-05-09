@@ -3,10 +3,13 @@ plugins {
 }
 
 bootJar {
-    archiveBaseName = 'flint-api'
+    archiveBaseName = 'flint-batch'
 }
 
 dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-batch'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.batch:spring-batch-integration'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
@@ -17,26 +20,15 @@ dependencies {
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
     implementation project(':modules:shared')
-    implementation project(':modules:user')
-    implementation project(':modules:auth')
     implementation project(':modules:content')
-    implementation project(':modules:collection')
-    implementation project(':modules:bookmark')
-    implementation project(':modules:taste')
-    implementation project(':modules:search')
     implementation project(':modules:ott')
-    implementation project(':modules:terms')
+    implementation project(':modules:auth')
+    implementation project(':modules:user')
 
     implementation project(':infra:redis')
-    implementation project(':infra:storage')
     implementation project(':infra:aws')
     implementation project(':infra:tmdb')
-    implementation project(':infra:gpt')
-    implementation project(':infra:discord')
 
-    // Test
-    testImplementation 'com.tngtech.archunit:archunit-junit5:1.4.0'
-    testImplementation 'org.testcontainers:junit-jupiter'
-    testImplementation 'org.testcontainers:mysql'
-    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.batch:spring-batch-test'
 }
