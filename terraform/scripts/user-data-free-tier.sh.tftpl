@@ -1,0 +1,79 @@
+#!/bin/bash
+set -euo pipefail
+
+APP_NAME="${app_name}"
+ENVIRONMENT="${environment}"
+PARAMETER_PREFIX="${parameter_prefix}"
+REDIS_CONTAINER_NAME="${redis_container_name}"
+# Keep the existing GitHub Actions and scripts/deploy.sh path contract.
+APP_DIR="/home/ubuntu"
+
+echo "=== Flint free-tier EC2 setup ($APP_NAME / $ENVIRONMENT) ==="
+
+dnf update -y
+dnf install -y java-21-amazon-corretto-headless nginx docker awscli curl lsof
+
+systemctl enable docker
+systemctl start docker
+usermod -aG docker ec2-user
+
+mkdir -p "$APP_DIR/deploy" "$APP_DIR/logs"
+chown -R ec2-user:ec2-user "$APP_DIR"
+
+cat >/etc/nginx/conf.d/flint-upstream.conf <<'EOF'
+upstream flint-api {
+    server 127.0.0.1:8080;
+}
+EOF
+
+cat >/etc/nginx/conf.d/flint-api.conf <<'EOF'
+server {
+    listen 80 default_server;
+    server_name _;
+
+    client_max_body_size 20m;
+
+    location / {
+        proxy_pass http://flint-api;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 60s;
+    }
+}
+EOF
+
+nginx -t
+systemctl enable nginx
+systemctl restart nginx
+
+docker volume create flint-redis-data >/dev/null
+if ! docker ps -a --format '{{.Names}}' | grep -qx "$REDIS_CONTAINER_NAME"; then
+  docker run -d \
+    --name "$REDIS_CONTAINER_NAME" \
+    --restart unless-stopped \
+    -p 127.0.0.1:6379:6379 \
+    -v flint-redis-data:/data \
+    redis:7-alpine \
+    redis-server --appendonly yes
+else
+  docker start "$REDIS_CONTAINER_NAME" || true
+fi
+
+cat >"$APP_DIR/README-DEPLOY.txt" <<EOF
+Flint free-tier host initialized.
+
+App dir: $APP_DIR
+Spring profile expected by current scripts/deploy.sh: dev
+Parameter Store prefix: $PARAMETER_PREFIX
+Redis: localhost:6379 via Docker container $REDIS_CONTAINER_NAME
+
+Upload the JAR and run scripts/deploy.sh, or trigger deployment through SSM.
+EOF
+
+chown -R ec2-user:ec2-user "$APP_DIR"
+
+echo "=== Flint free-tier EC2 setup complete ==="
