@@ -1,0 +1,57 @@
+spring:
+  cloud:
+    aws:
+      parameterstore:
+        enabled: false
+
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+
+  security:
+    user:
+      name: ${BATCH_ADMIN_USER:admin}
+      password: ${BATCH_ADMIN_PASSWORD:local-batch-admin}
+
+decorator:
+  datasource:
+    p6spy:
+      enable-logging: true
+      multiline: true
+      logging: slf4j
+
+p6spy:
+  filter:
+    allow:
+      - kr.flint
+    deny:
+      - kr.flint.shared
+
+cloud:
+  aws:
+    parameterstore:
+      enabled: false
+    secretsmanager:
+      enabled: false
+
+logging:
+  level:
+    kr.flint: debug
+
+tmdb:
+  base-url: https://api.themoviedb.org
+  api-key: ${TMDB_API_KEY}

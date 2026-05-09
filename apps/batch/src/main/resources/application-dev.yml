@@ -1,0 +1,27 @@
+spring:
+  cloud:
+    aws:
+      parameterstore:
+        enabled: true
+        prefix: /flint/dev
+        name: batch
+        profile-separator: _
+      region:
+        static: ap-northeast-2
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+  security:
+    user:
+      name: ${BATCH_ADMIN_USER}
+      password: ${BATCH_ADMIN_PASSWORD}
+
+logging:
+  level:
+    kr.flint: info
+
+tmdb:
+  base-url: ${TMDB_BASE_URL:https://api.themoviedb.org}
+  api-key: ${TMDB_API_KEY}
