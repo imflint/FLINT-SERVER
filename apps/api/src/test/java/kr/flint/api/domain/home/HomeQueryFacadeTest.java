@@ -54,7 +54,7 @@ class HomeQueryFacadeTest {
             // given
             Long userId = 1L;
             Long collectionId = 10L;
-            when(recommendationPort.recommend(userId, 10)).thenReturn(List.of(collectionId));
+            when(recommendationPort.recommend(userId, 5)).thenReturn(List.of(collectionId));
             when(homeCollectionRepository.findCollectionCardsWithUser(List.of(collectionId)))
                 .thenReturn(List.of(new CollectionCardDto(
                     collectionId,
