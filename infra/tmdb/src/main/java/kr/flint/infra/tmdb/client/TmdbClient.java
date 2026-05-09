@@ -6,12 +6,15 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import kr.flint.infra.tmdb.config.TmdbFeignConfig;
+import kr.flint.infra.tmdb.dto.TmdbChangesRes;
 import kr.flint.infra.tmdb.dto.TmdbCommonRes;
 import kr.flint.infra.tmdb.dto.TmdbContentRes;
 import kr.flint.infra.tmdb.dto.TmdbGenreListRes;
 import kr.flint.infra.tmdb.dto.TmdbMovieCreditRes;
+import kr.flint.infra.tmdb.dto.TmdbMovieDetailRes;
 import kr.flint.infra.tmdb.dto.TmdbOttRes;
 import kr.flint.infra.tmdb.dto.TmdbTvDetailRes;
+import kr.flint.infra.tmdb.dto.TmdbTvFullDetailRes;
 
 @FeignClient(
 	name = "tmdbClient",
@@ -56,4 +59,29 @@ public interface TmdbClient {
 	@GetMapping("/3/tv/{id}/watch/providers")
 	TmdbOttRes getTvWatchProviders(@PathVariable("id") Long id);
 
+	@GetMapping("/3/movie/{id}")
+	TmdbMovieDetailRes getMovieFullDetail(
+		@PathVariable("id") Long id,
+		@RequestParam(value = "language", defaultValue = "ko-KR") String language
+	);
+
+	@GetMapping("/3/tv/{id}")
+	TmdbTvFullDetailRes getTvFullDetail(
+		@PathVariable("id") Long id,
+		@RequestParam(value = "language", defaultValue = "ko-KR") String language
+	);
+
+	@GetMapping("/3/movie/changes")
+	TmdbChangesRes getMovieChanges(
+		@RequestParam(value = "start_date", required = false) String startDate,
+		@RequestParam(value = "end_date", required = false) String endDate,
+		@RequestParam(value = "page", defaultValue = "1") int page
+	);
+
+	@GetMapping("/3/tv/changes")
+	TmdbChangesRes getTvChanges(
+		@RequestParam(value = "start_date", required = false) String startDate,
+		@RequestParam(value = "end_date", required = false) String endDate,
+		@RequestParam(value = "page", defaultValue = "1") int page
+	);
 }
