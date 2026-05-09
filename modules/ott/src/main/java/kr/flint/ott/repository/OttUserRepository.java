@@ -17,8 +17,7 @@ public interface OttUserRepository extends JpaRepository<OttUser, Long> {
     select new kr.flint.ott.dto.GetOttResponse(
         op.id,
         op.name,
-        op.logoUrl,
-        op.url
+        op.logoUrl
     )
     from OttUser ou
     join ou.ottProvider op
