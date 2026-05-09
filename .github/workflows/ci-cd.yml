@@ -52,7 +52,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build and Test
-        run: ./gradlew :apps:api:build :apps:admin-api:build --parallel --build-cache
+        run: ./gradlew :apps:api:build :apps:admin-api:build :apps:batch:build --parallel --build-cache
         env:
           DB_URL: jdbc:mysql://localhost:3306/flint_test
           DB_USERNAME: test
@@ -86,7 +86,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build bootJar
-        run: ./gradlew :apps:api:bootJar :apps:admin-api:bootJar -x test --parallel --build-cache
+        run: ./gradlew :apps:api:bootJar :apps:admin-api:bootJar :apps:batch:bootJar -x test --parallel --build-cache
 
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
@@ -95,6 +95,7 @@ jobs:
           path: |
             apps/api/build/libs/flint-api-0.0.1-SNAPSHOT.jar
             apps/admin-api/build/libs/flint-admin-api-0.0.1-SNAPSHOT.jar
+            apps/batch/build/libs/flint-batch-0.0.1-SNAPSHOT.jar
           retention-days: 1
 
   deploy:
@@ -124,15 +125,22 @@ jobs:
             exit 1
           fi
           cp "$API_JAR" deploy-files/flint-api-0.0.1-SNAPSHOT.jar
+
+          BATCH_JAR="$(find artifact -name 'flint-batch-0.0.1-SNAPSHOT.jar' -type f | head -n 1)"
+          if [ -n "$BATCH_JAR" ]; then
+            cp "$BATCH_JAR" deploy-files/flint-batch-0.0.1-SNAPSHOT.jar
+          else
+            echo "WARN: flint-batch JAR not found — batch deploy will be skipped on EC2"
+          fi
           ls -la deploy-files
 
-      - name: Deploy JAR to EC2
+      - name: Deploy JARs to EC2
         uses: appleboy/scp-action@v1.0.0
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "deploy-files/flint-api-0.0.1-SNAPSHOT.jar"
+          source: "deploy-files/*"
           target: "/home/ubuntu/deploy"
           strip_components: 1
 
