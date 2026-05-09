@@ -5,6 +5,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import kr.flint.api.domain.collection.dto.request.CreateCollectionReq;
+import kr.flint.api.domain.collection.dto.request.ReportCollectionReq;
+import kr.flint.api.domain.collection.dto.request.UpdateCollectionReq;
 import kr.flint.collection.service.CollectionService;
 import kr.flint.content.domain.Content;
 import kr.flint.content.service.ContentService;
@@ -26,5 +28,20 @@ public class CollectionCommandFacade {
 		String imageUrl = StringUtils.hasText(request.imageUrl()) ? request.imageUrl() : content.getPoster();
 		Long collectionId = collectionService.createCollection(userId, request.toCommand(), imageUrl);
 		return collectionId;
+	}
+
+	@Transactional
+	public void updateCollection(final Long userId, final Long collectionId, final UpdateCollectionReq request) {
+		userService.getById(userId);
+		Long firstContentId = request.contentList().getFirst().contentId();
+		Content firstContent = contentService.getContentById(firstContentId);
+		String imageUrl = StringUtils.hasText(request.imageUrl()) ? request.imageUrl() : firstContent.getPoster();
+		collectionService.updateCollection(userId, collectionId, request.toCommand(), imageUrl);
+	}
+
+	@Transactional
+	public Long reportCollection(final Long reporterId, final Long collectionId, final ReportCollectionReq request) {
+		userService.getById(reporterId);
+		return collectionService.reportCollection(reporterId, collectionId, request.toCommand());
 	}
 }

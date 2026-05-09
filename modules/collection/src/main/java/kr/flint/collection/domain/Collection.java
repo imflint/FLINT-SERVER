@@ -50,6 +50,17 @@ public class Collection extends BaseTime {
 			.build();
 	}
 
+	public void update(String title, String description, String image, boolean isPublic) {
+		this.title = title;
+		this.description = description;
+		this.image = image;
+		this.isPublic = isPublic;
+	}
+
+	public boolean isOwnedBy(Long userId) {
+		return this.userId != null && this.userId.equals(userId);
+	}
+
     // TODO: 동시성 이슈 및 sync 체크
 	public void increaseBookmarkCount() {
 		this.bookmarkCount++;
