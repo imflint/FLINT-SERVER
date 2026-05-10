@@ -77,4 +77,11 @@ public class UserService {
 	public void deleteUser(Long userId){
 		userRepository.deleteById(userId);
 	}
+
+	// 컨텐츠 북마크 ON 때마다 호출 — 카운터만 +1, 임계값 판단/리셋은 호출처가 담당
+	@Transactional
+	public void incrementContentBookmarkCounter(Long userId) {
+		User user = getById(userId);
+		user.incrementBookmarksSinceKeywordCalc();
+	}
 }

@@ -13,6 +13,7 @@ import kr.flint.api.domain.content.controller.spec.ContentControllerDocs;
 import kr.flint.api.domain.content.dto.GetContentDetailRes;
 import kr.flint.api.domain.content.dto.GetContentListRes;
 import kr.flint.api.domain.content.dto.GetOttListRes;
+import kr.flint.api.domain.content.dto.SearchGenre;
 import kr.flint.api.domain.search.dto.response.GetContentSearchRes;
 import kr.flint.api.domain.content.service.ContentCommandFacade;
 import kr.flint.api.domain.content.service.ContentQueryFacade;
@@ -53,10 +54,11 @@ public class ContentController implements ContentControllerDocs {
 	@GetMapping("/search")
 	public ResponseEntity<SuccessResponse<PaginationResponse<GetContentSearchRes>>> searchContent(
 		@RequestParam(required = false, name = "keyword") String keyword,
+		@RequestParam(required = false, name = "genre") SearchGenre genre,
 		@RequestParam(required = false, defaultValue = "1") int cursor,
 		@RequestParam(required = false, defaultValue = "20") int size
 	){
-		PaginationResponse<GetContentSearchRes> searchRes = contentCommandFacade.getContentSearchList(keyword, cursor, size);
+		PaginationResponse<GetContentSearchRes> searchRes = contentCommandFacade.getContentSearchList(keyword, genre, cursor, size);
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, searchRes));
 
 	}

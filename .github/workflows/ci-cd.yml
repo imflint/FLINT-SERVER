@@ -12,8 +12,8 @@ permissions:
 
 env:
   AWS_REGION: ap-northeast-2
-  APP_JAR_NAME: flint-api-0.0.1-SNAPSHOT.jar
-  DEPLOY_PREFIX: deploy/flint-api
+  API_DEPLOY_PREFIX: deploy/flint-api
+  ADMIN_DEPLOY_PREFIX: deploy/flint-admin-api
   DOCKER_PLATFORM: linux/arm64
 
 jobs:
@@ -61,16 +61,23 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build and Test
-        run: ./gradlew :apps:api:build :apps:admin-api:build --parallel --build-cache
+        run: ./gradlew :apps:api:build :apps:admin-api:build :apps:batch:build --parallel --build-cache
         env:
           DB_URL: jdbc:mysql://localhost:3306/flint_test
           DB_USERNAME: test
           DB_PASSWORD: test
 
-  # develop push 시 API 빌드 + 배포
+  # develop push 시 API/Admin 빌드 + 배포
   build:
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+      ECR_REPOSITORY_URI: ${{ vars.ECR_REPOSITORY_URI }}
+      ADMIN_ECR_REPOSITORY_URI: ${{ vars.ADMIN_ECR_REPOSITORY_URI }}
 
     steps:
       - name: Checkout
@@ -94,20 +101,60 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build API bootJar
-        run: ./gradlew :apps:api:bootJar -x test --build-cache
+      - name: Validate AWS image variables
+        run: |
+          test -n "${AWS_ROLE_ARN}" || { echo "AWS_ROLE_ARN repository variable is required"; exit 1; }
+          test -n "${ECR_REPOSITORY_URI}" || { echo "ECR_REPOSITORY_URI repository variable is required"; exit 1; }
+          test -n "${ADMIN_ECR_REPOSITORY_URI}" || { echo "ADMIN_ECR_REPOSITORY_URI repository variable is required"; exit 1; }
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: flint-build-${{ github.run_id }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and publish API image
+        run: |
+          image_uri="${ECR_REPOSITORY_URI}:sha-${GITHUB_SHA}-${GITHUB_RUN_ATTEMPT}"
+          ./gradlew :apps:api:bootBuildImage \
+            --imageName="${image_uri}" \
+            --publishImage \
+            --imagePlatform="${DOCKER_PLATFORM}" \
+            --environment BP_JVM_VERSION=21 \
+            --build-cache
+          echo "API_IMAGE_URI=${image_uri}" >> "$GITHUB_ENV"
+
+      - name: Build and publish Admin image
+        run: |
+          image_uri="${ADMIN_ECR_REPOSITORY_URI}:sha-${GITHUB_SHA}-${GITHUB_RUN_ATTEMPT}"
+          ./gradlew :apps:admin-api:bootBuildImage \
+            --imageName="${image_uri}" \
+            --publishImage \
+            --imagePlatform="${DOCKER_PLATFORM}" \
+            --environment BP_JVM_VERSION=21 \
+            --build-cache
+          echo "ADMIN_IMAGE_URI=${image_uri}" >> "$GITHUB_ENV"
 
       - name: Stage deployment files
         run: |
           mkdir -p dist
-          cp "apps/api/build/libs/${APP_JAR_NAME}" "dist/${APP_JAR_NAME}"
-          cp docker/api.Dockerfile dist/api.Dockerfile
           cp scripts/deploy.sh dist/deploy.sh
+          cp scripts/deploy-admin.sh dist/deploy-admin.sh
+          printf 'API_IMAGE_URI=%s\nADMIN_IMAGE_URI=%s\n' \
+            "${API_IMAGE_URI}" \
+            "${ADMIN_IMAGE_URI}" > dist/image-uris.env
 
       - name: Upload deploy artifact
         uses: actions/upload-artifact@v4
         with:
-          name: flint-api-deploy
+          name: flint-deploy
           path: dist/*
           retention-days: 1
 
@@ -121,22 +168,23 @@ jobs:
     env:
       AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
       EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+      ADMIN_EC2_INSTANCE_ID: ${{ vars.ADMIN_EC2_INSTANCE_ID }}
       S3_DEPLOY_BUCKET: ${{ vars.S3_DEPLOY_BUCKET }}
-      ECR_REPOSITORY_URI: ${{ vars.ECR_REPOSITORY_URI }}
 
     steps:
       - name: Download deploy artifact
         uses: actions/download-artifact@v4
         with:
-          name: flint-api-deploy
+          name: flint-deploy
           path: artifact
 
       - name: Validate AWS deploy variables
         run: |
           test -n "${AWS_ROLE_ARN}" || { echo "AWS_ROLE_ARN repository variable is required"; exit 1; }
           test -n "${EC2_INSTANCE_ID}" || { echo "EC2_INSTANCE_ID repository variable is required"; exit 1; }
+          test -n "${ADMIN_EC2_INSTANCE_ID}" || { echo "ADMIN_EC2_INSTANCE_ID repository variable is required"; exit 1; }
           test -n "${S3_DEPLOY_BUCKET}" || { echo "S3_DEPLOY_BUCKET repository variable is required"; exit 1; }
-          test -n "${ECR_REPOSITORY_URI}" || { echo "ECR_REPOSITORY_URI repository variable is required"; exit 1; }
+          test -f artifact/image-uris.env || { echo "image-uris.env artifact is required"; exit 1; }
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -145,40 +193,29 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: flint-api-${{ github.run_id }}
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build and push Docker image
+      - name: Load image URIs
         run: |
-          image_uri="${ECR_REPOSITORY_URI}:sha-${GITHUB_SHA}-${GITHUB_RUN_ATTEMPT}"
-          docker buildx build \
-            --platform "${DOCKER_PLATFORM}" \
-            --file artifact/api.Dockerfile \
-            --tag "${image_uri}" \
-            --push \
-            artifact
-          echo "IMAGE_URI=${image_uri}" >> "$GITHUB_ENV"
+          source artifact/image-uris.env
+          test -n "${API_IMAGE_URI}" || { echo "API_IMAGE_URI is required"; exit 1; }
+          test -n "${ADMIN_IMAGE_URI}" || { echo "ADMIN_IMAGE_URI is required"; exit 1; }
+          echo "API_IMAGE_URI=${API_IMAGE_URI}" >> "$GITHUB_ENV"
+          echo "ADMIN_IMAGE_URI=${ADMIN_IMAGE_URI}" >> "$GITHUB_ENV"
 
       - name: Upload deploy files to S3
         run: |
-          aws s3 cp "artifact/deploy.sh" "s3://${S3_DEPLOY_BUCKET}/${DEPLOY_PREFIX}/${GITHUB_SHA}/deploy.sh"
+          aws s3 cp "artifact/deploy.sh" "s3://${S3_DEPLOY_BUCKET}/${API_DEPLOY_PREFIX}/${GITHUB_SHA}/deploy.sh"
+          aws s3 cp "artifact/deploy-admin.sh" "s3://${S3_DEPLOY_BUCKET}/${ADMIN_DEPLOY_PREFIX}/${GITHUB_SHA}/deploy-admin.sh"
 
-      - name: Run blue-green deployment with SSM
+      - name: Run API blue-green deployment with SSM
         run: |
           cat > ssm-parameters.json <<EOF
           {
             "commands": [
               "set -euo pipefail",
               "mkdir -p /home/ubuntu/deploy",
-              "aws s3 cp \"s3://${S3_DEPLOY_BUCKET}/${DEPLOY_PREFIX}/${GITHUB_SHA}/deploy.sh\" \"/home/ubuntu/deploy.sh\"",
+              "aws s3 cp \"s3://${S3_DEPLOY_BUCKET}/${API_DEPLOY_PREFIX}/${GITHUB_SHA}/deploy.sh\" \"/home/ubuntu/deploy.sh\"",
               "chmod +x /home/ubuntu/deploy.sh",
-              "DEPLOY_MODE=docker IMAGE_URI=\"${IMAGE_URI}\" AWS_REGION=\"${AWS_REGION}\" /home/ubuntu/deploy.sh"
+              "DEPLOY_MODE=docker IMAGE_URI=\"${API_IMAGE_URI}\" AWS_REGION=\"${AWS_REGION}\" /home/ubuntu/deploy.sh"
             ]
           }
           EOF
@@ -220,6 +257,62 @@ jobs:
             aws ssm get-command-invocation \
               --command-id "${command_id}" \
               --instance-id "${EC2_INSTANCE_ID}" \
+              --query "StandardErrorContent" \
+              --output text >&2
+            exit 1
+          fi
+
+      - name: Run Admin deployment with SSM
+        run: |
+          cat > ssm-parameters.json <<EOF
+          {
+            "commands": [
+              "set -euo pipefail",
+              "mkdir -p /home/ubuntu/deploy",
+              "aws s3 cp \"s3://${S3_DEPLOY_BUCKET}/${ADMIN_DEPLOY_PREFIX}/${GITHUB_SHA}/deploy-admin.sh\" \"/home/ubuntu/deploy-admin.sh\"",
+              "chmod +x /home/ubuntu/deploy-admin.sh",
+              "DEPLOY_MODE=docker IMAGE_URI=\"${ADMIN_IMAGE_URI}\" AWS_REGION=\"${AWS_REGION}\" /home/ubuntu/deploy-admin.sh"
+            ]
+          }
+          EOF
+
+          command_id=$(aws ssm send-command \
+            --instance-ids "${ADMIN_EC2_INSTANCE_ID}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy flint-admin-api ${GITHUB_SHA}" \
+            --parameters file://ssm-parameters.json \
+            --timeout-seconds 900 \
+            --query "Command.CommandId" \
+            --output text)
+
+          status="Pending"
+          for _ in {1..90}; do
+            status=$(aws ssm get-command-invocation \
+              --command-id "${command_id}" \
+              --instance-id "${ADMIN_EC2_INSTANCE_ID}" \
+              --query "Status" \
+              --output text 2>/dev/null || echo "Pending")
+
+            case "${status}" in
+              Success|Cancelled|Cancelling|Failed|TimedOut)
+                break
+                ;;
+              *)
+                sleep 10
+                ;;
+            esac
+          done
+
+          aws ssm get-command-invocation \
+            --command-id "${command_id}" \
+            --instance-id "${ADMIN_EC2_INSTANCE_ID}" \
+            --query "StandardOutputContent" \
+            --output text
+
+          if [ "${status}" != "Success" ]; then
+            aws ssm get-command-invocation \
+              --command-id "${command_id}" \
+              --instance-id "${ADMIN_EC2_INSTANCE_ID}" \
               --query "StandardErrorContent" \
               --output text >&2
             exit 1

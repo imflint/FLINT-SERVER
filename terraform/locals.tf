@@ -29,4 +29,9 @@ locals {
     ? var.ecr_repository_name
     : "${local.name_prefix}-api"
   )
+  admin_ecr_repository_name = (
+    var.admin_ecr_repository_name != null && var.admin_ecr_repository_name != ""
+    ? var.admin_ecr_repository_name
+    : "${local.name_prefix}-admin-api"
+  )
 }

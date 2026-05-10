@@ -5,10 +5,13 @@ import java.util.List;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import kr.flint.api.domain.search.dto.response.GetContentSearchRes;
 import kr.flint.api.domain.content.dto.GetPopularContentRes;
+import kr.flint.api.domain.content.dto.SearchGenre;
+import kr.flint.api.domain.content.repository.ContentQueryRepository;
+import kr.flint.api.domain.search.dto.response.GetContentSearchRes;
 import kr.flint.content.domain.Content;
 import kr.flint.content.domain.Genre;
+import kr.flint.content.domain.MediaType;
 import kr.flint.content.exception.ContentErrorCode;
 import kr.flint.content.exception.ContentException;
 import kr.flint.content.service.ContentService;
@@ -29,12 +32,23 @@ public class ContentCommandFacade {
 	private final ContentService contentService;
 	private final TmdbClient tmdbClient;
 	private final OttCommandFacade ottCommandFacade;
+	private final ContentQueryRepository contentQueryRepository;
 
 	private static final String TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
 
 	@Transactional
-	public PaginationResponse<GetContentSearchRes> getContentSearchList(final String keyword, final int cursor, int size){
-		log.info("keyword: {}", keyword);
+	public PaginationResponse<GetContentSearchRes> getContentSearchList(
+		final String keyword,
+		final SearchGenre genre,
+		final int cursor,
+		int size
+	){
+		log.info("keyword: {}, genre: {}", keyword, genre);
+
+		if (genre != null) {
+			return getPopularContentByGenre(genre, cursor, size);
+		}
+
 		if (keyword != null && !keyword.isEmpty()) {
 			List<GetContentSearchRes> searchRes = getTmdbContentList(keyword, cursor);
 			return PaginationResponse.ofCursor(SliceCursor.of(searchRes, "0", "0"));
@@ -49,13 +63,21 @@ public class ContentCommandFacade {
 		);
 	}
 
+	private PaginationResponse<GetContentSearchRes> getPopularContentByGenre(SearchGenre genre, int cursor, int size) {
+		List<GetContentSearchRes> page = contentQueryRepository.findPopularByGenreName(genre.tmdbName(), cursor, size);
+		boolean hasNext = page.size() > size;
+		List<GetContentSearchRes> data = hasNext ? page.subList(0, size) : page;
+		String nextCursor = hasNext ? String.valueOf(cursor + 1) : null;
+		return PaginationResponse.ofCursor(data, nextCursor);
+	}
+
 	private GetPopularContentRes getPopularContent(int page) {
 		try{
 			log.info("실행 메서드: 인기");
 			TmdbCommonRes tmdbList = tmdbClient.getPopularMovieList("ko-KR", page);
 			List<GetContentSearchRes> popularList = tmdbList.contentList().stream()
 				.map(result -> {
-					Content existing = contentService.getContentByTmdbId(result.id());
+					Content existing = contentService.getContentByTmdbIdAndMediaType(result.id(), MediaType.MOVIE);
 					if (existing != null) {
 						return GetContentSearchRes.of(
 							existing.getTmdbId(),
@@ -80,6 +102,7 @@ public class ContentCommandFacade {
 					String resolvedTitle = result.resolvedTitle();
 					Content content = Content.create(
 						result.id(),
+						MediaType.MOVIE,
 						resolvedTitle,
 						year,
 						author,
@@ -118,7 +141,8 @@ public class ContentCommandFacade {
 			.filter(r -> "movie".equals(r.mediaType()) || "tv".equals(r.mediaType()))
 			.map(result -> {
 
-				Content existing = contentService.getContentByTmdbId(result.id());
+				MediaType mediaType = MediaType.fromTmdb(result.mediaType());
+				Content existing = contentService.getContentByTmdbIdAndMediaType(result.id(), mediaType);
 				if (existing != null) {
 					return GetContentSearchRes.of(
 						existing.getTmdbId(),
@@ -146,6 +170,7 @@ public class ContentCommandFacade {
 				String resolvedTitle = result.resolvedTitle();
 				Content content = Content.create(
 					result.id(),
+					mediaType,
 					resolvedTitle,
 					year,
 					author,

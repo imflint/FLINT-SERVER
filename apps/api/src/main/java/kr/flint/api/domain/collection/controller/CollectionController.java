@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -14,6 +15,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
 import kr.flint.api.domain.collection.controller.spec.CollectionControllerDocs;
+import kr.flint.api.domain.collection.dto.request.CreateCollectionReq;
+import kr.flint.api.domain.collection.dto.request.ReportCollectionReq;
+import kr.flint.api.domain.collection.dto.request.UpdateCollectionReq;
 import kr.flint.api.domain.collection.dto.response.CreateCollectionRes;
 import kr.flint.api.domain.collection.dto.response.GetCollectionDetailListRes;
 import kr.flint.api.domain.collection.dto.response.GetCollectionDetailRes;
@@ -21,7 +25,6 @@ import kr.flint.api.domain.collection.dto.response.GetCollectionListRes;
 import kr.flint.api.domain.collection.service.CollectionCommandFacade;
 import kr.flint.api.domain.collection.service.CollectionQueryFacade;
 import kr.flint.api.domain.collection.service.CollectionQueryService;
-import kr.flint.api.domain.collection.dto.request.CreateCollectionReq;
 import kr.flint.api.domain.collection.dto.response.GetCollectionSimpleRes;
 import kr.flint.api.global.security.annotation.CurrentUser;
 import kr.flint.collection.service.CollectionService;
@@ -49,6 +52,30 @@ public class CollectionController implements CollectionControllerDocs {
 		return ResponseEntity
 			.status(SuccessCode.SUCCESS_CREATE.getHttpStatus())
 			.body(SuccessResponse.of(SuccessCode.SUCCESS_CREATE, new CreateCollectionRes(collectionId)));
+	}
+
+	@Override
+	@PutMapping("/{collectionId}")
+	public ResponseEntity<SuccessResponse<Void>> updateCollection(
+		@CurrentUser Long userId,
+		@PathVariable Long collectionId,
+		@Valid @RequestBody UpdateCollectionReq updateCollectionReq
+	){
+		collectionCommandFacade.updateCollection(userId, collectionId, updateCollectionReq);
+		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_UPDATE));
+	}
+
+	@Override
+	@PostMapping("/{collectionId}/reports")
+	public ResponseEntity<SuccessResponse<Void>> reportCollection(
+		@CurrentUser Long userId,
+		@PathVariable Long collectionId,
+		@Valid @RequestBody ReportCollectionReq reportCollectionReq
+	){
+		collectionCommandFacade.reportCollection(userId, collectionId, reportCollectionReq);
+		return ResponseEntity
+			.status(SuccessCode.SUCCESS_REPORT.getHttpStatus())
+			.body(SuccessResponse.of(SuccessCode.SUCCESS_REPORT));
 	}
 
 	@Override

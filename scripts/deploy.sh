@@ -539,5 +539,5 @@ deploy() {
     log "New active port: $inactive_port"
 }
 
-# 실행
+# 실행 — api blue-green 배포만 담당. admin은 별도 EC2에서 scripts/deploy-admin.sh로 배포.
 deploy

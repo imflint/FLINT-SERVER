@@ -109,6 +109,83 @@ resource "aws_iam_instance_profile" "ec2" {
   role = aws_iam_role.ec2.name
 }
 
+resource "aws_iam_role" "admin_ec2" {
+  name               = "${local.name_prefix}-admin-ec2-role"
+  assume_role_policy = data.aws_iam_policy_document.ec2_assume_role.json
+}
+
+data "aws_iam_policy_document" "admin_ec2" {
+  statement {
+    sid    = "ReadAppParameters"
+    effect = "Allow"
+    actions = [
+      "ssm:GetParameter",
+      "ssm:GetParameters",
+      "ssm:GetParametersByPath",
+    ]
+    resources = [
+      "arn:${data.aws_partition.current.partition}:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/config/${var.application_name}/*"
+    ]
+  }
+
+  dynamic "statement" {
+    for_each = var.rds_manage_master_user_password ? [1] : []
+
+    content {
+      sid    = "ReadRdsManagedDatabaseSecret"
+      effect = "Allow"
+      actions = [
+        "secretsmanager:DescribeSecret",
+        "secretsmanager:GetSecretValue",
+      ]
+      resources = [
+        aws_db_instance.mysql.master_user_secret[0].secret_arn
+      ]
+    }
+  }
+
+  statement {
+    sid    = "EcrAuthorization"
+    effect = "Allow"
+    actions = [
+      "ecr:GetAuthorizationToken",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "EcrImagePull"
+    effect = "Allow"
+    actions = [
+      "ecr:BatchCheckLayerAvailability",
+      "ecr:BatchGetImage",
+      "ecr:DescribeImages",
+      "ecr:GetDownloadUrlForLayer",
+    ]
+    resources = [aws_ecr_repository.admin.arn]
+  }
+}
+
+resource "aws_iam_policy" "admin_ec2" {
+  name   = "${local.name_prefix}-admin-ec2-policy"
+  policy = data.aws_iam_policy_document.admin_ec2.json
+}
+
+resource "aws_iam_role_policy_attachment" "admin_ec2" {
+  role       = aws_iam_role.admin_ec2.name
+  policy_arn = aws_iam_policy.admin_ec2.arn
+}
+
+resource "aws_iam_role_policy_attachment" "admin_ec2_ssm_managed" {
+  role       = aws_iam_role.admin_ec2.name
+  policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_instance_profile" "admin_ec2" {
+  name = "${local.name_prefix}-admin-ec2-profile"
+  role = aws_iam_role.admin_ec2.name
+}
+
 resource "aws_iam_openid_connect_provider" "github" {
   count = var.github_repo != "" && var.create_github_oidc_provider ? 1 : 0
 
@@ -206,7 +283,8 @@ data "aws_iam_policy_document" "github_actions_deploy" {
       "ssm:SendCommand",
     ]
     resources = [
-      aws_instance.api.arn
+      aws_instance.api.arn,
+      aws_instance.admin.arn,
     ]
   }
 
@@ -266,7 +344,10 @@ data "aws_iam_policy_document" "github_actions_deploy" {
       "ecr:PutImage",
       "ecr:UploadLayerPart",
     ]
-    resources = [aws_ecr_repository.api.arn]
+    resources = [
+      aws_ecr_repository.api.arn,
+      aws_ecr_repository.admin.arn,
+    ]
   }
 }
 

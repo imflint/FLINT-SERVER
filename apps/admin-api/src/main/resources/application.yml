@@ -23,6 +23,13 @@ spring:
   jackson:
     default-property-inclusion: non_null
 
+  batch:
+    jdbc:
+      initialize-schema: always
+      schema: classpath:batch-schema-mysql.sql
+    job:
+      enabled: false
+
 server:
   port: 8081
   shutdown: graceful
@@ -50,3 +57,14 @@ decorator:
       enable-logging: false
       multiline: true
       logging: slf4j
+
+flint:
+  batch:
+    scheduling:
+      enabled: false
+    tmdb:
+      export-base-url: https://files.tmdb.org/p/exports
+      download-dir: ${java.io.tmpdir}/flint-tmdb-exports
+      chunk-size: 50
+      retry-attempts: 3
+      retry-back-off-ms: 2000

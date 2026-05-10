@@ -6,7 +6,6 @@ public record GetOttResponse(
 	@Schema(type = "string")
 	Long ottId,
 	String name,
-	String logoUrl,
-	String contentUrl
+	String logoUrl
 ) {
 }

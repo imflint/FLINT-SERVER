@@ -86,9 +86,19 @@ public interface UserControllerDocs {
     );
 
     @Operation(summary = "내 취향 키워드 재계산 - 재민",
-               description = "GPT를 호출하여 로그인한 사용자의 취향 키워드를 다시 계산합니다.")
+               description = """
+                   GPT를 호출하여 로그인한 사용자의 취향 키워드를 다시 계산합니다.
+
+                   - **사용자 수동 트리거 전용** API. 호출 가능 조건:
+                     마지막 재계산 이후 **새로 저장한 컨텐츠가 20개 이상 누적**된 경우에만 호출 가능합니다.
+                     (컨텐츠 북마크 ON 시에만 카운트 — OFF는 카운트되지 않음)
+                   - 조건 미달 시 `400 USER.KEYWORD_RECALC_NOT_READY` 반환.
+                   - 성공 시 카운터는 0으로 리셋되어 다음 20개 누적까지 다시 비활성 상태로 돌아갑니다.
+                   - 응답 키워드에는 GPT가 산출한 비율(percentage)이 포함됩니다.
+                   """)
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "취향 키워드 재계산 성공", useReturnTypeSchema = true)
+            @ApiResponse(responseCode = "200", description = "취향 키워드 재계산 성공", useReturnTypeSchema = true),
+            @ApiResponse(responseCode = "400", description = "재계산 가능 조건 미달 (신규 저장 작품 20개 미달)")
     })
     ResponseEntity<SuccessResponse<Void>> recalculateKeyword(
             @Parameter(hidden = true) Long userId

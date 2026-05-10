@@ -32,6 +32,7 @@ dependencies {
     implementation project(':infra:aws')
     implementation project(':infra:tmdb')
     implementation project(':infra:gpt')
+    implementation project(':infra:discord')
 
     // Test
     testImplementation 'com.tngtech.archunit:archunit-junit5:1.4.0'

@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import kr.flint.api.domain.home.HomeQueryFacade;
 import kr.flint.api.domain.home.controller.spec.HomeControllerDocs;
+import kr.flint.api.domain.home.dto.response.PopularCollectionsRes;
 import kr.flint.api.domain.home.dto.response.RecommendedCollectionsRes;
 import kr.flint.api.global.security.annotation.CurrentUser;
 import kr.flint.shared.dto.response.SuccessCode;
@@ -29,6 +30,17 @@ public class HomeController implements HomeControllerDocs {
             SuccessResponse.of(
                 SuccessCode.SUCCESS_RECOMMENDED_COLLECTIONS_FETCH,
                 homeQueryFacade.getRecommendedCollections(userId)
+            )
+        );
+    }
+
+    @Override
+    @GetMapping("/popular-collections")
+    public ResponseEntity<SuccessResponse<PopularCollectionsRes>> getPopularCollections() {
+        return ResponseEntity.ok(
+            SuccessResponse.of(
+                SuccessCode.SUCCESS_POPULAR_COLLECTIONS_FETCH,
+                homeQueryFacade.getPopularCollections()
             )
         );
     }

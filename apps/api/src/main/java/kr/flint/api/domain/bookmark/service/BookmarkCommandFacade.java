@@ -27,7 +27,11 @@ public class BookmarkCommandFacade {
 		userService.getById(userId);
 		boolean isBookmarked = bookmarkCommandService.toggleContent(userId, contentId);
 
-		if (isBookmarked) {contentService.increaseBookmarkCount(contentId);}
+		if (isBookmarked) {
+			contentService.increaseBookmarkCount(contentId);
+			// 키워드 재계산 가능 시점 판정용 카운터 — 토글 OFF는 카운트하지 않음 (스펙: "20개 이상 새롭게 누적")
+			userService.incrementContentBookmarkCounter(userId);
+		}
 		else {contentService.decreaseBookmarkCount(contentId);}
 
 		return isBookmarked;

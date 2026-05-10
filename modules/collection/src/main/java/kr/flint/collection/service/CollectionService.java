@@ -1,6 +1,8 @@
 package kr.flint.collection.service;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -8,12 +10,19 @@ import org.springframework.transaction.annotation.Transactional;
 
 import kr.flint.collection.domain.Collection;
 import kr.flint.collection.domain.CollectionContent;
+import kr.flint.collection.domain.CollectionReport;
 import kr.flint.collection.domain.RecentViewedCollection;
+import kr.flint.collection.domain.ReportReason;
 import kr.flint.collection.dto.CollectionCreateCommand;
+import kr.flint.collection.dto.CollectionUpdateCommand;
+import kr.flint.collection.dto.ReportCollectionCommand;
 import kr.flint.collection.event.CollectionContentAddedEvent;
+import kr.flint.collection.event.CollectionContentRemovedEvent;
+import kr.flint.collection.event.CollectionReportedEvent;
 import kr.flint.collection.exception.CollectionErrorCode;
 import kr.flint.collection.exception.CollectionException;
 import kr.flint.collection.repository.CollectionContentRepository;
+import kr.flint.collection.repository.CollectionReportRepository;
 import kr.flint.collection.repository.CollectionRepository;
 import kr.flint.collection.repository.RecentViewedCollectionRepository;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +33,7 @@ import lombok.RequiredArgsConstructor;
 public class CollectionService {
 	private final CollectionRepository collectionRepository;
 	private final CollectionContentRepository collectionContentRepository;
+	private final CollectionReportRepository collectionReportRepository;
 	private final RecentViewedCollectionRepository recentViewedCollectionRepository;
 	private final ApplicationEventPublisher eventPublisher;
 
@@ -59,9 +69,81 @@ public class CollectionService {
 		return savedCollection.getId();
 	}
 
+	@Transactional
+	public void updateCollection(
+		final Long userId,
+		final Long collectionId,
+		final CollectionUpdateCommand command,
+		final String coverImageUrl
+	) {
+		Collection collection = collectionRepository.findById(collectionId)
+			.orElseThrow(() -> new CollectionException(CollectionErrorCode.COLLECTION_NOT_FOUND));
+
+		if (!collection.isOwnedBy(userId)) {
+			throw new CollectionException(CollectionErrorCode.COLLECTION_FORBIDDEN);
+		}
+
+		collection.update(command.title(), command.description(), coverImageUrl, command.isPublic());
+
+		// 작품 리스트 replace 전략 (단순/원자적). 이벤트는 실제 add/remove diff에 대해서만 발행.
+		Set<Long> existingContentIds = new HashSet<>(collectionContentRepository.findContentIdsByCollectionId(collectionId));
+		Set<Long> newContentIds = command.contents().stream()
+			.map(CollectionCreateCommand.ContentInput::contentId)
+			.collect(java.util.stream.Collectors.toSet());
+
+		collectionContentRepository.deleteAllByCollection(collection);
+		// delete를 즉시 DB에 반영해야 직후 saveAll 시 unique(collection_id, content_id) 충돌이 안 난다.
+		collectionContentRepository.flush();
+
+		List<CollectionContent> rebuilt = command.contents().stream()
+			.map(c -> CollectionContent.create(
+				collection,
+				c.contentId(),
+				c.isSpoiler(),
+				c.reason(),
+				c.customImage()
+			))
+			.toList();
+		collectionContentRepository.saveAll(rebuilt);
+
+		Set<Long> added = new HashSet<>(newContentIds);
+		added.removeAll(existingContentIds);
+		Set<Long> removed = new HashSet<>(existingContentIds);
+		removed.removeAll(newContentIds);
+
+		added.forEach(contentId ->
+			eventPublisher.publishEvent(new CollectionContentAddedEvent(collectionId, contentId))
+		);
+		removed.forEach(contentId ->
+			eventPublisher.publishEvent(new CollectionContentRemovedEvent(collectionId, contentId))
+		);
+	}
+
 	public Collection getCollectionById(final Long collectionId) {
 		return collectionRepository.findById(collectionId)
 			.orElseThrow(() -> new CollectionException(CollectionErrorCode.COLLECTION_NOT_FOUND));
+	}
+
+	@Transactional
+	public Long reportCollection(final Long reporterId, final Long collectionId, final ReportCollectionCommand command) {
+		// 컬렉션 존재 확인 (없는 컬렉션은 신고할 수 없음 → 404)
+		getCollectionById(collectionId);
+
+		CollectionReport report = collectionReportRepository.save(
+			CollectionReport.create(reporterId, collectionId, command.reasons(), command.otherDetail())
+		);
+
+		List<String> reasonLabels = command.reasons().stream()
+			.map(ReportReason::label)
+			.toList();
+		eventPublisher.publishEvent(new CollectionReportedEvent(
+			report.getId(),
+			reporterId,
+			collectionId,
+			reasonLabels,
+			command.otherDetail()
+		));
+		return report.getId();
 	}
 
 	@Transactional

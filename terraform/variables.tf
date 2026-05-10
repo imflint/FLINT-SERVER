@@ -76,6 +76,42 @@ variable "create_eip" {
   default     = true
 }
 
+variable "admin_application_name" {
+  description = "관리자 API 애플리케이션 이름입니다. 리소스 태그와 user-data 설명에 사용합니다."
+  type        = string
+  default     = "flint-admin-api"
+}
+
+variable "admin_ec2_instance_type" {
+  description = "관리자 API 서버 인스턴스 타입입니다. 비용 절감을 위해 API 서버보다 작은 타입을 기본값으로 사용합니다."
+  type        = string
+  default     = "t4g.micro"
+}
+
+variable "admin_ec2_disable_api_termination" {
+  description = "관리자 API 서버 EC2 인스턴스 종료 보호를 활성화할지 여부입니다. 운영 환경에서는 true를 권장합니다."
+  type        = bool
+  default     = false
+}
+
+variable "admin_create_eip" {
+  description = "관리자 API 서버에 고정 Elastic IP를 생성하고 연결할지 여부입니다."
+  type        = bool
+  default     = true
+}
+
+variable "admin_ec2_volume_size" {
+  description = "관리자 API 서버 루트 EBS 볼륨 크기입니다. 단위는 GB입니다."
+  type        = number
+  default     = 20
+}
+
+variable "admin_ingress_cidrs" {
+  description = "관리자 API 서버의 HTTP/HTTPS 접근을 허용할 CIDR 목록입니다. 실제 운영에서는 사무실/VPN IP로 좁히는 것을 권장합니다."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
 variable "ec2_volume_size" {
   description = "루트 EBS 볼륨 크기입니다. 단위는 GB입니다."
   type        = number
@@ -163,6 +199,12 @@ variable "storage_bucket_name" {
 
 variable "ecr_repository_name" {
   description = "선택적으로 지정할 API Docker 이미지 ECR 저장소 이름입니다. 비워두면 프로젝트와 환경 이름으로 생성합니다."
+  type        = string
+  default     = null
+}
+
+variable "admin_ecr_repository_name" {
+  description = "선택적으로 지정할 관리자 API Docker 이미지 ECR 저장소 이름입니다. 비워두면 프로젝트와 환경 이름으로 생성합니다."
   type        = string
   default     = null
 }

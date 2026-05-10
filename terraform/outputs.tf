@@ -18,6 +18,26 @@ output "ec2_eip_allocation_id" {
   value       = var.create_eip ? aws_eip.api[0].allocation_id : null
 }
 
+output "admin_ec2_instance_id" {
+  description = "플린트 관리자 API 서버 인스턴스 ID입니다."
+  value       = aws_instance.admin.id
+}
+
+output "admin_ec2_public_ip" {
+  description = "플린트 관리자 API 서버 공개 IPv4 주소입니다."
+  value       = var.admin_create_eip ? aws_eip.admin[0].public_ip : aws_instance.admin.public_ip
+}
+
+output "admin_ec2_public_dns" {
+  description = "플린트 관리자 API 서버 공개 DNS 이름입니다."
+  value       = aws_instance.admin.public_dns
+}
+
+output "admin_ec2_eip_allocation_id" {
+  description = "관리자 API 서버 Elastic IP 할당 ID입니다. admin_create_eip이 false이면 null입니다."
+  value       = var.admin_create_eip ? aws_eip.admin[0].allocation_id : null
+}
+
 output "rds_endpoint" {
   description = "관리형 MySQL 데이터베이스 엔드포인트입니다."
   value       = aws_db_instance.mysql.endpoint
@@ -43,6 +63,16 @@ output "ecr_repository_name" {
 output "ecr_repository_url" {
   description = "API Docker 이미지 push/pull에 사용할 ECR 저장소 URL입니다."
   value       = aws_ecr_repository.api.repository_url
+}
+
+output "admin_ecr_repository_name" {
+  description = "관리자 API Docker 이미지 ECR 저장소 이름입니다."
+  value       = aws_ecr_repository.admin.name
+}
+
+output "admin_ecr_repository_url" {
+  description = "관리자 API Docker 이미지 push/pull에 사용할 ECR 저장소 URL입니다."
+  value       = aws_ecr_repository.admin.repository_url
 }
 
 output "cloudfront_storage_domain_name" {

@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import kr.flint.content.domain.Content;
+import kr.flint.content.domain.MediaType;
 
 public interface ContentRepository extends JpaRepository<Content, Long> {
 	boolean existsByTitle(String title);
@@ -18,14 +19,16 @@ public interface ContentRepository extends JpaRepository<Content, Long> {
 
 	List<Content> findContentsByTitleContaining(String title);
 
-	boolean existsByTmdbId(Long tmdbId);
+	boolean existsByTmdbIdAndMediaType(Long tmdbId, MediaType mediaType);
 
-	Optional<Content> findContentByTmdbId(Long tmdbId);
+	Optional<Content> findByTmdbIdAndMediaType(Long tmdbId, MediaType mediaType);
 
 	List<Content> findAllByTitleContaining(String title);
 
 	// limit 적용 메서드
 	List<Content> findAllByTitleContaining(String title, Pageable pageable);
+
+	List<Content> findAllByMediaTypeOrderByIdAsc(MediaType mediaType, Pageable pageable);
 
 	List<Content> findAllByOrderByCreatedAtDesc(Pageable pageable);
 

@@ -31,6 +31,10 @@ jwt:
   refresh-expiration: 14d
   temp-expiration: 30m
 
+tmdb:
+  base-url: https://api.themoviedb.org
+  api-key: ${tmdb.api-key}
+
 logging:
   level:
     kr.flint: info

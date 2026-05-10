@@ -26,7 +26,7 @@ import lombok.extern.slf4j.Slf4j;
  * 추천 알고리즘:
  * 1단계: Fliner-사용자 키워드 중복률로 상위 매칭 Fliner 선정
  * 2단계: 각 Fliner별 컬렉션-사용자 키워드 중복률 높은 순 최대 2개 선정
- * 3단계: 10개 초과 시 조정 (Fliner별 1개씩 -> 남은 슬롯에 2번째 추가)
+ * 3단계: maxSize 초과 시 조정 (Fliner별 1개씩 -> 남은 슬롯에 2번째 추가)
  */
 @Slf4j
 @Component
@@ -63,7 +63,7 @@ public class FlinerBasedRecommendation implements CollectionRecommendationPort {
         // 각 Fliner별 컬렉션-사용자 키워드 중복률 계산
         enrichWithCollectionMatches(flinerMatches, userKeywordIds);
 
-        // 10개 제한 조정
+        // maxSize 제한 조정
         return adjustToLimit(flinerMatches, maxSize);
     }
 
@@ -136,7 +136,7 @@ public class FlinerBasedRecommendation implements CollectionRecommendationPort {
         }
     }
 
-    // 10개 제한 조정 로직
+    // maxSize 제한 조정 로직
     private List<Long> adjustToLimit(List<FlinerMatch> flinerMatches, int maxSize) {
         List<Long> result = new ArrayList<>();
 

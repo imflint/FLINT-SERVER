@@ -1,0 +1,14 @@
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-batch'
+    implementation 'org.springframework.batch:spring-batch-integration'
+    implementation 'io.github.openfeign:feign-core'
+
+    implementation project(':modules:shared')
+    implementation project(':modules:content')
+    implementation project(':modules:ott')
+
+    implementation project(':infra:tmdb')
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.batch:spring-batch-test'
+}

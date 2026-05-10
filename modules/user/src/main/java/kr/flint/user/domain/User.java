@@ -8,6 +8,7 @@ import kr.flint.shared.domain.BaseTime;
 import kr.flint.user.exception.UserErrorCode;
 import kr.flint.user.exception.UserException;
 import lombok.*;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.SQLRestriction;
 import org.springframework.util.StringUtils;
 
@@ -39,6 +40,11 @@ public class User extends BaseTime {
 
     private LocalDateTime deletedAt;
 
+    // 마지막 GPT 키워드 재계산 이후 추가된 컨텐츠 북마크 수 — 임계값 도달 시 재계산 트리거에 사용
+    @Column(nullable = false)
+    @ColumnDefault("0")
+    private int bookmarksSinceKeywordCalc;
+
     // TODO: 프로필 이미지 어떻게 할지 고민
     public static User createFling(String nickname) {
         return create(nickname, null, UserRole.FLING);
@@ -68,6 +74,14 @@ public class User extends BaseTime {
     public void withdraw() {
         this.status = UserStatus.WITHDRAWN;
         this.deletedAt = LocalDateTime.now();
+    }
+
+    public void incrementBookmarksSinceKeywordCalc() {
+        this.bookmarksSinceKeywordCalc++;
+    }
+
+    public void resetBookmarksSinceKeywordCalc() {
+        this.bookmarksSinceKeywordCalc = 0;
     }
 
     private static void validateNickname(String nickname) {
