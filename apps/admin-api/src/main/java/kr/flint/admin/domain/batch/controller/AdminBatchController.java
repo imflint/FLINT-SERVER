@@ -12,7 +12,7 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/admin/batch")
+@RequestMapping("/admin/batch")
 public class AdminBatchController implements AdminBatchControllerDocs {
 
 	private final TmdbBatchCommandFacade tmdbBatchCommandFacade;

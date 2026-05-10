@@ -17,7 +17,7 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/admin/auth")
+@RequestMapping("/admin/auth")
 public class AdminAuthController implements AdminAuthControllerDocs {
 
 	private final AdminAuthFacade adminAuthFacade;

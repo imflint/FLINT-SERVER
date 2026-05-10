@@ -18,7 +18,7 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/admin/terms")
+@RequestMapping("/admin/terms")
 public class TermsAdminController implements TermsAdminControllerDocs {
 
 	private final TermsCommandFacade termsCommandFacade;
