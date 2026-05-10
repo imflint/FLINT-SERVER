@@ -26,6 +26,36 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
 
+run_as_root() {
+    if [ "$(id -u)" -eq 0 ]; then
+        "$@"
+    else
+        sudo "$@"
+    fi
+}
+
+ensure_docker() {
+    if command -v docker >/dev/null 2>&1; then
+        return 0
+    fi
+
+    log "Docker not found; installing Docker"
+    if command -v dnf >/dev/null 2>&1; then
+        run_as_root dnf install -y docker
+    elif command -v yum >/dev/null 2>&1; then
+        run_as_root yum install -y docker
+    elif command -v apt-get >/dev/null 2>&1; then
+        run_as_root apt-get update
+        run_as_root apt-get install -y docker.io
+    else
+        log "ERROR: supported package manager not found for Docker installation"
+        exit 1
+    fi
+
+    run_as_root systemctl enable docker
+    run_as_root systemctl start docker
+}
+
 # 필수 명령어 확인
 check_dependencies() {
     command -v lsof >/dev/null 2>&1 || { log "ERROR: lsof not installed"; exit 1; }
@@ -34,7 +64,7 @@ check_dependencies() {
 
     case "$DEPLOY_MODE" in
         docker)
-            command -v docker >/dev/null 2>&1 || { log "ERROR: docker not installed"; exit 1; }
+            ensure_docker
             ;;
         jar)
             command -v java >/dev/null 2>&1 || { log "ERROR: java not installed"; exit 1; }
