@@ -4,6 +4,7 @@ import static kr.flint.bookmark.domain.QCollectionBookmark.*;
 import static kr.flint.bookmark.domain.QContentBookmark.*;
 import static kr.flint.collection.domain.QCollection.*;
 import static kr.flint.content.domain.QContent.*;
+import static kr.flint.user.domain.QUser.*;
 
 import java.util.List;
 
@@ -40,10 +41,15 @@ public class SearchQueryRepository {
 				collection.id,
 				collection.image,
 				collection.title,
-				collection.description
+				collection.description,
+				collection.bookmarkCount,
+				collection.userId,
+				user.nickname,
+				user.profileImage
 			))
 			.from(collectionBookmark)
 			.join(collection).on(collection.id.eq(collectionBookmark.collectionId))
+			.join(user).on(user.id.eq(collection.userId))
 			.where(
 				collectionBookmark.userId.eq(userId),
 				containsKeyword(keyword, collection.title),
