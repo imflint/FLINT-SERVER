@@ -81,7 +81,6 @@ public class AuthFacade {
 
         bookmarkCommandService.createContentBookmarks(authInfo.userId(), request.favoriteContentIds());
 		request.favoriteContentIds().forEach(contentService::incContentBookmarkCount);
-        ottService.createUserOtts(authInfo.userId(), request.subscribedOttIds());
 
         // 비동기 취향 분석 이벤트 발행 (트랜잭션 커밋 후 처리)
         eventPublisher.publishEvent(UserSignedUpEvent.of(authInfo.userId(), request.favoriteContentIds()));
