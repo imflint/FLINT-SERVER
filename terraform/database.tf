@@ -14,9 +14,10 @@ resource "aws_db_instance" "mysql" {
   engine_version = var.rds_engine_version
   instance_class = var.rds_instance_class
 
-  db_name  = var.rds_db_name
-  username = var.rds_username
-  password = var.rds_password
+  db_name                     = var.rds_db_name
+  username                    = var.rds_username
+  password                    = var.rds_manage_master_user_password ? null : var.rds_password
+  manage_master_user_password = var.rds_manage_master_user_password
 
   allocated_storage = var.rds_allocated_storage
   storage_type      = var.rds_storage_type
@@ -36,5 +37,12 @@ resource "aws_db_instance" "mysql" {
 
   tags = {
     Name = "${local.name_prefix}-mysql"
+  }
+
+  lifecycle {
+    precondition {
+      condition     = var.rds_manage_master_user_password || (var.rds_password != null && var.rds_password != "")
+      error_message = "rds_manage_master_user_password가 false이면 rds_password를 설정해야 합니다."
+    }
   }
 }

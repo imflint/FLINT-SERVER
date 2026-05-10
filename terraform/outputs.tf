@@ -24,6 +24,12 @@ output "rds_endpoint" {
   sensitive   = true
 }
 
+output "rds_master_user_secret_arn" {
+  description = "RDS managed master password를 사용할 때 생성되는 Secrets Manager secret ARN입니다. 사용하지 않으면 null입니다."
+  value       = var.rds_manage_master_user_password ? aws_db_instance.mysql.master_user_secret[0].secret_arn : null
+  sensitive   = true
+}
+
 output "storage_bucket" {
   description = "스토리지 버킷 이름입니다."
   value       = aws_s3_bucket.storage.bucket
@@ -51,7 +57,7 @@ output "github_actions_role_arn" {
 }
 
 output "manual_secure_parameters" {
-  description = "create_sensitive_ssm_parameters가 true가 아니라면 수동으로 생성해야 하는 보안 문자열 파라미터 목록입니다."
+  description = "Terraform state에 남기지 않기 위해 수동으로 생성해야 하는 보안 문자열 파라미터 목록입니다."
   value = [
     "${local.parameter_prefix}/database.password",
     "${local.parameter_prefix}/jwt.secret",

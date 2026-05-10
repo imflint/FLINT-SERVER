@@ -10,14 +10,6 @@ resource "aws_ssm_parameter" "database_username" {
   value = var.rds_username
 }
 
-resource "aws_ssm_parameter" "database_password" {
-  count = var.create_sensitive_ssm_parameters ? 1 : 0
-
-  name  = "${local.parameter_prefix}/database.password"
-  type  = "SecureString"
-  value = var.rds_password
-}
-
 resource "aws_ssm_parameter" "redis_host" {
   name  = "${local.parameter_prefix}/redis.host"
   type  = "String"

@@ -21,3 +21,20 @@ variable "state_bucket_name" {
   type        = string
   default     = null
 }
+
+variable "enable_state_bucket_kms" {
+  description = "Terraform state bucket 암호화에 customer managed KMS key를 사용할지 여부입니다. 비용 최소화 dev 환경에서는 false를 기본값으로 둡니다."
+  type        = bool
+  default     = false
+}
+
+variable "state_kms_key_deletion_window_in_days" {
+  description = "Terraform state KMS key 삭제 대기 기간입니다. 단위는 일입니다."
+  type        = number
+  default     = 7
+
+  validation {
+    condition     = var.state_kms_key_deletion_window_in_days >= 7 && var.state_kms_key_deletion_window_in_days <= 30
+    error_message = "KMS key 삭제 대기 기간은 7일 이상 30일 이하여야 합니다."
+  }
+}

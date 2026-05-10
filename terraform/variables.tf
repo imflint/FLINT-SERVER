@@ -64,6 +64,12 @@ variable "ec2_key_name" {
   default     = ""
 }
 
+variable "ec2_disable_api_termination" {
+  description = "API 서버 EC2 인스턴스 종료 보호를 활성화할지 여부입니다. 운영 환경에서는 true를 권장하고, 비용 정리가 필요한 dev 환경에서는 false를 기본값으로 둡니다."
+  type        = bool
+  default     = false
+}
+
 variable "create_eip" {
   description = "API 서버에 고정 Elastic IP를 생성하고 연결할지 여부입니다. 연결된 EIP는 public IPv4 비용 구조를 유지하면서 DNS 연결을 안정화합니다."
   type        = bool
@@ -107,9 +113,16 @@ variable "rds_username" {
 }
 
 variable "rds_password" {
-  description = "관리형 데이터베이스 master 비밀번호입니다. 민감값이지만 provider 동작상 Terraform state에는 저장됩니다."
+  description = "관리형 데이터베이스 master 비밀번호입니다. rds_manage_master_user_password가 false일 때만 필요하며 provider 동작상 Terraform state에는 저장됩니다."
   type        = string
+  default     = null
   sensitive   = true
+}
+
+variable "rds_manage_master_user_password" {
+  description = "RDS가 Secrets Manager로 master password를 관리하도록 할지 여부입니다. true이면 rds_password를 Terraform에 전달하지 않습니다."
+  type        = bool
+  default     = false
 }
 
 variable "rds_allocated_storage" {
@@ -170,12 +183,6 @@ variable "cloudfront_certificate_arn" {
   description = "us-east-1 리전의 인증서 ARN입니다. cloudfront_aliases가 비어 있지 않을 때만 필요합니다."
   type        = string
   default     = null
-}
-
-variable "create_sensitive_ssm_parameters" {
-  description = "true이면 Terraform이 database.password 같은 보안 문자열 파라미터를 생성합니다. 값은 Terraform state에 저장됩니다."
-  type        = bool
-  default     = false
 }
 
 variable "github_repo" {

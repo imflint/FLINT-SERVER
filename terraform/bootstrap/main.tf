@@ -2,6 +2,26 @@ locals {
   name_prefix       = "${var.project}-${var.environment}"
   state_bucket_name = var.state_bucket_name != null && var.state_bucket_name != "" ? var.state_bucket_name : "${local.name_prefix}-terraform-state-${data.aws_caller_identity.current.account_id}"
   lock_table_name   = "${local.name_prefix}-terraform-lock"
+  state_kms_alias   = "alias/${local.name_prefix}-terraform-state"
+}
+
+resource "aws_kms_key" "state" {
+  count = var.enable_state_bucket_kms ? 1 : 0
+
+  description             = "KMS key for Flint Terraform state"
+  deletion_window_in_days = var.state_kms_key_deletion_window_in_days
+  enable_key_rotation     = true
+
+  tags = {
+    Name = "${local.name_prefix}-terraform-state"
+  }
+}
+
+resource "aws_kms_alias" "state" {
+  count = var.enable_state_bucket_kms ? 1 : 0
+
+  name          = local.state_kms_alias
+  target_key_id = aws_kms_key.state[0].key_id
 }
 
 resource "aws_s3_bucket" "state" {
@@ -34,8 +54,11 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "state" {
 
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
+      kms_master_key_id = var.enable_state_bucket_kms ? aws_kms_key.state[0].arn : null
+      sse_algorithm     = var.enable_state_bucket_kms ? "aws:kms" : "AES256"
     }
+
+    bucket_key_enabled = var.enable_state_bucket_kms ? true : null
   }
 }
 

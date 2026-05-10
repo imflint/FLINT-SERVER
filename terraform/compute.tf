@@ -12,6 +12,7 @@ resource "aws_instance" "api" {
   iam_instance_profile        = aws_iam_instance_profile.ec2.name
   key_name                    = var.ec2_key_name != "" ? var.ec2_key_name : null
   associate_public_ip_address = true
+  disable_api_termination     = var.ec2_disable_api_termination
   user_data_replace_on_change = true
 
   user_data = templatefile("${path.module}/scripts/user-data-free-tier.sh.tftpl", {
