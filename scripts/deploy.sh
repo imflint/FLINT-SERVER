@@ -79,6 +79,57 @@ ensure_redis() {
         redis-server --appendonly yes >/dev/null
 }
 
+ensure_nginx() {
+    local proxy_conf="/etc/nginx/conf.d/flint-api.conf"
+    local temp_conf
+
+    if ! command -v nginx >/dev/null 2>&1; then
+        log "Nginx not found; installing nginx"
+        if command -v dnf >/dev/null 2>&1; then
+            run_as_root dnf install -y nginx
+        elif command -v yum >/dev/null 2>&1; then
+            run_as_root yum install -y nginx
+        elif command -v apt-get >/dev/null 2>&1; then
+            run_as_root apt-get update
+            run_as_root apt-get install -y nginx
+        else
+            log "ERROR: supported package manager not found for nginx installation"
+            exit 1
+        fi
+    fi
+
+    run_as_root mkdir -p /etc/nginx/conf.d
+
+    if [ ! -f "$proxy_conf" ]; then
+        log "Creating nginx proxy config $proxy_conf"
+        temp_conf=$(mktemp)
+        cat > "$temp_conf" <<'EOF'
+server {
+    listen 80 default_server;
+    server_name _;
+
+    client_max_body_size 20m;
+
+    location / {
+        proxy_pass http://flint-api;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 60s;
+    }
+}
+EOF
+        run_as_root install -m 0644 "$temp_conf" "$proxy_conf"
+        rm -f "$temp_conf"
+    fi
+
+    run_as_root systemctl enable nginx
+    run_as_root systemctl start nginx
+}
+
 # 필수 명령어 확인
 check_dependencies() {
     command -v lsof >/dev/null 2>&1 || { log "ERROR: lsof not installed"; exit 1; }
@@ -98,6 +149,8 @@ check_dependencies() {
             exit 1
             ;;
     esac
+
+    ensure_nginx
 }
 
 # 현재 활성 포트 확인
@@ -331,16 +384,20 @@ health_check() {
 # nginx upstream 전환
 switch_nginx() {
     local new_port="$1"
+    local temp_conf
     log "Switching nginx to port $new_port"
 
-    sudo tee "$NGINX_CONF" > /dev/null << EOF
+    temp_conf=$(mktemp)
+    cat > "$temp_conf" << EOF
 upstream flint-api {
     server 127.0.0.1:$new_port;
 }
 EOF
+    run_as_root install -m 0644 "$temp_conf" "$NGINX_CONF"
+    rm -f "$temp_conf"
 
-    if sudo nginx -t > /dev/null 2>&1; then
-        sudo nginx -s reload
+    if run_as_root nginx -t > /dev/null 2>&1; then
+        run_as_root nginx -s reload
         log "Nginx switched to port $new_port"
         return 0
     else
