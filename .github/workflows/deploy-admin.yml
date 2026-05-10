@@ -1,0 +1,150 @@
+name: Deploy Admin API
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - 'apps/admin-api/**'
+      - 'apps/batch/**'
+      - 'modules/**'
+      - 'infra/**'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'gradle/**'
+      - 'gradlew'
+      - 'scripts/deploy-admin.sh'
+      - '.github/workflows/deploy-admin.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-admin-api-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: ap-northeast-2
+  ADMIN_DEPLOY_PREFIX: deploy/flint-admin-api
+  DOCKER_PLATFORM: linux/arm64
+
+jobs:
+  deploy-admin-api:
+    runs-on: ubuntu-latest
+    env:
+      AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+      ADMIN_EC2_INSTANCE_ID: ${{ vars.ADMIN_EC2_INSTANCE_ID }}
+      ADMIN_ECR_REPOSITORY_URI: ${{ vars.ADMIN_ECR_REPOSITORY_URI }}
+      S3_DEPLOY_BUCKET: ${{ vars.S3_DEPLOY_BUCKET }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: ${{ runner.os }}-gradle-
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Validate AWS variables
+        run: |
+          test -n "${AWS_ROLE_ARN}" || { echo "AWS_ROLE_ARN repository variable is required"; exit 1; }
+          test -n "${ADMIN_EC2_INSTANCE_ID}" || { echo "ADMIN_EC2_INSTANCE_ID repository variable is required"; exit 1; }
+          test -n "${ADMIN_ECR_REPOSITORY_URI}" || { echo "ADMIN_ECR_REPOSITORY_URI repository variable is required"; exit 1; }
+          test -n "${S3_DEPLOY_BUCKET}" || { echo "S3_DEPLOY_BUCKET repository variable is required"; exit 1; }
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: flint-admin-api-${{ github.run_id }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and publish Admin API image
+        run: |
+          image_uri="${ADMIN_ECR_REPOSITORY_URI}:sha-${GITHUB_SHA}-${GITHUB_RUN_ATTEMPT}"
+          ./gradlew :apps:admin-api:bootBuildImage \
+            --imageName="${image_uri}" \
+            --publishImage \
+            --imagePlatform="${DOCKER_PLATFORM}" \
+            --build-cache
+          echo "IMAGE_URI=${image_uri}" >> "$GITHUB_ENV"
+
+      - name: Upload Admin API deploy script to S3
+        run: aws s3 cp "scripts/deploy-admin.sh" "s3://${S3_DEPLOY_BUCKET}/${ADMIN_DEPLOY_PREFIX}/${GITHUB_SHA}/deploy-admin.sh"
+
+      - name: Run Admin API deployment with SSM
+        run: |
+          cat > ssm-parameters.json <<EOF
+          {
+            "commands": [
+              "set -euo pipefail",
+              "mkdir -p /home/ubuntu/deploy",
+              "aws s3 cp \"s3://${S3_DEPLOY_BUCKET}/${ADMIN_DEPLOY_PREFIX}/${GITHUB_SHA}/deploy-admin.sh\" \"/home/ubuntu/deploy-admin.sh\"",
+              "chmod +x /home/ubuntu/deploy-admin.sh",
+              "DEPLOY_MODE=docker IMAGE_URI=\"${IMAGE_URI}\" AWS_REGION=\"${AWS_REGION}\" /home/ubuntu/deploy-admin.sh"
+            ]
+          }
+          EOF
+
+          command_id=$(aws ssm send-command \
+            --instance-ids "${ADMIN_EC2_INSTANCE_ID}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy flint-admin-api ${GITHUB_SHA}" \
+            --parameters file://ssm-parameters.json \
+            --timeout-seconds 900 \
+            --query "Command.CommandId" \
+            --output text)
+
+          status="Pending"
+          for _ in {1..90}; do
+            status=$(aws ssm get-command-invocation \
+              --command-id "${command_id}" \
+              --instance-id "${ADMIN_EC2_INSTANCE_ID}" \
+              --query "Status" \
+              --output text 2>/dev/null || echo "Pending")
+
+            case "${status}" in
+              Success|Cancelled|Cancelling|Failed|TimedOut)
+                break
+                ;;
+              *)
+                sleep 10
+                ;;
+            esac
+          done
+
+          aws ssm get-command-invocation \
+            --command-id "${command_id}" \
+            --instance-id "${ADMIN_EC2_INSTANCE_ID}" \
+            --query "StandardOutputContent" \
+            --output text
+
+          if [ "${status}" != "Success" ]; then
+            aws ssm get-command-invocation \
+              --command-id "${command_id}" \
+              --instance-id "${ADMIN_EC2_INSTANCE_ID}" \
+              --query "StandardErrorContent" \
+              --output text >&2
+            exit 1
+          fi
