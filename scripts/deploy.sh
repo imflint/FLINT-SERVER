@@ -71,24 +71,53 @@ kill_app_on_port() {
 }
 
 get_database_secret_arn() {
-    aws ssm get-parameter \
+    local secret_arn
+    local error_file
+    local error_message
+
+    error_file=$(mktemp)
+    if secret_arn=$(aws ssm get-parameter \
         --region "$AWS_REGION" \
         --name "$PARAMETER_ENV_PREFIX/database.secret-arn" \
         --query "Parameter.Value" \
-        --output text
+        --output text 2>"$error_file"); then
+        rm -f "$error_file"
+        if [ "$secret_arn" != "None" ]; then
+            echo "$secret_arn"
+        fi
+        return 0
+    fi
+
+    error_message=$(tr '\n' ' ' < "$error_file")
+    rm -f "$error_file"
+
+    if [[ "$error_message" == *"ParameterNotFound"* ]]; then
+        log "Optional $PARAMETER_ENV_PREFIX/database.secret-arn not found; using Parameter Store database.password if configured" >&2
+        return 0
+    fi
+
+    log "ERROR: Failed to read $PARAMETER_ENV_PREFIX/database.secret-arn: $error_message" >&2
+    return 1
 }
 
 build_spring_config_import() {
     local database_secret_arn
-    database_secret_arn=$(get_database_secret_arn)
+    local spring_config_import
 
-    if [ -z "$database_secret_arn" ] || [ "$database_secret_arn" = "None" ]; then
-        log "ERROR: Missing $PARAMETER_ENV_PREFIX/database.secret-arn"
+    spring_config_import="aws-parameterstore:$PARAMETER_BASE_PREFIX/,aws-parameterstore:$PARAMETER_ENV_PREFIX/"
+
+    if ! database_secret_arn=$(get_database_secret_arn); then
         return 1
     fi
 
-    log "Using RDS managed database credentials from Secrets Manager" >&2
-    echo "aws-parameterstore:$PARAMETER_BASE_PREFIX/,aws-parameterstore:$PARAMETER_ENV_PREFIX/,aws-secretsmanager:$database_secret_arn?prefix=database."
+    if [ -n "$database_secret_arn" ]; then
+        log "Using RDS managed database credentials from Secrets Manager" >&2
+        spring_config_import="$spring_config_import,aws-secretsmanager:$database_secret_arn?prefix=database."
+    else
+        log "Using database credentials from Parameter Store" >&2
+    fi
+
+    echo "$spring_config_import"
 }
 
 # 앱 시작
