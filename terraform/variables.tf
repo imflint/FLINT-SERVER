@@ -83,9 +83,9 @@ variable "admin_application_name" {
 }
 
 variable "admin_ec2_instance_type" {
-  description = "관리자 API 서버 인스턴스 타입입니다. 비용 절감을 위해 API 서버보다 작은 타입을 기본값으로 사용합니다."
+  description = "관리자 API 서버 인스턴스 타입입니다. Spring Boot Admin API와 Batch 메모리 여유를 위해 t4g.small을 기본값으로 사용합니다."
   type        = string
-  default     = "t4g.micro"
+  default     = "t4g.small"
 }
 
 variable "admin_ec2_disable_api_termination" {

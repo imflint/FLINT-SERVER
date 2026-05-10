@@ -17,6 +17,8 @@ spring:
     aws:
       parameterstore:
         enabled: false
+      secretsmanager:
+        enabled: false
 
   datasource:
     url: ${DB_URL}
