@@ -120,9 +120,9 @@ variable "rds_password" {
 }
 
 variable "rds_manage_master_user_password" {
-  description = "RDS가 Secrets Manager로 master password를 관리하도록 할지 여부입니다. true이면 rds_password를 Terraform에 전달하지 않습니다."
+  description = "RDS가 Secrets Manager로 master password를 관리하도록 할지 여부입니다. 기본값 true에서는 rds_password를 Terraform에 전달하지 않습니다."
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "rds_allocated_storage" {

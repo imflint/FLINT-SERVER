@@ -10,6 +10,14 @@ resource "aws_ssm_parameter" "database_username" {
   value = var.rds_username
 }
 
+resource "aws_ssm_parameter" "database_secret_arn" {
+  count = var.rds_manage_master_user_password ? 1 : 0
+
+  name  = "${local.parameter_prefix}/database.secret-arn"
+  type  = "String"
+  value = aws_db_instance.mysql.master_user_secret[0].secret_arn
+}
+
 resource "aws_ssm_parameter" "redis_host" {
   name  = "${local.parameter_prefix}/redis.host"
   type  = "String"

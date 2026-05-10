@@ -7,6 +7,9 @@ JAR_NAME="flint-api-0.0.1-SNAPSHOT.jar"
 NEW_JAR_PATH="/home/ubuntu/deploy/$JAR_NAME"
 BACKUP_JAR="$DEPLOY_PATH/flint-api-backup.jar"
 PROFILE="dev"
+AWS_REGION="${AWS_REGION:-ap-northeast-2}"
+PARAMETER_BASE_PREFIX="/config/$APP_NAME"
+PARAMETER_ENV_PREFIX="$PARAMETER_BASE_PREFIX/$PROFILE"
 
 BLUE_PORT=8080
 GREEN_PORT=8081
@@ -26,6 +29,7 @@ check_dependencies() {
     command -v lsof >/dev/null 2>&1 || { log "ERROR: lsof not installed"; exit 1; }
     command -v curl >/dev/null 2>&1 || { log "ERROR: curl not installed"; exit 1; }
     command -v java >/dev/null 2>&1 || { log "ERROR: java not installed"; exit 1; }
+    command -v aws >/dev/null 2>&1 || { log "ERROR: aws cli not installed"; exit 1; }
 }
 
 # 현재 활성 포트 확인
@@ -66,14 +70,39 @@ kill_app_on_port() {
     fi
 }
 
+get_database_secret_arn() {
+    aws ssm get-parameter \
+        --region "$AWS_REGION" \
+        --name "$PARAMETER_ENV_PREFIX/database.secret-arn" \
+        --query "Parameter.Value" \
+        --output text
+}
+
+build_spring_config_import() {
+    local database_secret_arn
+    database_secret_arn=$(get_database_secret_arn)
+
+    if [ -z "$database_secret_arn" ] || [ "$database_secret_arn" = "None" ]; then
+        log "ERROR: Missing $PARAMETER_ENV_PREFIX/database.secret-arn"
+        return 1
+    fi
+
+    log "Using RDS managed database credentials from Secrets Manager" >&2
+    echo "aws-parameterstore:$PARAMETER_BASE_PREFIX/,aws-parameterstore:$PARAMETER_ENV_PREFIX/,aws-secretsmanager:$database_secret_arn?prefix=database."
+}
+
 # 앱 시작
 start_app() {
     local port="$1"
+    local spring_config_import
     log "Starting application on port $port"
 
     cd "$DEPLOY_PATH" || { log "ERROR: Failed to cd to $DEPLOY_PATH"; return 1; }
+    spring_config_import=$(build_spring_config_import) || return 1
+
     nohup java -jar "$JAR_NAME" \
         --spring.profiles.active="$PROFILE" \
+        --spring.config.import="$spring_config_import" \
         --server.port="$port" \
         > "app-$port.log" 2>&1 &
 

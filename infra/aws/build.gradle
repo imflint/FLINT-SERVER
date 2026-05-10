@@ -5,6 +5,7 @@ plugins {
 dependencies {
     // AWS Parameter Store
     api 'io.awspring.cloud:spring-cloud-aws-starter-parameter-store:3.4.2'
+    api 'io.awspring.cloud:spring-cloud-aws-starter-secrets-manager:3.4.2'
 
     implementation 'org.springframework.boot:spring-boot-starter'
 

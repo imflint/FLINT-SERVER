@@ -58,14 +58,16 @@ output "github_actions_role_arn" {
 
 output "manual_secure_parameters" {
   description = "Terraform state에 남기지 않기 위해 수동으로 생성해야 하는 보안 문자열 파라미터 목록입니다."
-  value = [
-    "${local.parameter_prefix}/database.password",
-    "${local.parameter_prefix}/jwt.secret",
-    "${local.parameter_prefix}/openai.key",
-    "${local.parameter_prefix}/tmdb.api-key",
-    "${local.parameter_prefix}/oauth.kakao.client-id",
-    "${local.parameter_prefix}/oauth.kakao.client-secret",
-    "${local.parameter_prefix}/oauth.kakao.redirect-uri",
-    "${local.parameter_prefix}/oauth.apple.client-id",
-  ]
+  value = concat(
+    var.rds_manage_master_user_password ? [] : ["${local.parameter_prefix}/database.password"],
+    [
+      "${local.parameter_prefix}/jwt.secret",
+      "${local.parameter_prefix}/openai.key",
+      "${local.parameter_prefix}/tmdb.api-key",
+      "${local.parameter_prefix}/oauth.kakao.client-id",
+      "${local.parameter_prefix}/oauth.kakao.client-secret",
+      "${local.parameter_prefix}/oauth.kakao.redirect-uri",
+      "${local.parameter_prefix}/oauth.apple.client-id",
+    ]
+  )
 }

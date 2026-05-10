@@ -29,6 +29,22 @@ data "aws_iam_policy_document" "ec2" {
     ]
   }
 
+  dynamic "statement" {
+    for_each = var.rds_manage_master_user_password ? [1] : []
+
+    content {
+      sid    = "ReadRdsManagedDatabaseSecret"
+      effect = "Allow"
+      actions = [
+        "secretsmanager:DescribeSecret",
+        "secretsmanager:GetSecretValue",
+      ]
+      resources = [
+        aws_db_instance.mysql.master_user_secret[0].secret_arn
+      ]
+    }
+  }
+
   statement {
     sid    = "StorageBucketList"
     effect = "Allow"
