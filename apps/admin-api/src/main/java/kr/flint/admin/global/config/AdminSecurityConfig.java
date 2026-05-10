@@ -40,7 +40,7 @@ public class AdminSecurityConfig {
 		"/swagger-ui/**",
 		"/v3/api-docs/**",
 		"/actuator/**",
-		"/admin/auth/login"
+		"/api/v1/admin/auth/login"
 	};
 
 	private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -60,7 +60,7 @@ public class AdminSecurityConfig {
 					writeErrorResponse(response, request, ErrorCode.FORBIDDEN)))
 			.authorizeHttpRequests(auth -> auth
 				.requestMatchers(PUBLIC_ENDPOINTS).permitAll()
-				.requestMatchers("/admin/**").hasRole("ADMIN")
+				.requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
 				.anyRequest().authenticated())
 			.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
 			.addFilterBefore(jwtExceptionFilter, JwtAuthenticationFilter.class)

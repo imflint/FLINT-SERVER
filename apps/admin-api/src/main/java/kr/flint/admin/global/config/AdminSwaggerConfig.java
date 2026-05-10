@@ -43,7 +43,7 @@ public class AdminSwaggerConfig {
 				return;
 			}
 
-			var loginPath = openApi.getPaths().get("/admin/auth/login");
+			var loginPath = openApi.getPaths().get("/api/v1/admin/auth/login");
 			if (loginPath != null && loginPath.getPost() != null) {
 				loginPath.getPost().setSecurity(List.of());
 			}
