@@ -81,6 +81,9 @@ ensure_redis() {
 }
 
 ensure_nginx() {
+    local default_location_conf="/etc/nginx/default.d/flint-admin-api.conf"
+    local legacy_proxy_conf="$NGINX_PROXY_CONF"
+    local proxy_conf
     local temp_conf
 
     if ! command -v nginx >/dev/null 2>&1; then
@@ -109,9 +112,32 @@ EOF
     run_as_root install -m 0644 "$temp_conf" "$NGINX_CONF"
     rm -f "$temp_conf"
 
-    if [ ! -f "$NGINX_PROXY_CONF" ]; then
-        temp_conf=$(mktemp)
-        cat > "$temp_conf" <<'EOF'
+    if [ -d /etc/nginx/default.d ] || grep -q "default.d" /etc/nginx/nginx.conf 2>/dev/null; then
+        proxy_conf="$default_location_conf"
+        run_as_root mkdir -p /etc/nginx/default.d
+        run_as_root rm -f "$legacy_proxy_conf"
+        if [ ! -f "$proxy_conf" ]; then
+            temp_conf=$(mktemp)
+            cat > "$temp_conf" <<'EOF'
+location / {
+    proxy_pass http://flint-admin-api;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_connect_timeout 5s;
+    proxy_read_timeout 120s;
+}
+EOF
+            run_as_root install -m 0644 "$temp_conf" "$proxy_conf"
+            rm -f "$temp_conf"
+        fi
+    else
+        proxy_conf="$legacy_proxy_conf"
+        if [ ! -f "$proxy_conf" ]; then
+            temp_conf=$(mktemp)
+            cat > "$temp_conf" <<'EOF'
 server {
     listen 80;
     server_name _;
@@ -130,8 +156,13 @@ server {
     }
 }
 EOF
-        run_as_root install -m 0644 "$temp_conf" "$NGINX_PROXY_CONF"
-        rm -f "$temp_conf"
+            run_as_root install -m 0644 "$temp_conf" "$proxy_conf"
+            rm -f "$temp_conf"
+        fi
+    fi
+
+    if [ -f "$NGINX_PROXY_CONF" ] && [ "$NGINX_PROXY_CONF" != "$proxy_conf" ]; then
+        run_as_root rm -f "$NGINX_PROXY_CONF"
     fi
 
     if ! run_as_root nginx -t >/dev/null 2>&1; then
