@@ -90,7 +90,7 @@ public interface CollectionControllerDocs {
             - `OBSCENE` — 음란하거나 선정적인 콘텐츠
             - `SPAM` — 광고·홍보 또는 스팸성 콘텐츠
             - `COPYRIGHT` — 저작권을 침해한 콘텐츠
-            - `OTHER` — 기타 (이 경우 `otherDetail` 에 0~200자 자유 입력)
+            - `OTHER` — 기타 (이 경우 `otherDetail` 에 0~200자 자유 입력 가능)
 
 			Discord 알림 전송은 신고 트랜잭션 commit 이후 비동기로 실행되며, 알림 실패가 신고 접수 자체를 무효화하지 않습니다.
 

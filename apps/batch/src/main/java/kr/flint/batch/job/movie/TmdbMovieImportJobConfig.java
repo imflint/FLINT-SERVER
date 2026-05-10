@@ -6,6 +6,7 @@ import java.util.concurrent.Future;
 
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
@@ -19,7 +20,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Scope;
 import org.springframework.core.io.Resource;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -50,19 +50,23 @@ public class TmdbMovieImportJobConfig {
 	private final BatchProperties batchProperties;
 
 	@Bean(name = JOB_NAME)
-	public Job tmdbMovieImportJob() {
+	public Job tmdbMovieImportJob(@Qualifier(STEP_NAME) Step tmdbMovieImportStep) {
 		return new JobBuilder(JOB_NAME, jobRepository)
-			.start(tmdbMovieImportStep())
+			.start(tmdbMovieImportStep)
 			.build();
 	}
 
-	@Bean
-	public Step tmdbMovieImportStep() {
+	@Bean(name = STEP_NAME)
+	public Step tmdbMovieImportStep(
+		@Qualifier("movieIdsReader") FlatFileItemReader<TmdbIdLine> movieIdsReader,
+		@Qualifier("asyncMovieProcessor") AsyncItemProcessor<TmdbIdLine, ContentUpsertCommand> asyncMovieProcessor,
+		@Qualifier("asyncContentWriter") AsyncItemWriter<ContentUpsertCommand> asyncContentWriter
+	) {
 		return new StepBuilder(STEP_NAME, jobRepository)
 			.<TmdbIdLine, Future<ContentUpsertCommand>>chunk(batchProperties.tmdb().chunkSize(), transactionManager)
-			.reader(movieIdsReader(null))
-			.processor(asyncMovieProcessor())
-			.writer(asyncContentWriter())
+			.reader(movieIdsReader)
+			.processor(asyncMovieProcessor)
+			.writer(asyncContentWriter)
 			.faultTolerant()
 			.retry(FeignException.class)
 			.noRetry(FeignException.NotFound.class)
@@ -74,7 +78,7 @@ public class TmdbMovieImportJobConfig {
 	}
 
 	@Bean
-	@Scope("job")
+	@StepScope
 	public FlatFileItemReader<TmdbIdLine> movieIdsReader(
 		@Value("#{jobParameters['exportDate']}") String exportDate
 	) {

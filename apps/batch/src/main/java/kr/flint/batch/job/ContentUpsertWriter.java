@@ -17,7 +17,7 @@ public class ContentUpsertWriter implements ItemWriter<ContentUpsertCommand> {
 	private final ContentService contentService;
 
 	@Override
-	public void write(Chunk<? extends ContentUpsertCommand> chunk) {
+	public void write(Chunk<? extends ContentUpsertCommand> chunk) throws Exception {
 		for (ContentUpsertCommand cmd : chunk) {
 			if (cmd == null) {
 				continue;
@@ -26,6 +26,7 @@ public class ContentUpsertWriter implements ItemWriter<ContentUpsertCommand> {
 				contentService.upsertWithGenres(cmd);
 			} catch (Exception e) {
 				log.warn("upsert failed tmdbId={} mediaType={} cause={}", cmd.tmdbId(), cmd.mediaType(), e.toString());
+				throw e;
 			}
 		}
 	}

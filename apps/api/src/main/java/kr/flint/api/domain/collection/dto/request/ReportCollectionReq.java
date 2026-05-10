@@ -24,7 +24,7 @@ public record ReportCollectionReq(
 	Set<ReportReason> reasons,
 
 	@Schema(
-		description = "기타 사유 상세 (사유에 OTHER가 포함된 경우 입력, 0~200자)",
+		description = "기타 사유 상세 (사유에 OTHER가 포함된 경우 입력 가능, 0~200자)",
 		example = "이 컬렉션이 다른 사이트의 결제 페이지로 유도하고 있어요",
 		maxLength = 200,
 		nullable = true
@@ -34,6 +34,10 @@ public record ReportCollectionReq(
 	String otherDetail
 ) {
 	public ReportCollectionCommand toCommand() {
-		return new ReportCollectionCommand(reasons, otherDetail);
+		return new ReportCollectionCommand(reasons, normalizeOtherDetail());
+	}
+
+	private String normalizeOtherDetail() {
+		return otherDetail == null ? null : otherDetail.trim();
 	}
 }

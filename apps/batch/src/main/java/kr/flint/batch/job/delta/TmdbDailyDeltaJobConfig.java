@@ -5,6 +5,7 @@ import java.util.concurrent.Future;
 
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
@@ -17,7 +18,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Scope;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
 
@@ -52,19 +52,23 @@ public class TmdbDailyDeltaJobConfig {
 	private TaskExecutor tmdbTaskExecutor;
 
 	@Bean(name = JOB_NAME)
-	public Job tmdbDailyDeltaJob() {
+	public Job tmdbDailyDeltaJob(@Qualifier(STEP_NAME) Step tmdbDailyDeltaStep) {
 		return new JobBuilder(JOB_NAME, jobRepository)
-			.start(tmdbDailyDeltaStep())
+			.start(tmdbDailyDeltaStep)
 			.build();
 	}
 
-	@Bean
-	public Step tmdbDailyDeltaStep() {
+	@Bean(name = STEP_NAME)
+	public Step tmdbDailyDeltaStep(
+		@Qualifier("deltaReader") ItemReader<TmdbIdLine> deltaReader,
+		@Qualifier("asyncDeltaProcessor") AsyncItemProcessor<TmdbIdLine, ContentUpsertCommand> asyncDeltaProcessor,
+		@Qualifier("asyncDeltaWriter") AsyncItemWriter<ContentUpsertCommand> asyncDeltaWriter
+	) {
 		return new StepBuilder(STEP_NAME, jobRepository)
 			.<TmdbIdLine, Future<ContentUpsertCommand>>chunk(batchProperties.tmdb().chunkSize(), transactionManager)
-			.reader(deltaReader(null, null, null))
-			.processor(asyncDeltaProcessor(null))
-			.writer(asyncDeltaWriter())
+			.reader(deltaReader)
+			.processor(asyncDeltaProcessor)
+			.writer(asyncDeltaWriter)
 			.faultTolerant()
 			.retry(FeignException.class)
 			.noRetry(FeignException.NotFound.class)
@@ -76,7 +80,7 @@ public class TmdbDailyDeltaJobConfig {
 	}
 
 	@Bean
-	@Scope("job")
+	@StepScope
 	public ItemReader<TmdbIdLine> deltaReader(
 		@Value("#{jobParameters['mediaType']}") String mediaType,
 		@Value("#{jobParameters['startDate']}") String startDate,
@@ -95,7 +99,7 @@ public class TmdbDailyDeltaJobConfig {
 	}
 
 	@Bean
-	@Scope("job")
+	@StepScope
 	public AsyncItemProcessor<TmdbIdLine, ContentUpsertCommand> asyncDeltaProcessor(
 		@Value("#{jobParameters['mediaType']}") String mediaType
 	) {

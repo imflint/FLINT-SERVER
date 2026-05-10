@@ -6,6 +6,7 @@ import java.util.concurrent.Future;
 
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
@@ -19,7 +20,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Scope;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.data.domain.Sort;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -53,19 +53,23 @@ public class TmdbOttSyncJobConfig {
 	private TaskExecutor tmdbTaskExecutor;
 
 	@Bean(name = JOB_NAME)
-	public Job tmdbOttSyncJob() {
+	public Job tmdbOttSyncJob(@Qualifier(STEP_NAME) Step tmdbOttSyncStep) {
 		return new JobBuilder(JOB_NAME, jobRepository)
-			.start(tmdbOttSyncStep())
+			.start(tmdbOttSyncStep)
 			.build();
 	}
 
-	@Bean
-	public Step tmdbOttSyncStep() {
+	@Bean(name = STEP_NAME)
+	public Step tmdbOttSyncStep(
+		@Qualifier("ottContentReader") RepositoryItemReader<Content> ottContentReader,
+		@Qualifier("asyncOttProcessor") AsyncItemProcessor<Content, OttSyncDraft> asyncOttProcessor,
+		@Qualifier("asyncOttWriter") AsyncItemWriter<OttSyncDraft> asyncOttWriter
+	) {
 		return new StepBuilder(STEP_NAME, jobRepository)
 			.<Content, Future<OttSyncDraft>>chunk(batchProperties.tmdb().chunkSize(), transactionManager)
-			.reader(ottContentReader(null))
-			.processor(asyncOttProcessor())
-			.writer(asyncOttWriter())
+			.reader(ottContentReader)
+			.processor(asyncOttProcessor)
+			.writer(asyncOttWriter)
 			.faultTolerant()
 			.retry(FeignException.class)
 			.noRetry(FeignException.NotFound.class)
@@ -77,7 +81,7 @@ public class TmdbOttSyncJobConfig {
 	}
 
 	@Bean
-	@Scope("job")
+	@StepScope
 	public RepositoryItemReader<Content> ottContentReader(
 		@Value("#{jobParameters['mediaType']}") String mediaType
 	) {

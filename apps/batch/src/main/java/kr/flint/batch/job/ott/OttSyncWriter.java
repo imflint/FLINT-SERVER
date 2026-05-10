@@ -16,7 +16,7 @@ public class OttSyncWriter implements ItemWriter<OttSyncDraft> {
 	private final OttSyncService ottSyncService;
 
 	@Override
-	public void write(Chunk<? extends OttSyncDraft> chunk) {
+	public void write(Chunk<? extends OttSyncDraft> chunk) throws Exception {
 		for (OttSyncDraft draft : chunk) {
 			if (draft == null) {
 				continue;
@@ -25,6 +25,7 @@ public class OttSyncWriter implements ItemWriter<OttSyncDraft> {
 				ottSyncService.linkProviders(draft.contentId(), draft.providerNames());
 			} catch (Exception e) {
 				log.warn("ott link failed contentId={} cause={}", draft.contentId(), e.toString());
+				throw e;
 			}
 		}
 	}

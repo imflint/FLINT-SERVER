@@ -6,6 +6,7 @@ import java.util.concurrent.Future;
 
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
+import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
@@ -20,7 +21,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Scope;
 import org.springframework.core.io.Resource;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -55,19 +55,23 @@ public class TmdbTvImportJobConfig {
 	private TaskExecutor tmdbTaskExecutor;
 
 	@Bean(name = JOB_NAME)
-	public Job tmdbTvImportJob() {
+	public Job tmdbTvImportJob(@Qualifier(STEP_NAME) Step tmdbTvImportStep) {
 		return new JobBuilder(JOB_NAME, jobRepository)
-			.start(tmdbTvImportStep())
+			.start(tmdbTvImportStep)
 			.build();
 	}
 
-	@Bean
-	public Step tmdbTvImportStep() {
+	@Bean(name = STEP_NAME)
+	public Step tmdbTvImportStep(
+		@Qualifier("tvIdsReader") FlatFileItemReader<TmdbIdLine> tvIdsReader,
+		@Qualifier("asyncTvProcessor") AsyncItemProcessor<TmdbIdLine, ContentUpsertCommand> asyncTvProcessor,
+		@Qualifier("asyncTvWriter") AsyncItemWriter<ContentUpsertCommand> asyncTvWriter
+	) {
 		return new StepBuilder(STEP_NAME, jobRepository)
 			.<TmdbIdLine, Future<ContentUpsertCommand>>chunk(batchProperties.tmdb().chunkSize(), transactionManager)
-			.reader(tvIdsReader(null))
-			.processor(asyncTvProcessor())
-			.writer(asyncTvWriter())
+			.reader(tvIdsReader)
+			.processor(asyncTvProcessor)
+			.writer(asyncTvWriter)
 			.faultTolerant()
 			.retry(FeignException.class)
 			.noRetry(FeignException.NotFound.class)
@@ -79,7 +83,7 @@ public class TmdbTvImportJobConfig {
 	}
 
 	@Bean
-	@Scope("job")
+	@StepScope
 	public FlatFileItemReader<TmdbIdLine> tvIdsReader(
 		@Value("#{jobParameters['exportDate']}") String exportDate
 	) {

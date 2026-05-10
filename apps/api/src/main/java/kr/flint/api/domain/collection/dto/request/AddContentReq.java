@@ -2,6 +2,7 @@ package kr.flint.api.domain.collection.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Nullable;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import kr.flint.collection.dto.CollectionCreateCommand.ContentInput;
 
@@ -13,10 +14,10 @@ public record AddContentReq(
 
 	@Schema(description = "스포일러 포함 여부", example = "false")
 	@NotNull(message = "스포일러 여부는 필수 입력값입니다")
-	boolean isSpoiler,
+	Boolean isSpoiler,
 
 	@Schema(description = "작품 선정 이유", example = "감동적인 스토리와 연출이 인상적이에요")
-	@NotNull(message = "작품 선정 이유는 필수 입력 값입니다")
+	@NotBlank(message = "작품 선정 이유는 필수 입력 값입니다")
 	String reason,
 
 	@Schema(description = "작품별 커스텀 이미지 S3 key (선택)", example = "collection/content/260505/abc123.jpg")
