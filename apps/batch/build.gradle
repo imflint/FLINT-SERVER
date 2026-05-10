@@ -6,6 +6,10 @@ bootJar {
     archiveBaseName = 'flint-batch'
 }
 
+jar {
+    exclude 'application*.yml'
+}
+
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-batch'
     implementation 'org.springframework.boot:spring-boot-starter-web'

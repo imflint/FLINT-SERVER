@@ -7,8 +7,11 @@ bootJar {
 }
 
 dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-batch'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.batch:spring-batch-integration'
+    implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
 
     runtimeOnly 'com.mysql:mysql-connector-j'
     runtimeOnly 'com.github.gavlyukovskiy:p6spy-spring-boot-starter:1.12.1'
@@ -19,7 +22,12 @@ dependencies {
     implementation project(':modules:user')
     implementation project(':modules:auth')
     implementation project(':modules:terms')
+    implementation project(':modules:content')
+    implementation project(':modules:ott')
 
     implementation project(':infra:aws')
     implementation project(':infra:redis')
+    implementation project(':infra:tmdb')
+
+    implementation project(':apps:batch')
 }
