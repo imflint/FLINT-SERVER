@@ -9,6 +9,7 @@ BACKUP_JAR="$DEPLOY_PATH/flint-api-backup.jar"
 DEPLOY_MODE="${DEPLOY_MODE:-docker}"
 IMAGE_URI="${IMAGE_URI:-}"
 PROFILE="dev"
+REDIS_CONTAINER_NAME="${REDIS_CONTAINER_NAME:-flint-$PROFILE-redis}"
 AWS_REGION="${AWS_REGION:-ap-northeast-2}"
 PARAMETER_BASE_PREFIX="/config/$APP_NAME"
 PARAMETER_ENV_PREFIX="$PARAMETER_BASE_PREFIX/$PROFILE"
@@ -56,6 +57,28 @@ ensure_docker() {
     run_as_root systemctl start docker
 }
 
+ensure_redis() {
+    if docker ps --format '{{.Names}}' | grep -qx "$REDIS_CONTAINER_NAME"; then
+        return 0
+    fi
+
+    if docker ps -a --format '{{.Names}}' | grep -qx "$REDIS_CONTAINER_NAME"; then
+        log "Starting Redis container $REDIS_CONTAINER_NAME"
+        docker start "$REDIS_CONTAINER_NAME" >/dev/null
+        return 0
+    fi
+
+    log "Creating Redis container $REDIS_CONTAINER_NAME"
+    docker volume create flint-redis-data >/dev/null
+    docker run -d \
+        --name "$REDIS_CONTAINER_NAME" \
+        --restart unless-stopped \
+        -p 127.0.0.1:6379:6379 \
+        -v flint-redis-data:/data \
+        redis:7-alpine \
+        redis-server --appendonly yes >/dev/null
+}
+
 # 필수 명령어 확인
 check_dependencies() {
     command -v lsof >/dev/null 2>&1 || { log "ERROR: lsof not installed"; exit 1; }
@@ -65,6 +88,7 @@ check_dependencies() {
     case "$DEPLOY_MODE" in
         docker)
             ensure_docker
+            ensure_redis
             ;;
         jar)
             command -v java >/dev/null 2>&1 || { log "ERROR: java not installed"; exit 1; }
