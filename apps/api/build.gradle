@@ -6,6 +6,12 @@ bootJar {
     archiveBaseName = 'flint-api'
 }
 
+bootBuildImage {
+    environment = [
+        'BP_JVM_VERSION': '21'
+    ]
+}
+
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
