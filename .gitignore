@@ -39,7 +39,23 @@ out/
 .*/
 !.github/
 *.json
+!terraform/iam-policy/*.json
 logs/
 .DS_Store
 
 sql/
+
+### Terraform ###
+.terraform/
+terraform/backend.tf
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+*.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
