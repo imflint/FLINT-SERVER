@@ -1,36 +1,12 @@
-plugins {
-    id 'org.springframework.boot'
-}
-
-bootJar {
-    archiveBaseName = 'flint-batch'
-}
-
-jar {
-    exclude 'application*.yml'
-}
-
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-batch'
-    implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.batch:spring-batch-integration'
-    implementation 'org.springframework.boot:spring-boot-starter-security'
-    implementation 'org.springframework.boot:spring-boot-starter-actuator'
-    implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
-
-    runtimeOnly 'com.mysql:mysql-connector-j'
-    runtimeOnly 'com.github.gavlyukovskiy:p6spy-spring-boot-starter:1.12.1'
-
-    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    implementation 'io.github.openfeign:feign-core'
 
     implementation project(':modules:shared')
     implementation project(':modules:content')
     implementation project(':modules:ott')
-    implementation project(':modules:auth')
-    implementation project(':modules:user')
 
-    implementation project(':infra:redis')
-    implementation project(':infra:aws')
     implementation project(':infra:tmdb')
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

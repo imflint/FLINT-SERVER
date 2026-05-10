@@ -32,8 +32,8 @@ jwt:
   temp-expiration: 30m
 
 tmdb:
-  base-url: ${TMDB_BASE_URL:https://api.themoviedb.org}
-  api-key: ${TMDB_API_KEY}
+  base-url: https://api.themoviedb.org
+  api-key: ${tmdb.api-key}
 
 logging:
   level:

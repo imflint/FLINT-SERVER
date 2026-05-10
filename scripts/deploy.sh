@@ -6,16 +6,16 @@ DEPLOY_PATH="/home/ubuntu"
 JAR_NAME="flint-api-0.0.1-SNAPSHOT.jar"
 NEW_JAR_PATH="/home/ubuntu/deploy/$JAR_NAME"
 BACKUP_JAR="$DEPLOY_PATH/flint-api-backup.jar"
+DEPLOY_MODE="${DEPLOY_MODE:-docker}"
+IMAGE_URI="${IMAGE_URI:-}"
 PROFILE="dev"
+REDIS_CONTAINER_NAME="${REDIS_CONTAINER_NAME:-flint-$PROFILE-redis}"
+AWS_REGION="${AWS_REGION:-ap-northeast-2}"
+PARAMETER_BASE_PREFIX="/config/$APP_NAME"
+PARAMETER_ENV_PREFIX="$PARAMETER_BASE_PREFIX/$PROFILE"
 
 BLUE_PORT=8080
 GREEN_PORT=8081
-
-# Batch (단일 인스턴스, blue-green 미적용 — 사용자 트래픽 없음)
-BATCH_JAR_NAME="flint-batch-0.0.1-SNAPSHOT.jar"
-NEW_BATCH_JAR_PATH="/home/ubuntu/deploy/$BATCH_JAR_NAME"
-BATCH_BACKUP_JAR="$DEPLOY_PATH/flint-batch-backup.jar"
-BATCH_PORT=8082
 
 NGINX_CONF="/etc/nginx/conf.d/flint-upstream.conf"
 HEALTH_CHECK_PATH="/actuator/health"
@@ -27,11 +27,177 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
 }
 
+run_as_root() {
+    if [ "$(id -u)" -eq 0 ]; then
+        "$@"
+    else
+        sudo "$@"
+    fi
+}
+
+ensure_docker() {
+    if command -v docker >/dev/null 2>&1; then
+        return 0
+    fi
+
+    log "Docker not found; installing Docker"
+    if command -v dnf >/dev/null 2>&1; then
+        run_as_root dnf install -y docker
+    elif command -v yum >/dev/null 2>&1; then
+        run_as_root yum install -y docker
+    elif command -v apt-get >/dev/null 2>&1; then
+        run_as_root apt-get update
+        run_as_root apt-get install -y docker.io
+    else
+        log "ERROR: supported package manager not found for Docker installation"
+        exit 1
+    fi
+
+    run_as_root systemctl enable docker
+    run_as_root systemctl start docker
+}
+
+ensure_redis() {
+    if docker ps --format '{{.Names}}' | grep -qx "$REDIS_CONTAINER_NAME"; then
+        return 0
+    fi
+
+    if docker ps -a --format '{{.Names}}' | grep -qx "$REDIS_CONTAINER_NAME"; then
+        log "Starting Redis container $REDIS_CONTAINER_NAME"
+        docker start "$REDIS_CONTAINER_NAME" >/dev/null
+        return 0
+    fi
+
+    log "Creating Redis container $REDIS_CONTAINER_NAME"
+    docker volume create flint-redis-data >/dev/null
+    docker run -d \
+        --name "$REDIS_CONTAINER_NAME" \
+        --restart unless-stopped \
+        -p 127.0.0.1:6379:6379 \
+        -v flint-redis-data:/data \
+        redis:7-alpine \
+        redis-server --appendonly yes >/dev/null
+}
+
+ensure_nginx() {
+    local active_port
+    local default_location_conf="/etc/nginx/default.d/flint-api.conf"
+    local legacy_proxy_conf="/etc/nginx/conf.d/flint-api.conf"
+    local proxy_conf
+    local temp_conf
+
+    if ! command -v nginx >/dev/null 2>&1; then
+        log "Nginx not found; installing nginx"
+        if command -v dnf >/dev/null 2>&1; then
+            run_as_root dnf install -y nginx
+        elif command -v yum >/dev/null 2>&1; then
+            run_as_root yum install -y nginx
+        elif command -v apt-get >/dev/null 2>&1; then
+            run_as_root apt-get update
+            run_as_root apt-get install -y nginx
+        else
+            log "ERROR: supported package manager not found for nginx installation"
+            exit 1
+        fi
+    fi
+
+    run_as_root mkdir -p /etc/nginx/conf.d
+
+    active_port=$(get_active_port)
+    if [ ! -f "$NGINX_CONF" ]; then
+        log "Creating nginx upstream config $NGINX_CONF"
+        temp_conf=$(mktemp)
+        cat > "$temp_conf" << EOF
+upstream flint-api {
+    server 127.0.0.1:$active_port;
+}
+EOF
+        run_as_root install -m 0644 "$temp_conf" "$NGINX_CONF"
+        rm -f "$temp_conf"
+    fi
+
+    if [ -d /etc/nginx/default.d ] || grep -q "default.d" /etc/nginx/nginx.conf 2>/dev/null; then
+        proxy_conf="$default_location_conf"
+        run_as_root mkdir -p /etc/nginx/default.d
+        run_as_root rm -f "$legacy_proxy_conf"
+        if [ ! -f "$proxy_conf" ]; then
+            log "Creating nginx proxy config $proxy_conf"
+            temp_conf=$(mktemp)
+            cat > "$temp_conf" <<'EOF'
+location / {
+    proxy_pass http://flint-api;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_connect_timeout 5s;
+    proxy_read_timeout 60s;
+}
+EOF
+            run_as_root install -m 0644 "$temp_conf" "$proxy_conf"
+            rm -f "$temp_conf"
+        fi
+    else
+        proxy_conf="$legacy_proxy_conf"
+        if [ ! -f "$proxy_conf" ]; then
+            log "Creating nginx proxy config $proxy_conf"
+            temp_conf=$(mktemp)
+            cat > "$temp_conf" <<'EOF'
+server {
+    listen 80;
+    server_name _;
+
+    client_max_body_size 20m;
+
+    location / {
+        proxy_pass http://flint-api;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 60s;
+    }
+}
+EOF
+            run_as_root install -m 0644 "$temp_conf" "$proxy_conf"
+            rm -f "$temp_conf"
+        fi
+    fi
+
+    if ! run_as_root nginx -t >/dev/null 2>&1; then
+        log "ERROR: nginx configuration test failed during setup"
+        run_as_root nginx -t || true
+        exit 1
+    fi
+
+    run_as_root systemctl enable nginx
+    run_as_root systemctl start nginx
+}
+
 # 필수 명령어 확인
 check_dependencies() {
     command -v lsof >/dev/null 2>&1 || { log "ERROR: lsof not installed"; exit 1; }
     command -v curl >/dev/null 2>&1 || { log "ERROR: curl not installed"; exit 1; }
-    command -v java >/dev/null 2>&1 || { log "ERROR: java not installed"; exit 1; }
+    command -v aws >/dev/null 2>&1 || { log "ERROR: aws cli not installed"; exit 1; }
+
+    case "$DEPLOY_MODE" in
+        docker)
+            ensure_docker
+            ensure_redis
+            ;;
+        jar)
+            command -v java >/dev/null 2>&1 || { log "ERROR: java not installed"; exit 1; }
+            ;;
+        *)
+            log "ERROR: Unsupported DEPLOY_MODE=$DEPLOY_MODE"
+            exit 1
+            ;;
+    esac
+
+    ensure_nginx
 }
 
 # 현재 활성 포트 확인
@@ -58,6 +224,17 @@ get_inactive_port() {
 kill_app_on_port() {
     local port="$1"
     local pid
+
+    if [ "$DEPLOY_MODE" = "docker" ]; then
+        local container_name
+        container_name=$(container_name_for_port "$port")
+        if docker ps -a --format '{{.Names}}' | grep -qx "$container_name"; then
+            log "Stopping container $container_name"
+            docker stop -t 30 "$container_name" >/dev/null 2>&1 || true
+            docker rm "$container_name" >/dev/null 2>&1 || true
+        fi
+    fi
+
     pid=$(lsof -ti:"$port" 2>/dev/null || true)
     if [ -n "$pid" ]; then
         log "Stopping application on port $port (PID: $pid)"
@@ -72,25 +249,143 @@ kill_app_on_port() {
     fi
 }
 
-# 앱 시작
-start_app() {
+container_name_for_port() {
     local port="$1"
+    echo "$APP_NAME-$port"
+}
+
+get_database_secret_arn() {
+    local secret_arn
+    local error_file
+    local error_message
+
+    error_file=$(mktemp)
+    if secret_arn=$(aws ssm get-parameter \
+        --region "$AWS_REGION" \
+        --name "$PARAMETER_ENV_PREFIX/database.secret-arn" \
+        --query "Parameter.Value" \
+        --output text 2>"$error_file"); then
+        rm -f "$error_file"
+        if [ "$secret_arn" != "None" ]; then
+            echo "$secret_arn"
+        fi
+        return 0
+    fi
+
+    error_message=$(tr '\n' ' ' < "$error_file")
+    rm -f "$error_file"
+
+    if [[ "$error_message" == *"ParameterNotFound"* ]]; then
+        log "Optional $PARAMETER_ENV_PREFIX/database.secret-arn not found; using Parameter Store database.password if configured" >&2
+        return 0
+    fi
+
+    log "ERROR: Failed to read $PARAMETER_ENV_PREFIX/database.secret-arn: $error_message" >&2
+    return 1
+}
+
+build_spring_config_import() {
+    local database_secret_arn
+    local spring_config_import
+
+    spring_config_import="aws-parameterstore:$PARAMETER_BASE_PREFIX/,aws-parameterstore:$PARAMETER_ENV_PREFIX/"
+
+    if ! database_secret_arn=$(get_database_secret_arn); then
+        return 1
+    fi
+
+    if [ -n "$database_secret_arn" ]; then
+        log "Using RDS managed database credentials from Secrets Manager" >&2
+        spring_config_import="$spring_config_import,aws-secretsmanager:$database_secret_arn?prefix=database."
+    else
+        log "Using database credentials from Parameter Store" >&2
+    fi
+
+    echo "$spring_config_import"
+}
+
+login_to_ecr() {
+    local registry
+
+    if [ -z "$IMAGE_URI" ]; then
+        log "ERROR: IMAGE_URI is required for docker deployment"
+        return 1
+    fi
+
+    registry="${IMAGE_URI%%/*}"
+    log "Logging in to ECR registry $registry"
+    aws ecr get-login-password --region "$AWS_REGION" \
+        | docker login --username AWS --password-stdin "$registry" >/dev/null
+}
+
+start_docker_app() {
+    local port="$1"
+    local spring_config_import
+    local container_name
+
+    log "Starting Docker application on port $port"
+
+    spring_config_import=$(build_spring_config_import) || return 1
+    container_name=$(container_name_for_port "$port")
+
+    login_to_ecr || return 1
+    docker pull "$IMAGE_URI"
+    docker rm -f "$container_name" >/dev/null 2>&1 || true
+
+    docker run -d \
+        --name "$container_name" \
+        --restart unless-stopped \
+        --network host \
+        "$IMAGE_URI" \
+        --spring.profiles.active="$PROFILE" \
+        --spring.config.import="$spring_config_import" \
+        --server.port="$port" >/dev/null
+
+    log "Docker application starting on port $port (container: $container_name)"
+}
+
+start_jar_app() {
+    local port="$1"
+    local spring_config_import
+
     log "Starting application on port $port"
 
     cd "$DEPLOY_PATH" || { log "ERROR: Failed to cd to $DEPLOY_PATH"; return 1; }
+    spring_config_import=$(build_spring_config_import) || return 1
+
     nohup java -jar "$JAR_NAME" \
         --spring.profiles.active="$PROFILE" \
+        --spring.config.import="$spring_config_import" \
         --server.port="$port" \
         > "app-$port.log" 2>&1 &
 
     log "Application starting on port $port (PID: $!)"
 }
 
+start_app() {
+    local port="$1"
+
+    if [ "$DEPLOY_MODE" = "docker" ]; then
+        start_docker_app "$port"
+    else
+        start_jar_app "$port"
+    fi
+}
+
 print_app_log_tail() {
     local port="$1"
     local log_file="$DEPLOY_PATH/app-$port.log"
+    local container_name
 
-    if [ -f "$log_file" ]; then
+    if [ "$DEPLOY_MODE" = "docker" ]; then
+        container_name=$(container_name_for_port "$port")
+        if docker ps -a --format '{{.Names}}' | grep -qx "$container_name"; then
+            log "Last $LOG_LINES_ON_FAILURE lines from container $container_name:"
+            docker logs --tail "$LOG_LINES_ON_FAILURE" "$container_name" || true
+        else
+            log "Application container not found: $container_name"
+        fi
+    elif [ -f "$log_file" ]; then
         log "Last $LOG_LINES_ON_FAILURE lines from $log_file:"
         tail -n "$LOG_LINES_ON_FAILURE" "$log_file" || true
     else
@@ -136,16 +431,20 @@ health_check() {
 # nginx upstream 전환
 switch_nginx() {
     local new_port="$1"
+    local temp_conf
     log "Switching nginx to port $new_port"
 
-    sudo tee "$NGINX_CONF" > /dev/null << EOF
+    temp_conf=$(mktemp)
+    cat > "$temp_conf" << EOF
 upstream flint-api {
     server 127.0.0.1:$new_port;
 }
 EOF
+    run_as_root install -m 0644 "$temp_conf" "$NGINX_CONF"
+    rm -f "$temp_conf"
 
-    if sudo nginx -t > /dev/null 2>&1; then
-        sudo nginx -s reload
+    if run_as_root nginx -t > /dev/null 2>&1; then
+        run_as_root nginx -s reload
         log "Nginx switched to port $new_port"
         return 0
     else
@@ -159,7 +458,7 @@ rollback() {
     local port="$1"
     log "Rolling back..."
     kill_app_on_port "$port"
-    if [ -f "$BACKUP_JAR" ]; then
+    if [ "$DEPLOY_MODE" = "jar" ] && [ -f "$BACKUP_JAR" ]; then
         cp "$BACKUP_JAR" "$DEPLOY_PATH/$JAR_NAME"
         log "Restored JAR from backup"
     fi
@@ -178,19 +477,23 @@ deploy() {
     # 0. 필수 명령어 확인
     check_dependencies
 
-    # 1. 기존 JAR 백업
-    if [ -f "$DEPLOY_PATH/$JAR_NAME" ]; then
-        log "Backing up current JAR..."
-        cp "$DEPLOY_PATH/$JAR_NAME" "$BACKUP_JAR"
-    fi
+    if [ "$DEPLOY_MODE" = "jar" ]; then
+        # 1. 기존 JAR 백업
+        if [ -f "$DEPLOY_PATH/$JAR_NAME" ]; then
+            log "Backing up current JAR..."
+            cp "$DEPLOY_PATH/$JAR_NAME" "$BACKUP_JAR"
+        fi
 
-    # 2. 새 JAR 복사
-    if [ -f "$NEW_JAR_PATH" ]; then
-        log "Copying new JAR..."
-        cp "$NEW_JAR_PATH" "$DEPLOY_PATH/$JAR_NAME"
+        # 2. 새 JAR 복사
+        if [ -f "$NEW_JAR_PATH" ]; then
+            log "Copying new JAR..."
+            cp "$NEW_JAR_PATH" "$DEPLOY_PATH/$JAR_NAME"
+        else
+            log "ERROR: New JAR not found at $NEW_JAR_PATH"
+            exit 1
+        fi
     else
-        log "ERROR: New JAR not found at $NEW_JAR_PATH"
-        exit 1
+        log "Docker image: $IMAGE_URI"
     fi
 
     # 3. 비활성 포트의 기존 프로세스 종료
@@ -226,75 +529,15 @@ deploy() {
     kill_app_on_port "$active_port"
 
     # 9. deploy 폴더 정리
-    rm -f "$NEW_JAR_PATH"
+    if [ "$DEPLOY_MODE" = "jar" ]; then
+        rm -f "$NEW_JAR_PATH"
+    else
+        docker image prune -f >/dev/null 2>&1 || true
+    fi
 
     log "=== Deployment completed successfully ==="
     log "New active port: $inactive_port"
 }
 
-# Batch 앱 시작 (단일 인스턴스, log: batch-<port>.log)
-start_batch_app() {
-    local port="$1"
-    log "Starting batch application on port $port"
-
-    cd "$DEPLOY_PATH" || { log "ERROR: Failed to cd to $DEPLOY_PATH"; return 1; }
-    nohup java -jar "$BATCH_JAR_NAME" \
-        --spring.profiles.active="$PROFILE" \
-        --server.port="$port" \
-        > "batch-$port.log" 2>&1 &
-
-    log "Batch starting on port $port (PID: $!)"
-}
-
-# Batch 롤백: 새 배포 실패 시 백업 jar로 복구 후 재기동
-rollback_batch() {
-    log "Rolling back batch..."
-    kill_app_on_port "$BATCH_PORT"
-    if [ -f "$BATCH_BACKUP_JAR" ]; then
-        cp "$BATCH_BACKUP_JAR" "$DEPLOY_PATH/$BATCH_JAR_NAME"
-        log "Restored batch JAR from backup"
-        start_batch_app "$BATCH_PORT" || true
-    fi
-}
-
-# Batch 배포: kill → 새 jar 시작 → health check. blue-green 없음(다운타임 허용).
-deploy_batch() {
-    if [ ! -f "$NEW_BATCH_JAR_PATH" ]; then
-        log "No new batch JAR at $NEW_BATCH_JAR_PATH — skipping batch deploy"
-        return 0
-    fi
-
-    log "=== Batch Deployment Start ==="
-
-    if [ -f "$DEPLOY_PATH/$BATCH_JAR_NAME" ]; then
-        log "Backing up current batch JAR..."
-        cp "$DEPLOY_PATH/$BATCH_JAR_NAME" "$BATCH_BACKUP_JAR"
-    fi
-
-    log "Copying new batch JAR..."
-    cp "$NEW_BATCH_JAR_PATH" "$DEPLOY_PATH/$BATCH_JAR_NAME"
-
-    kill_app_on_port "$BATCH_PORT"
-
-    if ! start_batch_app "$BATCH_PORT"; then
-        log "Failed to start batch application"
-        rollback_batch
-        return 1
-    fi
-
-    if ! health_check "$BATCH_PORT"; then
-        log "Batch health check failed!"
-        rollback_batch
-        return 1
-    fi
-
-    rm -f "$NEW_BATCH_JAR_PATH"
-    log "=== Batch Deployment completed successfully ==="
-    return 0
-}
-
-# 실행 — api(blue-green) 우선, 그 후 batch. batch 실패는 전체 배포를 실패시키지 않음.
+# 실행 — api blue-green 배포만 담당. admin은 별도 EC2에서 scripts/deploy-admin.sh로 배포.
 deploy
-if ! deploy_batch; then
-    log "WARNING: Batch deploy failed but API deploy succeeded. Investigate batch logs."
-fi
