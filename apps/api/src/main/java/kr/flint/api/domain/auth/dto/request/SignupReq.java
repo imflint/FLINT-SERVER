@@ -24,9 +24,6 @@ public record SignupReq(
         @Schema(description = "선호 콘텐츠 ID 목록 (온보딩에서 선택)", example = "[1, 2, 3]")
         List<Long> favoriteContentIds,
 
-        @Schema(description = "구독 중인 OTT 서비스 ID 목록", example = "[1, 2]")
-        List<Long> subscribedOttIds,
-
         @Schema(description = "동의한 약관 ID 목록", example = "[1, 2]", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotEmpty(message = "동의한 약관 ID 목록은 필수입니다.")
         List<@NotNull(message = "약관 ID는 null일 수 없습니다.") Long> agreedTermsIds
