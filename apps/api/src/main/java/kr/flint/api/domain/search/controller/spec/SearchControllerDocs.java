@@ -33,9 +33,7 @@ public interface SearchControllerDocs {
 
 	@Operation(
 		summary = "북마크한 컬렉션 검색 - 호주",
-		description = "사용자가 북마크한 컬렉션 중에서 키워드로 검색합니다. 제목과 설명에서 검색합니다.",
-        deprecated = true
-	)
+		description = "사용자가 북마크한 컬렉션 중에서 키워드로 검색합니다. 제목과 설명에서 검색합니다.")
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "검색 성공", useReturnTypeSchema = true)
 	})
@@ -51,8 +49,7 @@ public interface SearchControllerDocs {
 
 	@Operation(
 		summary = "북마크한 작품 검색 - 호주",
-		description = "사용자가 북마크한 작품 중에서 키워드로 검색합니다. 제목과 감독/작가에서 검색합니다.",
-        deprecated = true
+		description = "사용자가 북마크한 작품 중에서 키워드로 검색합니다. 제목과 감독/작가에서 검색합니다."
 	)
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "검색 성공", useReturnTypeSchema = true)
