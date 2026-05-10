@@ -7,6 +7,14 @@ on:
     branches: [develop, main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: ap-northeast-2
+  APP_JAR_NAME: flint-api-0.0.1-SNAPSHOT.jar
+  DEPLOY_PREFIX: deploy/flint-api
+
 jobs:
   # PR에서만 테스트 실행
   test:
@@ -58,7 +66,7 @@ jobs:
           DB_USERNAME: test
           DB_PASSWORD: test
 
-  # develop push 시 빌드 + 배포
+  # develop push 시 API 빌드 + 배포
   build:
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
@@ -85,62 +93,112 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build bootJar
-        run: ./gradlew :apps:api:bootJar :apps:admin-api:bootJar -x test --parallel --build-cache
+      - name: Build API bootJar
+        run: ./gradlew :apps:api:bootJar -x test --build-cache
 
-      - name: Upload JAR artifact
+      - name: Stage deployment files
+        run: |
+          mkdir -p dist
+          cp "apps/api/build/libs/${APP_JAR_NAME}" "dist/${APP_JAR_NAME}"
+          cp scripts/deploy.sh dist/deploy.sh
+
+      - name: Upload deploy artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-jar
-          path: |
-            apps/api/build/libs/flint-api-0.0.1-SNAPSHOT.jar
-            apps/admin-api/build/libs/flint-admin-api-0.0.1-SNAPSHOT.jar
+          name: flint-api-deploy
+          path: dist/*
           retention-days: 1
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+      EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+      S3_DEPLOY_BUCKET: ${{ vars.S3_DEPLOY_BUCKET }}
 
     steps:
-      - name: Checkout for deploy script
-        uses: actions/checkout@v4
-        with:
-          sparse-checkout: scripts
-
-      - name: Download JAR artifact
+      - name: Download deploy artifact
         uses: actions/download-artifact@v4
         with:
-          name: app-jar
+          name: flint-api-deploy
           path: artifact
 
-      - name: Deploy JAR to EC2
-        uses: appleboy/scp-action@v1.0.0
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "artifact/flint-api-0.0.1-SNAPSHOT.jar"
-          target: "/home/ubuntu/deploy"
-          strip_components: 1
+      - name: Validate AWS deploy variables
+        run: |
+          test -n "${AWS_ROLE_ARN}" || { echo "AWS_ROLE_ARN repository variable is required"; exit 1; }
+          test -n "${EC2_INSTANCE_ID}" || { echo "EC2_INSTANCE_ID repository variable is required"; exit 1; }
+          test -n "${S3_DEPLOY_BUCKET}" || { echo "S3_DEPLOY_BUCKET repository variable is required"; exit 1; }
 
-      - name: Deploy script to EC2
-        uses: appleboy/scp-action@v1.0.0
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "scripts/deploy.sh"
-          target: "/home/ubuntu"
-          strip_components: 1
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: flint-api-${{ github.run_id }}
 
-      - name: Run Blue-Green deployment
-        uses: appleboy/ssh-action@v1.2.4
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            mkdir -p /home/ubuntu/deploy
-            chmod +x /home/ubuntu/deploy.sh
-            /home/ubuntu/deploy.sh
+      - name: Upload deploy files to S3
+        run: |
+          aws s3 cp "artifact/${APP_JAR_NAME}" "s3://${S3_DEPLOY_BUCKET}/${DEPLOY_PREFIX}/${GITHUB_SHA}/${APP_JAR_NAME}"
+          aws s3 cp "artifact/deploy.sh" "s3://${S3_DEPLOY_BUCKET}/${DEPLOY_PREFIX}/${GITHUB_SHA}/deploy.sh"
+
+      - name: Run blue-green deployment with SSM
+        run: |
+          cat > ssm-parameters.json <<EOF
+          {
+            "commands": [
+              "set -euo pipefail",
+              "mkdir -p /home/ubuntu/deploy",
+              "aws s3 cp \"s3://${S3_DEPLOY_BUCKET}/${DEPLOY_PREFIX}/${GITHUB_SHA}/${APP_JAR_NAME}\" \"/home/ubuntu/deploy/${APP_JAR_NAME}\"",
+              "aws s3 cp \"s3://${S3_DEPLOY_BUCKET}/${DEPLOY_PREFIX}/${GITHUB_SHA}/deploy.sh\" \"/home/ubuntu/deploy.sh\"",
+              "chmod +x /home/ubuntu/deploy.sh",
+              "/home/ubuntu/deploy.sh"
+            ]
+          }
+          EOF
+
+          command_id=$(aws ssm send-command \
+            --instance-ids "${EC2_INSTANCE_ID}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy flint-api ${GITHUB_SHA}" \
+            --parameters file://ssm-parameters.json \
+            --timeout-seconds 900 \
+            --query "Command.CommandId" \
+            --output text)
+
+          status="Pending"
+          for _ in {1..90}; do
+            status=$(aws ssm get-command-invocation \
+              --command-id "${command_id}" \
+              --instance-id "${EC2_INSTANCE_ID}" \
+              --query "Status" \
+              --output text 2>/dev/null || echo "Pending")
+
+            case "${status}" in
+              Success|Cancelled|Cancelling|Failed|TimedOut)
+                break
+                ;;
+              *)
+                sleep 10
+                ;;
+            esac
+          done
+
+          aws ssm get-command-invocation \
+            --command-id "${command_id}" \
+            --instance-id "${EC2_INSTANCE_ID}" \
+            --query "StandardOutputContent" \
+            --output text
+
+          if [ "${status}" != "Success" ]; then
+            aws ssm get-command-invocation \
+              --command-id "${command_id}" \
+              --instance-id "${EC2_INSTANCE_ID}" \
+              --query "StandardErrorContent" \
+              --output text >&2
+            exit 1
+          fi

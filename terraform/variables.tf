@@ -186,9 +186,9 @@ variable "cloudfront_certificate_arn" {
 }
 
 variable "github_repo" {
-  description = "배포 역할 사용을 허용할 GitHub 저장소입니다. 예시는 owner/flint-api입니다. 비워두면 GitHub OIDC 역할을 만들지 않습니다."
+  description = "배포 역할 사용을 허용할 GitHub 저장소입니다. 비워두면 GitHub OIDC 역할을 만들지 않습니다."
   type        = string
-  default     = ""
+  default     = "imflint/FLINT-SERVER"
 }
 
 variable "github_repo_refs" {
