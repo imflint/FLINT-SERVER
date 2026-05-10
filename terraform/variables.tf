@@ -112,6 +112,31 @@ variable "admin_ingress_cidrs" {
   default     = ["0.0.0.0/0"]
 }
 
+variable "create_admin_auth_ssm_parameters" {
+  description = "관리자 로그인 API가 사용할 Parameter Store 값을 Terraform으로 생성할지 여부입니다. 비밀번호 원문은 저장하지 않고 BCrypt 해시만 저장합니다."
+  type        = bool
+  default     = false
+}
+
+variable "admin_auth_user_id" {
+  description = "관리자 로그인 성공 시 토큰을 발급할 ADMIN 권한 사용자 ID입니다."
+  type        = number
+  default     = null
+}
+
+variable "admin_auth_username" {
+  description = "관리자 로그인 ID입니다."
+  type        = string
+  default     = ""
+}
+
+variable "admin_auth_password_hash" {
+  description = "관리자 로그인 비밀번호의 BCrypt 해시입니다. 비밀번호 원문을 Terraform에 넣지 않습니다."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
 variable "ec2_volume_size" {
   description = "루트 EBS 볼륨 크기입니다. 단위는 GB입니다."
   type        = number

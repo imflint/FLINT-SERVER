@@ -30,7 +30,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 	private static final String[] EXCLUDED_PATHS = {
 		"/swagger-ui/**",
 		"/v3/api-docs/**",
-		"/actuator/**"
+		"/actuator/**",
+		"/admin/auth/login"
 	};
 
 	private final AntPathMatcher pathMatcher = new AntPathMatcher();

@@ -36,6 +36,20 @@ public class AdminSwaggerConfig {
 		};
 	}
 
+	@Bean
+	public OpenApiCustomizer adminPublicEndpointsCustomizer() {
+		return openApi -> {
+			if (openApi.getPaths() == null) {
+				return;
+			}
+
+			var loginPath = openApi.getPaths().get("/admin/auth/login");
+			if (loginPath != null && loginPath.getPost() != null) {
+				loginPath.getPost().setSecurity(List.of());
+			}
+		};
+	}
+
 	@SuppressWarnings("rawtypes")
 	private void convertLongToString(Schema<?> schema) {
 		if (schema == null) {

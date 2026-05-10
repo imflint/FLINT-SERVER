@@ -36,4 +36,10 @@ locals {
     ? var.admin_ecr_repository_name
     : "${local.name_prefix}-admin-api"
   )
+  admin_auth_ssm_enabled = (
+    var.create_admin_auth_ssm_parameters
+    && var.admin_auth_user_id != null
+    && trimspace(var.admin_auth_username) != ""
+    && trimspace(var.admin_auth_password_hash) != ""
+  )
 }
