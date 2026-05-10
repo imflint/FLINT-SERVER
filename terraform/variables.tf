@@ -161,6 +161,23 @@ variable "storage_bucket_name" {
   default     = null
 }
 
+variable "ecr_repository_name" {
+  description = "선택적으로 지정할 API Docker 이미지 ECR 저장소 이름입니다. 비워두면 프로젝트와 환경 이름으로 생성합니다."
+  type        = string
+  default     = null
+}
+
+variable "ecr_keep_tagged_images" {
+  description = "ECR에 유지할 sha 태그 배포 이미지 개수입니다."
+  type        = number
+  default     = 10
+
+  validation {
+    condition     = var.ecr_keep_tagged_images > 0
+    error_message = "ecr_keep_tagged_images는 1 이상이어야 합니다."
+  }
+}
+
 variable "s3_cors_allowed_origins" {
   description = "스토리지 presigned upload 직접 호출을 허용할 origin 목록입니다."
   type        = list(string)

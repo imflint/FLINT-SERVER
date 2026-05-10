@@ -24,4 +24,9 @@ locals {
   cloudfront_url   = "https://${aws_cloudfront_distribution.storage.domain_name}"
   s3_origin_id     = "${local.name_prefix}-storage-origin"
   github_role_name = "${local.name_prefix}-github-actions-deploy"
+  ecr_repository_name = (
+    var.ecr_repository_name != null && var.ecr_repository_name != ""
+    ? var.ecr_repository_name
+    : "${local.name_prefix}-api"
+  )
 }

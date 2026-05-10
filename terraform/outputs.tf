@@ -35,6 +35,16 @@ output "storage_bucket" {
   value       = aws_s3_bucket.storage.bucket
 }
 
+output "ecr_repository_name" {
+  description = "API Docker 이미지 ECR 저장소 이름입니다."
+  value       = aws_ecr_repository.api.name
+}
+
+output "ecr_repository_url" {
+  description = "API Docker 이미지 push/pull에 사용할 ECR 저장소 URL입니다."
+  value       = aws_ecr_repository.api.repository_url
+}
+
 output "cloudfront_storage_domain_name" {
   description = "CloudFront 스토리지 배포 도메인 이름입니다."
   value       = aws_cloudfront_distribution.storage.domain_name

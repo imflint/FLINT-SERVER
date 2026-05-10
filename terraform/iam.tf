@@ -66,6 +66,27 @@ data "aws_iam_policy_document" "ec2" {
     ]
     resources = ["${aws_s3_bucket.storage.arn}/*"]
   }
+
+  statement {
+    sid    = "EcrAuthorization"
+    effect = "Allow"
+    actions = [
+      "ecr:GetAuthorizationToken",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "EcrImagePull"
+    effect = "Allow"
+    actions = [
+      "ecr:BatchCheckLayerAvailability",
+      "ecr:BatchGetImage",
+      "ecr:DescribeImages",
+      "ecr:GetDownloadUrlForLayer",
+    ]
+    resources = [aws_ecr_repository.api.arn]
+  }
 }
 
 resource "aws_iam_policy" "ec2" {
@@ -220,6 +241,32 @@ data "aws_iam_policy_document" "github_actions_deploy" {
       aws_s3_bucket.storage.arn,
       "${aws_s3_bucket.storage.arn}/deploy/*",
     ]
+  }
+
+  statement {
+    sid    = "EcrAuthorization"
+    effect = "Allow"
+    actions = [
+      "ecr:GetAuthorizationToken",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "EcrImagePush"
+    effect = "Allow"
+    actions = [
+      "ecr:BatchCheckLayerAvailability",
+      "ecr:BatchGetImage",
+      "ecr:CompleteLayerUpload",
+      "ecr:DescribeImages",
+      "ecr:DescribeRepositories",
+      "ecr:GetDownloadUrlForLayer",
+      "ecr:InitiateLayerUpload",
+      "ecr:PutImage",
+      "ecr:UploadLayerPart",
+    ]
+    resources = [aws_ecr_repository.api.arn]
   }
 }
 
