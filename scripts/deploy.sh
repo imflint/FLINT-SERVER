@@ -80,7 +80,10 @@ ensure_redis() {
 }
 
 ensure_nginx() {
-    local proxy_conf="/etc/nginx/conf.d/flint-api.conf"
+    local active_port
+    local default_location_conf="/etc/nginx/default.d/flint-api.conf"
+    local legacy_proxy_conf="/etc/nginx/conf.d/flint-api.conf"
+    local proxy_conf
     local temp_conf
 
     if ! command -v nginx >/dev/null 2>&1; then
@@ -100,12 +103,49 @@ ensure_nginx() {
 
     run_as_root mkdir -p /etc/nginx/conf.d
 
-    if [ ! -f "$proxy_conf" ]; then
-        log "Creating nginx proxy config $proxy_conf"
+    active_port=$(get_active_port)
+    if [ ! -f "$NGINX_CONF" ]; then
+        log "Creating nginx upstream config $NGINX_CONF"
         temp_conf=$(mktemp)
-        cat > "$temp_conf" <<'EOF'
+        cat > "$temp_conf" << EOF
+upstream flint-api {
+    server 127.0.0.1:$active_port;
+}
+EOF
+        run_as_root install -m 0644 "$temp_conf" "$NGINX_CONF"
+        rm -f "$temp_conf"
+    fi
+
+    if [ -d /etc/nginx/default.d ] || grep -q "default.d" /etc/nginx/nginx.conf 2>/dev/null; then
+        proxy_conf="$default_location_conf"
+        run_as_root mkdir -p /etc/nginx/default.d
+        run_as_root rm -f "$legacy_proxy_conf"
+        if [ ! -f "$proxy_conf" ]; then
+            log "Creating nginx proxy config $proxy_conf"
+            temp_conf=$(mktemp)
+            cat > "$temp_conf" <<'EOF'
+location / {
+    proxy_pass http://flint-api;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_connect_timeout 5s;
+    proxy_read_timeout 60s;
+}
+EOF
+            run_as_root install -m 0644 "$temp_conf" "$proxy_conf"
+            rm -f "$temp_conf"
+        fi
+    else
+        proxy_conf="$legacy_proxy_conf"
+        if [ ! -f "$proxy_conf" ]; then
+            log "Creating nginx proxy config $proxy_conf"
+            temp_conf=$(mktemp)
+            cat > "$temp_conf" <<'EOF'
 server {
-    listen 80 default_server;
+    listen 80;
     server_name _;
 
     client_max_body_size 20m;
@@ -122,8 +162,15 @@ server {
     }
 }
 EOF
-        run_as_root install -m 0644 "$temp_conf" "$proxy_conf"
-        rm -f "$temp_conf"
+            run_as_root install -m 0644 "$temp_conf" "$proxy_conf"
+            rm -f "$temp_conf"
+        fi
+    fi
+
+    if ! run_as_root nginx -t >/dev/null 2>&1; then
+        log "ERROR: nginx configuration test failed during setup"
+        run_as_root nginx -t || true
+        exit 1
     fi
 
     run_as_root systemctl enable nginx
