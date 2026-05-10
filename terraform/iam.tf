@@ -164,6 +164,42 @@ data "aws_iam_policy_document" "admin_ec2" {
     ]
     resources = [aws_ecr_repository.admin.arn]
   }
+
+  statement {
+    sid    = "ReadAdminDeployArtifactBucketLocation"
+    effect = "Allow"
+    actions = [
+      "s3:GetBucketLocation",
+    ]
+    resources = [aws_s3_bucket.storage.arn]
+  }
+
+  statement {
+    sid    = "ListAdminDeployArtifactBucket"
+    effect = "Allow"
+    actions = [
+      "s3:ListBucket",
+    ]
+    resources = [aws_s3_bucket.storage.arn]
+
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values = [
+        local.admin_deploy_prefix,
+        "${local.admin_deploy_prefix}/*",
+      ]
+    }
+  }
+
+  statement {
+    sid    = "ReadAdminDeployArtifactObject"
+    effect = "Allow"
+    actions = [
+      "s3:GetObject",
+    ]
+    resources = ["${aws_s3_bucket.storage.arn}/${local.admin_deploy_prefix}/*"]
+  }
 }
 
 resource "aws_iam_policy" "admin_ec2" {
@@ -317,7 +353,8 @@ data "aws_iam_policy_document" "github_actions_deploy" {
     ]
     resources = [
       aws_s3_bucket.storage.arn,
-      "${aws_s3_bucket.storage.arn}/deploy/*",
+      "${aws_s3_bucket.storage.arn}/${local.api_deploy_prefix}/*",
+      "${aws_s3_bucket.storage.arn}/${local.admin_deploy_prefix}/*",
     ]
   }
 

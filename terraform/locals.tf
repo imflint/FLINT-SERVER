@@ -20,10 +20,12 @@ locals {
     : "${local.name_prefix}-storage-${data.aws_caller_identity.current.account_id}"
   )
 
-  ec2_ami_id       = var.ec2_ami_id != "" ? var.ec2_ami_id : data.aws_ssm_parameter.al2023_ami[0].value
-  cloudfront_url   = "https://${aws_cloudfront_distribution.storage.domain_name}"
-  s3_origin_id     = "${local.name_prefix}-storage-origin"
-  github_role_name = "${local.name_prefix}-github-actions-deploy"
+  ec2_ami_id          = var.ec2_ami_id != "" ? var.ec2_ami_id : data.aws_ssm_parameter.al2023_ami[0].value
+  cloudfront_url      = "https://${aws_cloudfront_distribution.storage.domain_name}"
+  s3_origin_id        = "${local.name_prefix}-storage-origin"
+  github_role_name    = "${local.name_prefix}-github-actions-deploy"
+  api_deploy_prefix   = "deploy/${var.application_name}"
+  admin_deploy_prefix = "deploy/${var.admin_application_name}"
   ecr_repository_name = (
     var.ecr_repository_name != null && var.ecr_repository_name != ""
     ? var.ecr_repository_name
