@@ -32,6 +32,12 @@ public class TmdbMovieDetailProcessor implements ItemProcessor<TmdbIdLine, Conte
 		}
 		try {
 			TmdbMovieDetailRes detail = tmdbClient.getMovieFullDetail(line.id(), LANG);
+			String poster = resolvePoster(detail.posterPath());
+			if (poster == null) {
+				log.debug("movie {} has no poster, skip", line.id());
+				return null;
+			}
+
 			TmdbMovieCreditRes credit = tmdbClient.getMovieCredit(line.id(), LANG);
 
 			List<String> genres = detail.genres() == null ? List.of() :
@@ -43,7 +49,6 @@ public class TmdbMovieDetailProcessor implements ItemProcessor<TmdbIdLine, Conte
 				.findFirst()
 				.orElse("Unknown");
 
-			String poster = detail.posterPath() == null ? null : TMDB_IMAGE_BASE + detail.posterPath();
 			int year = parseYear(detail.releaseDate());
 			String title = detail.title() != null ? detail.title() : line.originalTitle();
 
@@ -61,6 +66,13 @@ public class TmdbMovieDetailProcessor implements ItemProcessor<TmdbIdLine, Conte
 			log.debug("movie {} not found, skip", line.id());
 			return null;
 		}
+	}
+
+	private String resolvePoster(String posterPath) {
+		if (posterPath == null || posterPath.isBlank()) {
+			return null;
+		}
+		return TMDB_IMAGE_BASE + posterPath;
 	}
 
 	private int parseYear(String date) {

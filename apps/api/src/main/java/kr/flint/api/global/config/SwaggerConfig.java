@@ -76,6 +76,8 @@ public class SwaggerConfig {
 				Map.entry("/api/v1/bookmarks/{collectionId}", List.of("GET")),
 				Map.entry("/api/v1/contents/search", List.of("GET")),
 				Map.entry("/api/v1/search/contents", List.of("GET")),
+				Map.entry("/api/v1/terms", List.of("GET")),
+				Map.entry("/api/v1/terms/{termsId}", List.of("GET")),
 				Map.entry("/api/v1/users/nickname/check", List.of("GET")),
 				Map.entry("/api/v1/users/{userId}", List.of("GET")),
 				Map.entry("/api/v1/users/{userId}/keywords", List.of("GET")),
