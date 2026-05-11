@@ -32,6 +32,8 @@ public interface ContentRepository extends JpaRepository<Content, Long> {
 
 	List<Content> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
+	List<Content> findAllByOrderByBookmarkCountDescIdAsc(Pageable pageable);
+
 	@Modifying
 	@Query(value = """
 		UPDATE content
