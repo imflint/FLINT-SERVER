@@ -114,7 +114,6 @@ class AuthFacadeTest {
 				"temp-token",
 				"플린트",
 				List.of(100L),
-				List.of(1L),
 				List.of(10L, 20L)
 			);
 			when(authService.verifyTempToken("temp-token"))
@@ -138,7 +137,6 @@ class AuthFacadeTest {
 				"temp-token",
 				"플린트",
 				List.of(100L),
-				List.of(1L),
 				List.of(10L)
 			);
 			when(authService.verifyTempToken("temp-token"))
@@ -153,7 +151,6 @@ class AuthFacadeTest {
 				.extracting("errorCode")
 				.isEqualTo(TermsErrorCode.REQUIRED_TERMS_NOT_AGREED);
 			verify(bookmarkCommandService, never()).createContentBookmarks(1L, List.of(100L));
-			verify(ottService, never()).createUserOtts(1L, List.of(1L));
 			verify(authService, never()).issueTokens(1L, "FLING");
 		}
 	}
