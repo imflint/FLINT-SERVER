@@ -149,6 +149,10 @@ public class ContentService {
 		return contentRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(0, limit));
 	}
 
+	public List<Content> getPopularContents(final int limit) {
+		return contentRepository.findAllByOrderByBookmarkCountDescIdAsc(PageRequest.of(0, limit));
+	}
+
 	// 콘텐츠 ID 목록으로 콘텐츠 + 장르 정보 조회
 	public List<ContentWithGenres> getContentsWithGenres(List<Long> contentIds) {
 		if (CollectionUtils.isEmpty(contentIds)) {

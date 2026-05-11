@@ -29,14 +29,12 @@ public class SearchQueryFacade {
 	private final HomeCollectionRepository homeCollectionRepository;
 	private final CloudFrontUrlProvider cloudFrontUrlProvider;
 
+	private static final int POPULAR_CONTENT_LIMIT = 30;
+
 	public List<GetContentSearchRes> searchContent(final String keyword) {
-		if (!StringUtils.hasText(keyword)) {
-			List<Content> contentSearchResList = contentService.getAllContent();
-			return contentSearchResList.stream()
-				.map(GetContentSearchRes::from)
-				.toList();
-		}
-		List<Content> contentList = contentService.getContentByTitle(keyword).isEmpty() ? List.of() : contentService.getContentByTitle(keyword);
+		List<Content> contentList = StringUtils.hasText(keyword)
+			? contentService.getContentByTitle(keyword)
+			: contentService.getPopularContents(POPULAR_CONTENT_LIMIT);
 		return contentList.stream()
 			.map(GetContentSearchRes::from)
 			.toList();
