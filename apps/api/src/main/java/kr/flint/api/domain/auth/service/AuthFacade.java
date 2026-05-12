@@ -1,5 +1,7 @@
 package kr.flint.api.domain.auth.service;
 
+import java.util.List;
+
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -74,16 +76,18 @@ public class AuthFacade {
     @Transactional
     public AuthTokenRes signup(SignupReq request) {
         TempTokenPayload payload = authService.verifyTempToken(request.tempToken());
+        List<Long> agreedTermsIds = request.agreedTermsIdValues();
+        List<Long> favoriteContentIds = request.favoriteContentIdValues();
 
         UserAuthInfo authInfo = userService.create(request.nickname());
         userIdentityService.create(authInfo.userId(), payload.provider(), payload.providerUserId());
-        termsService.validateAndCreateAgreements(authInfo.userId(), request.agreedTermsIds());
+        termsService.validateAndCreateAgreements(authInfo.userId(), agreedTermsIds);
 
-        bookmarkCommandService.createContentBookmarks(authInfo.userId(), request.favoriteContentIds());
-		request.favoriteContentIds().forEach(contentService::incContentBookmarkCount);
+        bookmarkCommandService.createContentBookmarks(authInfo.userId(), favoriteContentIds);
+        favoriteContentIds.forEach(contentService::incContentBookmarkCount);
 
         // 비동기 취향 분석 이벤트 발행 (트랜잭션 커밋 후 처리)
-        eventPublisher.publishEvent(UserSignedUpEvent.of(authInfo.userId(), request.favoriteContentIds()));
+        eventPublisher.publishEvent(UserSignedUpEvent.of(authInfo.userId(), favoriteContentIds));
 
         // 토큰 발급
         AuthTokens tokens = authService.issueTokens(authInfo.userId(), authInfo.role());

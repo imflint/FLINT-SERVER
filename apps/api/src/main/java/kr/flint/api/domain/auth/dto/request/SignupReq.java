@@ -21,11 +21,29 @@ public record SignupReq(
         @Pattern(regexp = "^[a-zA-Z0-9가-힣]+$", message = "닉네임은 영문, 숫자, 한글만 사용 가능합니다.")
         String nickname,
 
-        @Schema(description = "선호 콘텐츠 ID 목록 (온보딩에서 선택)", example = "[1, 2, 3]")
-        List<Long> favoriteContentIds,
+        @Schema(description = "선호 콘텐츠 ID 목록 (온보딩에서 선택)", example = "[\"1\", \"2\", \"3\"]")
+        List<@NotBlank(message = "선호 콘텐츠 ID는 비어 있을 수 없습니다.")
+        @Pattern(regexp = "^\\d+$", message = "선호 콘텐츠 ID는 숫자 문자열이어야 합니다.") String> favoriteContentIds,
 
-        @Schema(description = "동의한 약관 ID 목록", example = "[1, 2]", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "동의한 약관 ID 목록", example = "[\"1\", \"2\"]", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotEmpty(message = "동의한 약관 ID 목록은 필수입니다.")
-        List<@NotNull(message = "약관 ID는 null일 수 없습니다.") Long> agreedTermsIds
+        List<@NotNull(message = "약관 ID는 null일 수 없습니다.")
+        @Pattern(regexp = "^\\d+$", message = "약관 ID는 숫자 문자열이어야 합니다.") String> agreedTermsIds
 ) {
+    public List<Long> favoriteContentIdValues() {
+        return toLongIds(favoriteContentIds);
+    }
+
+    public List<Long> agreedTermsIdValues() {
+        return toLongIds(agreedTermsIds);
+    }
+
+    private static List<Long> toLongIds(List<String> ids) {
+        if (ids == null) {
+            return List.of();
+        }
+        return ids.stream()
+                .map(Long::valueOf)
+                .toList();
+    }
 }

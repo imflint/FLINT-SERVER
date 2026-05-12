@@ -6,7 +6,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.Lob;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import kr.flint.shared.domain.BaseTime;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -14,6 +15,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
+@Table(
+	uniqueConstraints = {
+		@UniqueConstraint(name = "uk_terms_type_version", columnNames = {"type", "version"})
+	}
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Terms extends BaseTime {
@@ -21,6 +27,9 @@ public class Terms extends BaseTime {
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 30)
 	private TermsType type;
+
+	@Column(nullable = false)
+	private Integer version;
 
 	@Column(nullable = false, length = 100)
 	private String title;
@@ -35,17 +44,26 @@ public class Terms extends BaseTime {
 	private LocalDateTime activeAt;
 
 	@Builder(access = AccessLevel.PRIVATE)
-	private Terms(TermsType type, String title, String content, boolean required, LocalDateTime activeAt) {
+	private Terms(TermsType type, Integer version, String title, String content, boolean required, LocalDateTime activeAt) {
 		this.type = type;
+		this.version = version;
 		this.title = title;
 		this.content = content;
 		this.required = required;
 		this.activeAt = activeAt;
 	}
 
-	public static Terms create(TermsType type, String title, String content, boolean required, LocalDateTime activeAt) {
+	public static Terms create(
+		TermsType type,
+		Integer version,
+		String title,
+		String content,
+		boolean required,
+		LocalDateTime activeAt
+	) {
 		return Terms.builder()
 			.type(type)
+			.version(version)
 			.title(title)
 			.content(content)
 			.required(required)
@@ -58,6 +76,6 @@ public class Terms extends BaseTime {
 	}
 
 	public boolean isNewerThan(Terms other) {
-		return activeAt.isAfter(other.activeAt);
+		return version > other.version;
 	}
 }

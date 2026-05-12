@@ -11,7 +11,7 @@ public record AdminLoginRes(
 	@Schema(description = "Refresh Token")
 	String refreshToken,
 
-	@Schema(description = "관리자 사용자 ID", example = "1", type = "string")
+	@Schema(description = "관리자 사용자 ID", example = "1")
 	Long userId,
 
 	@Schema(description = "관리자 닉네임", example = "admin")

@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.core.jackson.ModelResolver;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
@@ -43,7 +44,7 @@ public class AdminSwaggerConfig {
 				return;
 			}
 
-			var loginPath = openApi.getPaths().get("/api/v1/admin/auth/login");
+			PathItem loginPath = openApi.getPaths().get("/api/v1/admin/auth/login");
 			if (loginPath != null && loginPath.getPost() != null) {
 				loginPath.getPost().setSecurity(List.of());
 			}

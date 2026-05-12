@@ -48,11 +48,11 @@ class TermsCommandFacadeTest {
 		void adminSuccess() {
 			// given
 			LocalDateTime activeAt = LocalDateTime.now();
-			TermsCreateReq request = new TermsCreateReq(TermsType.SERVICE, "서비스 이용약관", "content", true, activeAt);
-			Terms terms = Terms.create(TermsType.SERVICE, "서비스 이용약관", "content", true, activeAt);
+			TermsCreateReq request = new TermsCreateReq(TermsType.SERVICE, 1, "서비스 이용약관", "content", true, activeAt);
+			Terms terms = Terms.create(TermsType.SERVICE, 1, "서비스 이용약관", "content", true, activeAt);
 			ReflectionTestUtils.setField(terms, "id", 1L);
 			when(userService.getAuthInfo(10L)).thenReturn(UserAuthInfo.of(10L, "admin", "ADMIN"));
-			when(termsService.createTermsVersion(TermsType.SERVICE, "서비스 이용약관", "content", true, activeAt))
+			when(termsService.createTermsVersion(TermsType.SERVICE, 1, "서비스 이용약관", "content", true, activeAt))
 				.thenReturn(terms);
 
 			// when
@@ -61,6 +61,7 @@ class TermsCommandFacadeTest {
 			// then
 			assertThat(result.id()).isEqualTo(1L);
 			assertThat(result.type()).isEqualTo(TermsType.SERVICE);
+			assertThat(result.version()).isEqualTo(1);
 		}
 
 		@Test
@@ -68,7 +69,7 @@ class TermsCommandFacadeTest {
 		void nonAdminForbidden() {
 			// given
 			LocalDateTime activeAt = LocalDateTime.now();
-			TermsCreateReq request = new TermsCreateReq(TermsType.SERVICE, "서비스 이용약관", "content", true, activeAt);
+			TermsCreateReq request = new TermsCreateReq(TermsType.SERVICE, 1, "서비스 이용약관", "content", true, activeAt);
 			when(userService.getAuthInfo(10L)).thenReturn(UserAuthInfo.of(10L, "user", "FLING"));
 
 			// when & then
@@ -78,6 +79,7 @@ class TermsCommandFacadeTest {
 				.isEqualTo(TermsErrorCode.FORBIDDEN_TERMS_ADMIN);
 			verify(termsService, never()).createTermsVersion(
 				TermsType.SERVICE,
+				1,
 				"서비스 이용약관",
 				"content",
 				true,

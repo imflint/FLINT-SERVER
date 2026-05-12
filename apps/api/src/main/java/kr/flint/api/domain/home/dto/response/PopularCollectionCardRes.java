@@ -7,7 +7,7 @@ import kr.flint.api.domain.home.dto.projection.CollectionCardDto;
 
 @Schema(description = "인기 컬렉션 카드 정보")
 public record PopularCollectionCardRes(
-    @Schema(description = "컬렉션 ID", example = "800388257884431200", type = "string")
+    @Schema(description = "컬렉션 ID", example = "800388257884431200")
     Long id,
     @Schema(description = "컬렉션 카드 배경 사진", example = "https://cdn.flint.kr/collection/cover/800388.jpg")
     String thumbnailUrl,

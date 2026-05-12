@@ -6,9 +6,9 @@ import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 public record BookmarkedCollectionSearchRes(
-	@Schema(type = "string")
+    @Schema(description = "북마크 id")
 	Long bookmarkId,
-	@Schema(type = "string")
+    @Schema(description = "컬렉션 id")
 	Long collectionId,
 	@Schema(description = "컬렉션 대표 이미지 URL")
 	String imageUrl,
@@ -20,7 +20,7 @@ public record BookmarkedCollectionSearchRes(
 	Integer bookmarkCount,
 	@Schema(description = "현재 사용자의 저장 여부 — 북마크한 컬렉션 검색이라 항상 true")
 	Boolean isBookmarked,
-	@Schema(type = "string", description = "작성자 ID")
+	@Schema(description = "작성자 ID")
 	Long userId,
 	@Schema(description = "작성자 닉네임")
 	String nickname,

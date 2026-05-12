@@ -44,8 +44,19 @@ public class TermsService {
 	}
 
 	@Transactional
-	public Terms createTermsVersion(TermsType type, String title, String content, boolean required, LocalDateTime activeAt) {
-		return termsRepository.save(Terms.create(type, title, content, required, activeAt));
+	public Terms createTermsVersion(
+		TermsType type,
+		Integer version,
+		String title,
+		String content,
+		boolean required,
+		LocalDateTime activeAt
+	) {
+		if (termsRepository.existsByTypeAndVersion(type, version)) {
+			throw new TermsException(TermsErrorCode.DUPLICATE_TERMS_VERSION);
+		}
+
+		return termsRepository.save(Terms.create(type, version, title, content, required, activeAt));
 	}
 
 	@Transactional

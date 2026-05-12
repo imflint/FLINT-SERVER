@@ -20,6 +20,7 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import kr.flint.api.domain.auth.dto.request.SignupReq;
 import kr.flint.api.domain.auth.dto.request.SocialVerifyReq;
+import kr.flint.api.domain.auth.dto.response.AuthTokenRes;
 import kr.flint.api.global.oauth.client.AppleOAuthClient;
 import kr.flint.api.global.oauth.client.KakaoOAuthClient;
 import kr.flint.auth.dto.AuthTokens;
@@ -113,8 +114,8 @@ class AuthFacadeTest {
 			SignupReq request = new SignupReq(
 				"temp-token",
 				"플린트",
-				List.of(100L),
-				List.of(10L, 20L)
+				List.of("100"),
+				List.of("10", "20")
 			);
 			when(authService.verifyTempToken("temp-token"))
 				.thenReturn(new TempTokenPayload(AuthProvider.KAKAO, "provider-user-id"));
@@ -122,7 +123,7 @@ class AuthFacadeTest {
 			when(authService.issueTokens(1L, "FLING")).thenReturn(AuthTokens.of("access", "refresh", 1L));
 
 			// when
-			var result = authFacade.signup(request);
+			AuthTokenRes result = authFacade.signup(request);
 
 			// then
 			assertThat(result.accessToken()).isEqualTo("access");
@@ -136,8 +137,8 @@ class AuthFacadeTest {
 			SignupReq request = new SignupReq(
 				"temp-token",
 				"플린트",
-				List.of(100L),
-				List.of(10L)
+				List.of("100"),
+				List.of("10")
 			);
 			when(authService.verifyTempToken("temp-token"))
 				.thenReturn(new TempTokenPayload(AuthProvider.KAKAO, "provider-user-id"));

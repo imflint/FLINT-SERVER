@@ -3,6 +3,7 @@ package kr.flint.api.global.config;
 import io.swagger.v3.core.jackson.ModelResolver;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
@@ -86,7 +87,7 @@ public class SwaggerConfig {
 			);
 
 			publicByMethod.forEach((path, methods) -> {
-				var item = openApi.getPaths().get(path);
+				PathItem item = openApi.getPaths().get(path);
 				if (item == null) return;
 
 				for (String m : methods) {

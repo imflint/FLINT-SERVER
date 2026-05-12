@@ -1,11 +1,8 @@
 package kr.flint.api.domain.terms.controller.spec;
 
-import java.util.List;
-
 import org.springframework.http.ResponseEntity;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -14,20 +11,21 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import kr.flint.shared.dto.response.SuccessResponse;
 import kr.flint.shared.exception.ProblemDetail;
 import kr.flint.terms.domain.TermsType;
+import kr.flint.terms.dto.response.TermsListRes;
 import kr.flint.terms.dto.response.TermsRes;
 
 @Tag(name = "Terms", description = "약관 API")
 public interface TermsControllerDocs {
 
-	@Operation(summary = "약관 목록 조회", description = "현재 활성 약관을 유형별 최신 버전으로 조회합니다.")
+	@Operation(summary = "약관 목록 조회", description = "현재 활성 약관을 유형별 최신 버전으로 조회합니다. 파라미터가 없으면 전부 조회")
 	@ApiResponses({
 		@ApiResponse(
 			responseCode = "200",
 			description = "약관 목록 조회 성공",
-			content = @Content(array = @ArraySchema(schema = @Schema(implementation = TermsRes.class)))
+			content = @Content(schema = @Schema(implementation = TermsListRes.class))
 		)
 	})
-	ResponseEntity<SuccessResponse<List<TermsRes>>> getTerms(TermsType type);
+	ResponseEntity<SuccessResponse<TermsListRes>> getTerms(TermsType type);
 
 	@Operation(summary = "약관 상세 조회", description = "약관 ID로 약관 본문을 조회합니다.")
 	@ApiResponses({

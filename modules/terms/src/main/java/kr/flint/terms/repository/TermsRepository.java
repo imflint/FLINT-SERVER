@@ -10,6 +10,8 @@ import kr.flint.terms.domain.TermsType;
 
 public interface TermsRepository extends JpaRepository<Terms, Long> {
 
+	boolean existsByTypeAndVersion(TermsType type, Integer version);
+
 	List<Terms> findByActiveAtLessThanEqual(LocalDateTime activeAt);
 
 	List<Terms> findByTypeAndActiveAtLessThanEqual(TermsType type, LocalDateTime activeAt);

@@ -29,7 +29,7 @@ public class TmdbOttProvidersProcessor implements ItemProcessor<Content, OttSync
 				? tmdbClient.getTvWatchProviders(content.getTmdbId())
 				: tmdbClient.getMovieWatchProviders(content.getTmdbId());
 
-			var country = (res.results() == null) ? null : res.results().get(COUNTRY);
+			TmdbOttRes.CountryProvider country = (res.results() == null) ? null : res.results().get(COUNTRY);
 			if (country == null || country.flatrate() == null || country.flatrate().isEmpty()) {
 				return null;
 			}

@@ -2,10 +2,8 @@ package kr.flint.api.domain.search.dto.response;
 
 import java.util.List;
 
-import io.swagger.v3.oas.annotations.media.Schema;
 
 public record GetSearchBookmarkContentRes(
-	@Schema(type = "string")
 	Long id,
 	String title,
 	String author,
@@ -15,7 +13,6 @@ public record GetSearchBookmarkContentRes(
 	int bookmarkCount
 ) {
 	public record GetOttSimpleRes(
-		@Schema(type = "string")
 		Long ottId,
 		String logoUrl
 	) {

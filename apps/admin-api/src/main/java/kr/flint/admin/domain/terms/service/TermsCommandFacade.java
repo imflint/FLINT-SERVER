@@ -23,6 +23,7 @@ public class TermsCommandFacade {
 		validateAdmin(adminUserId);
 		return TermsRes.from(termsService.createTermsVersion(
 			request.type(),
+			request.version(),
 			request.title(),
 			request.content(),
 			request.required(),

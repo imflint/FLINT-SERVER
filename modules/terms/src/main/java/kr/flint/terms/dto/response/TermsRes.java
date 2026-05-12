@@ -8,10 +8,12 @@ import kr.flint.terms.domain.TermsType;
 
 @Schema(description = "약관 응답")
 public record TermsRes(
-	@Schema(description = "약관 ID", example = "1", type = "string")
+	@Schema(description = "약관 ID", example = "1")
 	Long id,
 	@Schema(description = "약관 유형", example = "SERVICE")
 	TermsType type,
+	@Schema(description = "약관 버전", example = "1")
+	Integer version,
 	@Schema(description = "약관 제목", example = "서비스 이용약관")
 	String title,
 	@Schema(description = "약관 본문")
@@ -25,6 +27,7 @@ public record TermsRes(
 		return new TermsRes(
 			terms.getId(),
 			terms.getType(),
+			terms.getVersion(),
 			terms.getTitle(),
 			terms.getContent(),
 			terms.isRequired(),

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -47,9 +48,9 @@ class TermsServiceTest {
 		@DisplayName("유형별 최신 활성 약관만 반환")
 		void latestActiveTermsByType() {
 			// given
-			Terms oldService = createTerms(1L, TermsType.SERVICE, true, LocalDateTime.now().minusDays(10));
-			Terms newService = createTerms(2L, TermsType.SERVICE, true, LocalDateTime.now().minusDays(1));
-			Terms privacy = createTerms(3L, TermsType.PRIVACY, true, LocalDateTime.now().minusDays(2));
+			Terms oldService = createTerms(1L, TermsType.SERVICE, 1, true, LocalDateTime.now().minusDays(10));
+			Terms newService = createTerms(2L, TermsType.SERVICE, 2, true, LocalDateTime.now().minusDays(1));
+			Terms privacy = createTerms(3L, TermsType.PRIVACY, 1, true, LocalDateTime.now().minusDays(2));
 			when(termsRepository.findByActiveAtLessThanEqual(any(LocalDateTime.class)))
 				.thenReturn(List.of(oldService, privacy, newService));
 
@@ -62,6 +63,33 @@ class TermsServiceTest {
 	}
 
 	@Nested
+	@DisplayName("createTermsVersion")
+	class CreateTermsVersion {
+
+		@Test
+		@DisplayName("같은 유형의 중복 버전은 생성할 수 없음")
+		void duplicateVersion() {
+			// given
+			when(termsRepository.existsByTypeAndVersion(TermsType.SERVICE, 1))
+				.thenReturn(true);
+
+			// when & then
+			assertThatThrownBy(() -> termsService.createTermsVersion(
+				TermsType.SERVICE,
+				1,
+				"서비스 이용약관",
+				"content",
+				true,
+				LocalDateTime.now()
+			))
+				.isInstanceOf(TermsException.class)
+				.extracting("errorCode")
+				.isEqualTo(TermsErrorCode.DUPLICATE_TERMS_VERSION);
+			verify(termsRepository, never()).save(any(Terms.class));
+		}
+	}
+
+	@Nested
 	@DisplayName("validateAndCreateAgreements")
 	class ValidateAndCreateAgreements {
 
@@ -69,30 +97,30 @@ class TermsServiceTest {
 		@DisplayName("필수 약관과 선택 약관 동의를 저장")
 		void success() {
 			// given
-			Terms service = createTerms(1L, TermsType.SERVICE, true, LocalDateTime.now().minusDays(1));
-			Terms privacy = createTerms(2L, TermsType.PRIVACY, true, LocalDateTime.now().minusDays(1));
-			Terms marketing = createTerms(3L, TermsType.MARKETING, false, LocalDateTime.now().minusDays(1));
+			Terms service = createTerms(1L, TermsType.SERVICE, 1, true, LocalDateTime.now().minusDays(1));
+			Terms privacy = createTerms(2L, TermsType.PRIVACY, 1, true, LocalDateTime.now().minusDays(1));
+			Terms marketing = createTerms(3L, TermsType.MARKETING, 1, false, LocalDateTime.now().minusDays(1));
 			when(termsRepository.findByActiveAtLessThanEqual(any(LocalDateTime.class)))
 				.thenReturn(List.of(service, privacy, marketing));
 
 			// when
 			termsService.validateAndCreateAgreements(100L, List.of(1L, 2L, 3L));
 
-				// then
-				verify(userTermsAgreementRepository).saveAll(argThat(agreements -> {
-					assertThat(agreements).hasSize(3);
-					assertThat(agreements).extracting(UserTermsAgreement::getTermsId)
-						.containsExactly(1L, 2L, 3L);
-					return true;
-				}));
-			}
+			// then
+			verify(userTermsAgreementRepository).saveAll(argThat(agreements -> {
+				assertThat(agreements).hasSize(3);
+				assertThat(agreements).extracting(UserTermsAgreement::getTermsId)
+					.containsExactly(1L, 2L, 3L);
+				return true;
+			}));
+		}
 
 		@Test
 		@DisplayName("필수 약관 누락 시 예외")
 		void missingRequiredTerms() {
 			// given
-			Terms service = createTerms(1L, TermsType.SERVICE, true, LocalDateTime.now().minusDays(1));
-			Terms privacy = createTerms(2L, TermsType.PRIVACY, true, LocalDateTime.now().minusDays(1));
+			Terms service = createTerms(1L, TermsType.SERVICE, 1, true, LocalDateTime.now().minusDays(1));
+			Terms privacy = createTerms(2L, TermsType.PRIVACY, 1, true, LocalDateTime.now().minusDays(1));
 			when(termsRepository.findByActiveAtLessThanEqual(any(LocalDateTime.class)))
 				.thenReturn(List.of(service, privacy));
 
@@ -107,8 +135,8 @@ class TermsServiceTest {
 		@DisplayName("현재 활성 약관이 아닌 ID 포함 시 예외")
 		void invalidTermsId() {
 			// given
-			Terms service = createTerms(2L, TermsType.SERVICE, true, LocalDateTime.now().minusDays(1));
-			Terms privacy = createTerms(3L, TermsType.PRIVACY, true, LocalDateTime.now().minusDays(1));
+			Terms service = createTerms(2L, TermsType.SERVICE, 1, true, LocalDateTime.now().minusDays(1));
+			Terms privacy = createTerms(3L, TermsType.PRIVACY, 1, true, LocalDateTime.now().minusDays(1));
 			when(termsRepository.findByActiveAtLessThanEqual(any(LocalDateTime.class)))
 				.thenReturn(List.of(service, privacy));
 
@@ -123,7 +151,7 @@ class TermsServiceTest {
 		@DisplayName("활성 필수 약관이 없으면 예외")
 		void noActiveRequiredTerms() {
 			// given
-			Terms marketing = createTerms(3L, TermsType.MARKETING, false, LocalDateTime.now().minusDays(1));
+			Terms marketing = createTerms(3L, TermsType.MARKETING, 1, false, LocalDateTime.now().minusDays(1));
 			when(termsRepository.findByActiveAtLessThanEqual(any(LocalDateTime.class)))
 				.thenReturn(List.of(marketing));
 
@@ -135,8 +163,8 @@ class TermsServiceTest {
 		}
 	}
 
-	private Terms createTerms(Long id, TermsType type, boolean required, LocalDateTime activeAt) {
-		Terms terms = Terms.create(type, type.getDescription(), "content", required, activeAt);
+	private Terms createTerms(Long id, TermsType type, Integer version, boolean required, LocalDateTime activeAt) {
+		Terms terms = Terms.create(type, version, type.getDescription(), "content", required, activeAt);
 		ReflectionTestUtils.setField(terms, "id", id);
 		return terms;
 	}

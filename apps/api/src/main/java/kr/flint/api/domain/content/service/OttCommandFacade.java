@@ -24,7 +24,7 @@ public class OttCommandFacade {
 			TmdbOttRes res = "tv".equals(mediaType)
 				? tmdbClient.getTvWatchProviders(tmdbId)
 				: tmdbClient.getMovieWatchProviders(tmdbId);
-			var country = (res.results() == null) ? null : res.results().get("KR");
+			TmdbOttRes.CountryProvider country = (res.results() == null) ? null : res.results().get("KR");
 			if (country == null || country.flatrate() == null) {
 				return;
 			}
