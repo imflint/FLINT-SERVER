@@ -38,8 +38,6 @@ public class UserQueryFacade {
     private final UserService userService;
     private final BookmarkQueryService bookmarkQueryService;
     private final UserCollectionRepository userCollectionRepository;
-	private final BookmarkQueryRepository bookmarkQueryRepository;
-	private final ChatService chatService;
 	private final TasteService tasteService;
 	private final UserCommandFacade userCommandFacade;
 	private final CloudFrontUrlProvider cloudFrontUrlProvider;
@@ -56,6 +54,8 @@ public class UserQueryFacade {
 
 	@Transactional
     public UserKeywordsRes getUserKeywords(Long userId) {
+		userService.getById(userId);
+
 		// 키워드가 없을 때만 GPT 호출
 		if (!tasteService.hasUserKeywords(userId)) {
 			userCommandFacade.callGpt(userId);

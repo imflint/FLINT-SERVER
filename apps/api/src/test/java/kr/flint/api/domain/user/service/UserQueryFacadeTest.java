@@ -1,10 +1,12 @@
 package kr.flint.api.domain.user.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -27,6 +29,8 @@ import kr.flint.bookmark.service.BookmarkQueryService;
 import kr.flint.infra.gpt.service.ChatService;
 import kr.flint.infra.storage.cloudfront.CloudFrontUrlProvider;
 import kr.flint.taste.service.TasteService;
+import kr.flint.user.exception.UserErrorCode;
+import kr.flint.user.exception.UserException;
 import kr.flint.user.service.UserService;
 
 @ExtendWith(MockitoExtension.class)
@@ -58,6 +62,24 @@ class UserQueryFacadeTest {
 
     @InjectMocks
     private UserQueryFacade userQueryFacade;
+
+	@Nested
+	@DisplayName("getUserKeywords")
+	class GetUserKeywords {
+
+		@Test
+		@DisplayName("존재하지 않는 사용자의 키워드 조회는 실패")
+		void userNotFound() {
+			// given
+			Long userId = 999L;
+			when(userService.getById(userId)).thenThrow(new UserException(UserErrorCode.USER_NOT_FOUND));
+
+			// when & then
+			assertThatThrownBy(() -> userQueryFacade.getUserKeywords(userId))
+				.isInstanceOf(UserException.class);
+			verifyNoInteractions(tasteService, userCommandFacade);
+		}
+	}
 
     @Nested
     @DisplayName("getMyCollections")
