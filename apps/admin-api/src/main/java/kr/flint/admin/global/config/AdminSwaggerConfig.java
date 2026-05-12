@@ -2,6 +2,7 @@ package kr.flint.admin.global.config;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springframework.context.annotation.Bean;
@@ -12,9 +13,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.core.jackson.ModelResolver;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.media.Content;
+import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.media.Schema;
+import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
@@ -30,10 +35,14 @@ public class AdminSwaggerConfig {
 	@Bean
 	public OpenApiCustomizer longToStringSchemaCustomizer() {
 		return openApi -> {
-			if (openApi.getComponents() == null || openApi.getComponents().getSchemas() == null) {
-				return;
+			if (openApi.getComponents() != null && openApi.getComponents().getSchemas() != null) {
+				openApi.getComponents().getSchemas().values().forEach(this::convertLongToString);
 			}
-			openApi.getComponents().getSchemas().values().forEach(this::convertLongToString);
+			if (openApi.getPaths() != null) {
+				openApi.getPaths().values().forEach(pathItem ->
+					pathItem.readOperations().forEach(this::convertOperationLongToString)
+				);
+			}
 		};
 	}
 
@@ -57,15 +66,15 @@ public class AdminSwaggerConfig {
 			return;
 		}
 
+		if (isLongType(schema)) {
+			schema.setType("string");
+			schema.setTypes(Set.of("string"));
+			schema.setFormat(null);
+		}
+
 		Map<String, Schema> properties = schema.getProperties();
 		if (properties != null) {
-			properties.forEach((name, propSchema) -> {
-				if (isLongType(propSchema)) {
-					propSchema.setType("string");
-					propSchema.setFormat(null);
-				}
-				convertLongToString(propSchema);
-			});
+			properties.forEach((name, propSchema) -> convertLongToString(propSchema));
 		}
 
 		if (schema.getItems() != null) {
@@ -75,7 +84,29 @@ public class AdminSwaggerConfig {
 
 	@SuppressWarnings("rawtypes")
 	private boolean isLongType(Schema schema) {
-		return "integer".equals(schema.getType()) && "int64".equals(schema.getFormat());
+		return ("integer".equals(schema.getType())
+			|| (schema.getTypes() != null && schema.getTypes().contains("integer")))
+			&& "int64".equals(schema.getFormat());
+	}
+
+	private void convertOperationLongToString(Operation operation) {
+		if (operation.getRequestBody() != null) {
+			convertContentLongToString(operation.getRequestBody().getContent());
+		}
+		if (operation.getResponses() != null) {
+			operation.getResponses().values().stream()
+				.map(ApiResponse::getContent)
+				.forEach(this::convertContentLongToString);
+		}
+	}
+
+	private void convertContentLongToString(Content content) {
+		if (content == null) {
+			return;
+		}
+		content.values().stream()
+			.map(MediaType::getSchema)
+			.forEach(this::convertLongToString);
 	}
 
 	@Bean
