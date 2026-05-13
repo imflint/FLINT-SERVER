@@ -31,10 +31,11 @@
 
         <!-- Hibernate -->
         <Logger name="org.hibernate" level="INFO"/>
-        <Logger name="org.hibernate.SQL" level="DEBUG"/>
+        <Logger name="org.hibernate.SQL" level="WARN"/>
+        <Logger name="org.hibernate.orm.jdbc.bind" level="WARN"/>
 
         <!-- 애플리케이션 -->
-        <Logger name="kr.flint" level="DEBUG"/>
+        <Logger name="kr.flint" level="INFO"/>
 
         <!-- Root -->
         <Root level="INFO">
@@ -46,6 +47,7 @@
     <SpringProfile name="local">
         <Loggers>
             <Logger name="kr.flint" level="DEBUG"/>
+            <Logger name="org.hibernate.SQL" level="DEBUG"/>
             <Root level="INFO">
                 <AppenderRef ref="Console"/>
             </Root>

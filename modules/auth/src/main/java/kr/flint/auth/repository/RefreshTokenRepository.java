@@ -164,7 +164,7 @@ public class RefreshTokenRepository {
         }
 
         if (!tokenKeys.isEmpty()) {
-            log.info("{}개의 리프레시 토큰 무효화 완료, userId: {}", tokenKeys.size(), userId);
+            log.debug("{}개의 리프레시 토큰 무효화 완료, userId: {}", tokenKeys.size(), userId);
         }
     }
 
@@ -183,7 +183,7 @@ public class RefreshTokenRepository {
         }
 
         stringRedisTemplate.delete(allKeys);
-        log.info("{}개의 리프레시 토큰 삭제 완료, userId: {}", dataKeys.size(), userId);
+        log.debug("{}개의 리프레시 토큰 삭제 완료, userId: {}", dataKeys.size(), userId);
     }
 
     // Refresh Token 존재 여부 확인

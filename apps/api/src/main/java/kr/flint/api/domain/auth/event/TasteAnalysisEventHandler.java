@@ -29,7 +29,7 @@ public class TasteAnalysisEventHandler {
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleUserSignedUp(UserSignedUpEvent event) {
-        log.info("취향 분석 - userId: {}, contentIds: {}", event.userId(), event.contentIds());
+        log.debug("취향 분석 시작. userId={}, contentCount={}", event.userId(), event.contentIds().size());
 
         try {
             List<ContentWithGenres> contents = contentService.getContentsWithGenres(event.contentIds());
@@ -50,7 +50,7 @@ public class TasteAnalysisEventHandler {
 
             tasteService.matchUserKeywords(event.userId(), keywordList);
 
-            log.info("분석 완료 - userId: {}, keywords: {}", event.userId(), keywordList.size());
+            log.debug("취향 분석 완료. userId={}, keywordCount={}", event.userId(), keywordList.size());
         } catch (Exception e) {
             log.error("취향 분석 실패 - userId: {}", event.userId(), e);
         }
