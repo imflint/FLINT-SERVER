@@ -14,6 +14,7 @@ public record BatchProperties(
 		String exportBaseUrl,
 		String downloadDir,
 		Integer chunkSize,
+		Integer concurrencyLimit,
 		Integer retryAttempts,
 		Long retryBackOffMs
 	) {
