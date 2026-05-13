@@ -66,5 +66,6 @@ flint:
       export-base-url: https://files.tmdb.org/p/exports
       download-dir: ${java.io.tmpdir}/flint-tmdb-exports
       chunk-size: 100
+      concurrency-limit: 50
       retry-attempts: 3
       retry-back-off-ms: 2000

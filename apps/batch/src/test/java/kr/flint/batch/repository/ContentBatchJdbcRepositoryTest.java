@@ -121,10 +121,15 @@ class ContentBatchJdbcRepositoryTest {
 		));
 
 		Map<String, Object> content = jdbcTemplate.queryForMap("""
-			SELECT title, `year`, author, description, poster, bookmark_count, created_at
+			SELECT title, `year`, author, description, poster, bookmark_count
 			FROM content
 			WHERE id = ?
 			""", contentId);
+		Timestamp updatedCreatedAt = jdbcTemplate.queryForObject(
+			"SELECT created_at FROM content WHERE id = ?",
+			Timestamp.class,
+			contentId
+		);
 
 		assertThat(content.get("title")).isEqualTo("Third");
 		assertThat(((Number)content.get("year")).intValue()).isEqualTo(2026);
@@ -132,7 +137,7 @@ class ContentBatchJdbcRepositoryTest {
 		assertThat(content.get("description")).isEqualTo("third");
 		assertThat(content.get("poster")).isEqualTo("third-poster");
 		assertThat(((Number)content.get("bookmark_count")).intValue()).isEqualTo(7);
-		assertThat(content.get("created_at")).isEqualTo(createdAt);
+		assertThat(updatedCreatedAt).isEqualTo(createdAt);
 		assertThat(count("content")).isEqualTo(1);
 		assertThat(count("genre")).isEqualTo(3);
 		assertThat(count("content_genre")).isEqualTo(3);
