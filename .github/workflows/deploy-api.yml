@@ -35,6 +35,7 @@ jobs:
       AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
       EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
       ECR_REPOSITORY_URI: ${{ vars.ECR_REPOSITORY_URI }}
+      API_HEALTH_CHECK_URL: ${{ vars.API_HEALTH_CHECK_URL }}
       S3_DEPLOY_BUCKET: ${{ vars.S3_DEPLOY_BUCKET }}
 
     steps:
@@ -146,4 +147,10 @@ jobs:
               --query "StandardErrorContent" \
               --output text >&2
             exit 1
+          fi
+
+          if [ -n "${API_HEALTH_CHECK_URL:-}" ]; then
+            if ! curl --fail --silent --show-error --max-time 15 "${API_HEALTH_CHECK_URL}"; then
+              exit 1
+            fi
           fi

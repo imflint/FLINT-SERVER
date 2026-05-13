@@ -19,11 +19,27 @@ usermod -aG docker ec2-user
 
 mkdir -p "$APP_DIR/deploy" "$APP_DIR/logs"
 chown -R ec2-user:ec2-user "$APP_DIR"
+touch "$APP_DIR/logs/deploy.log"
+chown ec2-user:ec2-user "$APP_DIR/logs/deploy.log"
+mkdir -p /var/log/nginx
+touch /var/log/nginx/error.log /var/log/nginx/flint-gateway-error.log
 
 cat >/etc/nginx/conf.d/flint-upstream.conf <<'EOF'
 upstream flint-api {
     server 127.0.0.1:8080;
 }
+EOF
+
+cat >/etc/nginx/conf.d/00-flint-gateway-error-log.conf <<'EOF'
+map $status $flint_log_gateway_error {
+    502 1;
+    503 1;
+    504 1;
+    default 0;
+}
+
+log_format flint_gateway_error 'FLINT_GATEWAY_ERROR $remote_addr - $remote_user [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent"';
+access_log /var/log/nginx/flint-gateway-error.log flint_gateway_error if=$flint_log_gateway_error;
 EOF
 
 cat >/etc/nginx/conf.d/flint-api.conf <<'EOF'
