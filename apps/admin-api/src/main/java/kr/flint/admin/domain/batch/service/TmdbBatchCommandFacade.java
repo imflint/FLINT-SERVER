@@ -2,7 +2,6 @@ package kr.flint.admin.domain.batch.service;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Locale;
 
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParameters;
@@ -16,6 +15,7 @@ import kr.flint.batch.job.delta.TmdbDailyDeltaJobConfig;
 import kr.flint.batch.job.movie.TmdbMovieImportJobConfig;
 import kr.flint.batch.job.ott.TmdbOttSyncJobConfig;
 import kr.flint.batch.job.tv.TmdbTvImportJobConfig;
+import kr.flint.content.domain.MediaType;
 
 @Service
 public class TmdbBatchCommandFacade {
@@ -54,16 +54,16 @@ public class TmdbBatchCommandFacade {
 		return BatchJobExecutionRes.from(asyncJobLauncher.run(tmdbTvImportJob, params));
 	}
 
-	public BatchJobExecutionRes triggerOtt(String mediaType) throws Exception {
+	public BatchJobExecutionRes triggerOtt(MediaType mediaType) throws Exception {
 		JobParameters params = baseParams()
-			.addString("mediaType", mediaType.toUpperCase(Locale.ROOT))
+			.addString("mediaType", mediaType.name())
 			.toJobParameters();
 		return BatchJobExecutionRes.from(asyncJobLauncher.run(tmdbOttSyncJob, params));
 	}
 
-	public BatchJobExecutionRes triggerDelta(String mediaType, String startDate, String endDate) throws Exception {
+	public BatchJobExecutionRes triggerDelta(MediaType mediaType, String startDate, String endDate) throws Exception {
 		JobParametersBuilder builder = baseParams()
-			.addString("mediaType", mediaType.toUpperCase(Locale.ROOT));
+			.addString("mediaType", mediaType.name());
 		addIfPresent(builder, "startDate", startDate);
 		addIfPresent(builder, "endDate", endDate);
 		return BatchJobExecutionRes.from(asyncJobLauncher.run(tmdbDailyDeltaJob, builder.toJobParameters()));

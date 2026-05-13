@@ -26,6 +26,8 @@ import org.springframework.batch.core.launch.JobLauncher;
 import kr.flint.admin.domain.batch.dto.response.BatchJobExecutionRes;
 import kr.flint.batch.job.delta.TmdbDailyDeltaJobConfig;
 import kr.flint.batch.job.movie.TmdbMovieImportJobConfig;
+import kr.flint.batch.job.ott.TmdbOttSyncJobConfig;
+import kr.flint.content.domain.MediaType;
 
 @ExtendWith(MockitoExtension.class)
 class TmdbBatchCommandFacadeTest {
@@ -79,8 +81,27 @@ class TmdbBatchCommandFacadeTest {
 	}
 
 	@Test
-	@DisplayName("변경분 동기화는 mediaType을 대문자로 변환하고 빈 날짜 파라미터를 제외")
-	void triggerDeltaUppercaseMediaTypeAndSkipBlankDate() throws Exception {
+	@DisplayName("OTT 동기화는 mediaType을 Job 파라미터로 전달")
+	void triggerOttWithMediaType() throws Exception {
+		// given
+		JobExecution execution = jobExecution(TmdbOttSyncJobConfig.JOB_NAME);
+		when(asyncJobLauncher.run(eq(tmdbOttSyncJob), org.mockito.ArgumentMatchers.any(JobParameters.class)))
+			.thenReturn(execution);
+		ArgumentCaptor<JobParameters> paramsCaptor = ArgumentCaptor.forClass(JobParameters.class);
+
+		// when
+		BatchJobExecutionRes result = tmdbBatchCommandFacade.triggerOtt(MediaType.TV);
+
+		// then
+		verify(asyncJobLauncher).run(eq(tmdbOttSyncJob), paramsCaptor.capture());
+		JobParameters params = paramsCaptor.getValue();
+		assertThat(params.getString("mediaType")).isEqualTo("TV");
+		assertThat(result.jobName()).isEqualTo(TmdbOttSyncJobConfig.JOB_NAME);
+	}
+
+	@Test
+	@DisplayName("변경분 동기화는 mediaType을 Job 파라미터로 전달하고 빈 날짜 파라미터를 제외")
+	void triggerDeltaWithMediaTypeAndSkipBlankDate() throws Exception {
 		// given
 		JobExecution execution = jobExecution(TmdbDailyDeltaJobConfig.JOB_NAME);
 		when(asyncJobLauncher.run(eq(tmdbDailyDeltaJob), org.mockito.ArgumentMatchers.any(JobParameters.class)))
@@ -88,7 +109,7 @@ class TmdbBatchCommandFacadeTest {
 		ArgumentCaptor<JobParameters> paramsCaptor = ArgumentCaptor.forClass(JobParameters.class);
 
 		// when
-		tmdbBatchCommandFacade.triggerDelta("tv", "2026-05-01", "");
+		tmdbBatchCommandFacade.triggerDelta(MediaType.TV, "2026-05-01", "");
 
 		// then
 		verify(asyncJobLauncher).run(eq(tmdbDailyDeltaJob), paramsCaptor.capture());

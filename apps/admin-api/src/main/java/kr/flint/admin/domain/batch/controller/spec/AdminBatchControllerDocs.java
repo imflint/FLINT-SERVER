@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import kr.flint.admin.domain.batch.dto.response.BatchJobExecutionRes;
+import kr.flint.content.domain.MediaType;
 
 @Tag(name = "Batch Admin", description = "TMDB 배치 관리 API")
 public interface AdminBatchControllerDocs {
@@ -31,7 +32,7 @@ public interface AdminBatchControllerDocs {
 	@ApiResponse(responseCode = "200", description = "OTT sync Job 실행 요청 성공", useReturnTypeSchema = true)
 	BatchJobExecutionRes triggerOtt(
 		@Parameter(description = "미디어 타입. 기본값은 MOVIE입니다.")
-		String mediaType
+		MediaType mediaType
 	) throws Exception;
 
 	@Operation(summary = "TMDB 변경분 동기화 실행", description = "TMDB changes API 기준으로 변경분 import Job을 실행합니다.")
@@ -39,7 +40,7 @@ public interface AdminBatchControllerDocs {
 	@ApiResponse(responseCode = "200", description = "변경분 sync Job 실행 요청 성공", useReturnTypeSchema = true)
 	BatchJobExecutionRes triggerDelta(
 		@Parameter(description = "미디어 타입. 기본값은 MOVIE입니다.")
-		String mediaType,
+		MediaType mediaType,
 		@Parameter(description = "변경분 조회 시작일. 예: 2026-05-01")
 		String startDate,
 		@Parameter(description = "변경분 조회 종료일. 예: 2026-05-09")

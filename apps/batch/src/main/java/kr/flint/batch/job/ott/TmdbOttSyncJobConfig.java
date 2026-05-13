@@ -1,8 +1,10 @@
 package kr.flint.batch.job.ott;
 
-import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.Future;
+
+import javax.sql.DataSource;
 
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
@@ -13,24 +15,22 @@ import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.integration.async.AsyncItemProcessor;
 import org.springframework.batch.integration.async.AsyncItemWriter;
 import org.springframework.batch.item.ItemProcessor;
-import org.springframework.batch.item.data.RepositoryItemReader;
-import org.springframework.batch.item.data.builder.RepositoryItemReaderBuilder;
+import org.springframework.batch.item.database.JdbcPagingItemReader;
+import org.springframework.batch.item.database.Order;
+import org.springframework.batch.item.database.builder.JdbcPagingItemReaderBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskExecutor;
-import org.springframework.data.domain.Sort;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import feign.FeignException;
 import kr.flint.batch.config.BatchProperties;
 import kr.flint.batch.config.TmdbBatchAsyncConfig;
 import kr.flint.batch.job.TmdbBatchSkipListener;
-import kr.flint.content.domain.Content;
 import kr.flint.content.domain.MediaType;
-import kr.flint.content.repository.ContentRepository;
 import kr.flint.infra.tmdb.client.TmdbClient;
 import lombok.RequiredArgsConstructor;
 
@@ -43,7 +43,7 @@ public class TmdbOttSyncJobConfig {
 
 	private final JobRepository jobRepository;
 	private final PlatformTransactionManager transactionManager;
-	private final ContentRepository contentRepository;
+	private final DataSource dataSource;
 	private final TmdbClient tmdbClient;
 	private final OttSyncWriter ottSyncWriter;
 	private final BatchProperties batchProperties;
@@ -61,12 +61,12 @@ public class TmdbOttSyncJobConfig {
 
 	@Bean(name = STEP_NAME)
 	public Step tmdbOttSyncStep(
-		@Qualifier("ottContentReader") RepositoryItemReader<Content> ottContentReader,
-		@Qualifier("asyncOttProcessor") AsyncItemProcessor<Content, OttSyncDraft> asyncOttProcessor,
+		@Qualifier("ottContentReader") JdbcPagingItemReader<OttSyncContentRow> ottContentReader,
+		@Qualifier("asyncOttProcessor") AsyncItemProcessor<OttSyncContentRow, OttSyncDraft> asyncOttProcessor,
 		@Qualifier("asyncOttWriter") AsyncItemWriter<OttSyncDraft> asyncOttWriter
 	) {
 		return new StepBuilder(STEP_NAME, jobRepository)
-			.<Content, Future<OttSyncDraft>>chunk(batchProperties.tmdb().chunkSize(), transactionManager)
+			.<OttSyncContentRow, Future<OttSyncDraft>>chunk(batchProperties.tmdb().chunkSize(), transactionManager)
 			.reader(ottContentReader)
 			.processor(asyncOttProcessor)
 			.writer(asyncOttWriter)
@@ -82,36 +82,40 @@ public class TmdbOttSyncJobConfig {
 
 	@Bean
 	@StepScope
-	public RepositoryItemReader<Content> ottContentReader(
+	public JdbcPagingItemReader<OttSyncContentRow> ottContentReader(
 		@Value("#{jobParameters['mediaType']}") String mediaType
 	) {
 		MediaType type = (mediaType == null || mediaType.isBlank())
 			? MediaType.MOVIE
-			: MediaType.valueOf(mediaType.toUpperCase());
+			: MediaType.valueOf(mediaType.toUpperCase(Locale.ROOT));
 
-		Map<String, Sort.Direction> sorts = new HashMap<>();
-		sorts.put("id", Sort.Direction.ASC);
-
-		return new RepositoryItemReaderBuilder<Content>()
+		return new JdbcPagingItemReaderBuilder<OttSyncContentRow>()
 			.name("ottContentReader-" + type.name().toLowerCase())
-			.repository(contentRepository)
-			.methodName("findAllByMediaTypeOrderByIdAsc")
-			.arguments(java.util.List.of(type))
+			.dataSource(dataSource)
+			.selectClause("SELECT id, tmdb_id, media_type")
+			.fromClause("FROM content")
+			.whereClause("WHERE media_type = :mediaType")
+			.sortKeys(Map.of("id", Order.ASCENDING))
+			.parameterValues(Map.of("mediaType", type.name()))
+			.rowMapper((rs, rowNum) -> new OttSyncContentRow(
+				rs.getLong("id"),
+				rs.getLong("tmdb_id"),
+				MediaType.valueOf(rs.getString("media_type"))
+			))
 			.pageSize(batchProperties.tmdb().chunkSize())
-			.sorts(sorts)
 			.build();
 	}
 
 	@Bean
-	public AsyncItemProcessor<Content, OttSyncDraft> asyncOttProcessor() {
-		AsyncItemProcessor<Content, OttSyncDraft> async = new AsyncItemProcessor<>();
+	public AsyncItemProcessor<OttSyncContentRow, OttSyncDraft> asyncOttProcessor() {
+		AsyncItemProcessor<OttSyncContentRow, OttSyncDraft> async = new AsyncItemProcessor<>();
 		async.setDelegate(ottProvidersProcessorDelegate());
 		async.setTaskExecutor(tmdbTaskExecutor);
 		return async;
 	}
 
 	@Bean
-	public ItemProcessor<Content, OttSyncDraft> ottProvidersProcessorDelegate() {
+	public ItemProcessor<OttSyncContentRow, OttSyncDraft> ottProvidersProcessorDelegate() {
 		return new TmdbOttProvidersProcessor(tmdbClient);
 	}
 

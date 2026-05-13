@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 import kr.flint.admin.domain.batch.controller.spec.AdminBatchControllerDocs;
 import kr.flint.admin.domain.batch.dto.response.BatchJobExecutionRes;
 import kr.flint.admin.domain.batch.service.TmdbBatchCommandFacade;
+import kr.flint.content.domain.MediaType;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -31,14 +32,14 @@ public class AdminBatchController implements AdminBatchControllerDocs {
 
 	@Override
 	@PostMapping("/ott")
-	public BatchJobExecutionRes triggerOtt(@RequestParam(defaultValue = "MOVIE") String mediaType) throws Exception {
+	public BatchJobExecutionRes triggerOtt(@RequestParam(defaultValue = "MOVIE") MediaType mediaType) throws Exception {
 		return tmdbBatchCommandFacade.triggerOtt(mediaType);
 	}
 
 	@Override
 	@PostMapping("/delta")
 	public BatchJobExecutionRes triggerDelta(
-		@RequestParam(defaultValue = "MOVIE") String mediaType,
+		@RequestParam(defaultValue = "MOVIE") MediaType mediaType,
 		@RequestParam(required = false) String startDate,
 		@RequestParam(required = false) String endDate
 	) throws Exception {

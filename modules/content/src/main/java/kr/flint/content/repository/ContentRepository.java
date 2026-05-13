@@ -28,8 +28,6 @@ public interface ContentRepository extends JpaRepository<Content, Long> {
 	// limit 적용 메서드
 	List<Content> findAllByTitleContaining(String title, Pageable pageable);
 
-	List<Content> findAllByMediaTypeOrderByIdAsc(MediaType mediaType, Pageable pageable);
-
 	List<Content> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
 	List<Content> findAllByOrderByBookmarkCountDescIdAsc(Pageable pageable);
