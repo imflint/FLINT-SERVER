@@ -1,11 +1,14 @@
 package kr.flint.batch.job;
 
+import java.util.List;
+import java.util.Objects;
+
 import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.stereotype.Component;
 
+import kr.flint.batch.repository.ContentBatchJdbcRepository;
 import kr.flint.content.dto.ContentUpsertCommand;
-import kr.flint.content.service.ContentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -14,20 +17,24 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class ContentUpsertWriter implements ItemWriter<ContentUpsertCommand> {
 
-	private final ContentService contentService;
+	private final ContentBatchJdbcRepository contentBatchJdbcRepository;
 
 	@Override
 	public void write(Chunk<? extends ContentUpsertCommand> chunk) throws Exception {
-		for (ContentUpsertCommand cmd : chunk) {
-			if (cmd == null) {
-				continue;
-			}
-			try {
-				contentService.upsertWithGenres(cmd);
-			} catch (Exception e) {
-				log.warn("upsert failed tmdbId={} mediaType={} cause={}", cmd.tmdbId(), cmd.mediaType(), e.toString());
-				throw e;
-			}
+		List<ContentUpsertCommand> commands = chunk.getItems().stream()
+			.filter(Objects::nonNull)
+			.map(ContentUpsertCommand.class::cast)
+			.toList();
+
+		if (commands.isEmpty()) {
+			return;
+		}
+
+		try {
+			contentBatchJdbcRepository.upsertAll(commands);
+		} catch (Exception e) {
+			log.warn("content batch upsert failed count={} cause={}", commands.size(), e.toString());
+			throw e;
 		}
 	}
 }
