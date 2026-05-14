@@ -19,16 +19,24 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import kr.flint.api.domain.bookmark.repository.BookmarkQueryRepository;
 import kr.flint.api.domain.user.dto.response.CollectionContentImageDto;
 import kr.flint.api.domain.user.dto.response.CollectionWithUserDto;
+import kr.flint.api.domain.user.dto.response.MyProfileRes;
 import kr.flint.api.domain.user.dto.response.UserCollectionsRes;
+import kr.flint.api.domain.user.dto.response.UserProfileRes;
 import kr.flint.api.domain.user.repository.UserCollectionRepository;
 import kr.flint.bookmark.service.BookmarkQueryService;
 import kr.flint.infra.gpt.service.ChatService;
 import kr.flint.infra.storage.cloudfront.CloudFrontUrlProvider;
 import kr.flint.taste.service.TasteService;
+import kr.flint.terms.domain.Terms;
+import kr.flint.terms.domain.TermsContext;
+import kr.flint.terms.domain.TermsType;
+import kr.flint.terms.service.TermsService;
+import kr.flint.user.domain.User;
 import kr.flint.user.exception.UserErrorCode;
 import kr.flint.user.exception.UserException;
 import kr.flint.user.service.UserService;
@@ -60,8 +68,56 @@ class UserQueryFacadeTest {
     @Mock
     private CloudFrontUrlProvider cloudFrontUrlProvider;
 
+	@Mock
+	private TermsService termsService;
+
     @InjectMocks
     private UserQueryFacade userQueryFacade;
+
+	@Nested
+	@DisplayName("getMyProfile")
+	class GetMyProfile {
+
+		@Test
+		@DisplayName("내 프로필에 필수 약관 추가 동의 상태를 포함")
+		void includeTermsAgreementStatus() {
+			// given
+			User user = createUser(1L, "플린트");
+			Terms service = createTerms(10L, TermsType.SERVICE, 2, true);
+			when(userService.getById(1L)).thenReturn(user);
+			when(termsService.getPendingRequiredTerms(1L, TermsContext.SIGNUP)).thenReturn(List.of(service));
+
+			// when
+			MyProfileRes response = userQueryFacade.getMyProfile(1L);
+
+			// then
+			assertThat(response.id()).isEqualTo("1");
+			assertThat(response.termsAgreementStatus().requiredTermsAgreementNeeded()).isTrue();
+			assertThat(response.termsAgreementStatus().pendingRequiredTerms())
+				.extracting("id")
+				.containsExactly(10L);
+		}
+	}
+
+	@Nested
+	@DisplayName("getUserProfile")
+	class GetUserProfile {
+
+		@Test
+		@DisplayName("공개 프로필 조회는 약관 동의 상태를 계산하지 않음")
+		void doesNotCalculateTermsStatus() {
+			// given
+			User user = createUser(1L, "플린트");
+			when(userService.getById(1L)).thenReturn(user);
+
+			// when
+			UserProfileRes response = userQueryFacade.getUserProfile(1L);
+
+			// then
+			assertThat(response.id()).isEqualTo("1");
+			verifyNoInteractions(termsService);
+		}
+	}
 
 	@Nested
 	@DisplayName("getUserKeywords")
@@ -125,4 +181,17 @@ class UserQueryFacadeTest {
             verify(cloudFrontUrlProvider, never()).resolveUrl(isNull());
         }
     }
+
+	private User createUser(Long id, String nickname) {
+		User user = User.createFling(nickname);
+		ReflectionTestUtils.setField(user, "id", id);
+		return user;
+	}
+
+	private Terms createTerms(Long id, TermsType type, Integer version, boolean required) {
+		Terms terms = Terms.create(TermsContext.SIGNUP, type, version, type.getDescription(), "content", required,
+			java.time.LocalDateTime.now().minusDays(1));
+		ReflectionTestUtils.setField(terms, "id", id);
+		return terms;
+	}
 }

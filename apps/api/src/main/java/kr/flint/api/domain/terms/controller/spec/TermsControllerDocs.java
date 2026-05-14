@@ -1,13 +1,17 @@
 package kr.flint.api.domain.terms.controller.spec;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import kr.flint.api.domain.terms.dto.request.TermsAgreementReq;
 import kr.flint.shared.dto.response.SuccessResponse;
 import kr.flint.shared.exception.ProblemDetail;
 import kr.flint.terms.domain.TermsContext;
@@ -38,4 +42,18 @@ public interface TermsControllerDocs {
 		)
 	})
 	ResponseEntity<SuccessResponse<TermsRes>> getTerms(Long termsId);
+
+	@Operation(summary = "약관 동의 저장", description = "로그인한 사용자의 현재 활성 회원가입 필수 약관 동의를 저장합니다.")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "약관 동의 저장 성공", useReturnTypeSchema = true),
+		@ApiResponse(
+			responseCode = "400",
+			description = "필수 약관 미동의 또는 유효하지 않은 약관 ID",
+			content = @Content(schema = @Schema(implementation = ProblemDetail.class))
+		)
+	})
+	ResponseEntity<SuccessResponse<Void>> agreeTerms(
+		@Parameter(hidden = true) Long userId,
+		@Valid @RequestBody TermsAgreementReq request
+	);
 }

@@ -9,6 +9,7 @@ import kr.flint.api.domain.content.service.ContentQueryFacade;
 import kr.flint.api.domain.user.controller.spec.UserControllerDocs;
 import kr.flint.api.domain.user.dto.request.UpdateProfileImageReq;
 import kr.flint.api.domain.user.dto.request.UpdateNicknameReq;
+import kr.flint.api.domain.user.dto.response.MyProfileRes;
 import kr.flint.api.domain.user.dto.response.UserCollectionsRes;
 import kr.flint.api.domain.user.dto.response.UserKeywordsRes;
 import kr.flint.api.domain.user.dto.response.UserProfileRes;
@@ -45,11 +46,11 @@ public class UserController implements UserControllerDocs {
 
     @Override
     @GetMapping("/me")
-    public ResponseEntity<SuccessResponse<UserProfileRes>> getMyProfile(
+    public ResponseEntity<SuccessResponse<MyProfileRes>> getMyProfile(
             @CurrentUser Long userId
     ) {
         return ResponseEntity.ok(
-                SuccessResponse.of(SuccessCode.SUCCESS_FETCH, userQueryFacade.getUserProfile(userId))
+                SuccessResponse.of(SuccessCode.SUCCESS_FETCH, userQueryFacade.getMyProfile(userId))
         );
     }
 

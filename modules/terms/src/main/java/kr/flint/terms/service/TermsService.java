@@ -126,19 +126,51 @@ public class TermsService {
 			throw new TermsException(TermsErrorCode.REQUIRED_TERMS_NOT_AGREED);
 		}
 
+		Set<Long> alreadyAgreedIds = findAgreedTermsIds(userId, effectiveContext, agreedIds);
 		List<UserTermsAgreement> agreements = currentTerms.stream()
 			.map(Terms::getId)
 			.filter(agreedIds::contains)
+			.filter(termsId -> !alreadyAgreedIds.contains(termsId))
 			.map(termsId -> UserTermsAgreement.create(userId, effectiveContext, termsId))
 			.toList();
 
-		userTermsAgreementRepository.saveAll(agreements);
+		if (!agreements.isEmpty()) {
+			userTermsAgreementRepository.saveAll(agreements);
+		}
+	}
+
+	public List<Terms> getPendingRequiredTerms(Long userId, TermsContext context) {
+		TermsContext effectiveContext = resolveContext(context);
+		List<Terms> requiredTerms = getCurrentTerms(effectiveContext, null).stream()
+			.filter(Terms::isRequired)
+			.toList();
+		if (requiredTerms.isEmpty()) {
+			return List.of();
+		}
+
+		Set<Long> requiredTermsIds = extractTermsIds(requiredTerms);
+		Set<Long> agreedTermsIds = findAgreedTermsIds(userId, effectiveContext, requiredTermsIds);
+		return requiredTerms.stream()
+			.filter(terms -> !agreedTermsIds.contains(terms.getId()))
+			.toList();
 	}
 
 	private Set<Long> extractTermsIds(List<Terms> terms) {
 		return terms.stream()
 			.map(Terms::getId)
 			.collect(java.util.stream.Collectors.toSet());
+	}
+
+	private Set<Long> findAgreedTermsIds(Long userId, TermsContext context, Set<Long> termsIds) {
+		if (termsIds.isEmpty()) {
+			return Set.of();
+		}
+		return new HashSet<>(userTermsAgreementRepository.findAgreedTermsIdsByUserIdAndContextAndTermsIdIn(
+			userId,
+			context,
+			termsIds,
+			context == TermsContext.SIGNUP
+		));
 	}
 
 	private List<Terms> selectLatestByType(List<Terms> terms) {

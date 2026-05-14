@@ -11,16 +11,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import kr.flint.api.domain.bookmark.repository.BookmarkQueryRepository;
 import kr.flint.api.domain.user.dto.response.CollectionContentImageDto;
 import kr.flint.api.domain.user.dto.response.CollectionWithUserDto;
+import kr.flint.api.domain.user.dto.response.MyProfileRes;
 import kr.flint.api.domain.user.dto.response.UserCollectionsRes;
 import kr.flint.api.domain.user.dto.response.UserKeywordsRes;
 import kr.flint.api.domain.user.dto.response.UserProfileRes;
-import kr.flint.infra.gpt.service.ChatService;
 import kr.flint.infra.storage.cloudfront.CloudFrontUrlProvider;
 import kr.flint.taste.dto.response.UserKeywordProjection;
 import kr.flint.taste.service.TasteService;
+import kr.flint.terms.domain.Terms;
+import kr.flint.terms.domain.TermsContext;
+import kr.flint.terms.service.TermsService;
 import kr.flint.user.domain.User;
 import kr.flint.api.domain.user.repository.UserCollectionRepository;
 import kr.flint.bookmark.service.BookmarkQueryService;
@@ -41,16 +43,23 @@ public class UserQueryFacade {
 	private final TasteService tasteService;
 	private final UserCommandFacade userCommandFacade;
 	private final CloudFrontUrlProvider cloudFrontUrlProvider;
+	private final TermsService termsService;
 
 	public NicknameCheckResponse checkNickname(String nickname) {
         boolean exists = userService.existsByNickname(nickname);
         return NicknameCheckResponse.of(!exists);
     }
 
-    public UserProfileRes getUserProfile(Long userId) {
-        User user = userService.getById(userId);
-        return UserProfileRes.from(user);
-    }
+	public MyProfileRes getMyProfile(Long userId) {
+		User user = userService.getById(userId);
+		List<Terms> pendingRequiredTerms = termsService.getPendingRequiredTerms(userId, TermsContext.SIGNUP);
+		return MyProfileRes.from(user, pendingRequiredTerms);
+	}
+
+	public UserProfileRes getUserProfile(Long userId) {
+		User user = userService.getById(userId);
+		return UserProfileRes.from(user);
+	}
 
 	@Transactional
     public UserKeywordsRes getUserKeywords(Long userId) {
