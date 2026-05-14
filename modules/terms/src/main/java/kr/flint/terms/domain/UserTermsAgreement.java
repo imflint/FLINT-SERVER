@@ -29,7 +29,7 @@ public class UserTermsAgreement extends Base {
 	private Long termsId;
 
 	@Enumerated(EnumType.STRING)
-	@Column(length = 30)
+	@Column(nullable = false, length = 30)
 	private TermsContext context;
 
 	@Column(nullable = false, updatable = false)
