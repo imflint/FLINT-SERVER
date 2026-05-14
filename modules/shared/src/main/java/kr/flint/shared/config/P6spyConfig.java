@@ -16,6 +16,7 @@ public class P6spyConfig {
 	private static final String DEFAULT_EXCLUDED_CATEGORIES = "info,debug,result,resultset,commit,rollback";
 	private static final String DEFAULT_STACK_ALLOW_PREFIXES = "kr.flint";
 	private static final String DEFAULT_STACK_DENY_PREFIXES = "kr.flint.shared.p6spy,kr.flint.shared.config.P6spyConfig";
+	private static final int DISABLED_STACK_MAX_DEPTH = 0;
 	private static final int DEFAULT_STACK_MAX_DEPTH = 5;
 
 	private static final String P6SPY_LOG_MESSAGE_FORMAT_PROPERTY = "p6spy.config.logMessageFormat";
@@ -44,7 +45,8 @@ public class P6spyConfig {
 		@Override
 		public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException {
 			long threshold = Math.max(0, environment.getProperty(SLOW_QUERY_THRESHOLD_PROPERTY, Long.class, 0L));
-			int stackMaxDepth = Math.max(0, environment.getProperty(
+			// 0은 느린 쿼리 로그에서 호출 스택을 숨기는 운영 옵션이다.
+			int stackMaxDepth = Math.max(DISABLED_STACK_MAX_DEPTH, environment.getProperty(
 				STACK_MAX_DEPTH_PROPERTY,
 				Integer.class,
 				DEFAULT_STACK_MAX_DEPTH

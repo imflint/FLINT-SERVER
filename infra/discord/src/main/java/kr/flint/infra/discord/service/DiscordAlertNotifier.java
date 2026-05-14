@@ -10,9 +10,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
-import java.util.Comparator;
 import java.util.Deque;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
@@ -159,7 +157,11 @@ public class DiscordAlertNotifier {
 
 		lastCleanupAt = now;
 		Duration ttl = window.multipliedBy(2);
-		alertWindows.entrySet().removeIf(entry -> entry.getValue().isExpired(now, ttl));
+		for (String fingerprint : alertWindows.keySet()) {
+			alertWindows.computeIfPresent(fingerprint, (key, alertWindow) ->
+				alertWindow.isExpired(now, ttl) ? null : alertWindow
+			);
+		}
 		trimOldestWindows();
 	}
 
@@ -170,11 +172,15 @@ public class DiscordAlertNotifier {
 			return;
 		}
 
-		alertWindows.entrySet().stream()
-			.sorted(Comparator.comparing(entry -> entry.getValue().lastTouchedAt()))
-			.limit(excess)
-			.map(Map.Entry::getKey)
-			.forEach(alertWindows::remove);
+		int removed = 0;
+		for (String fingerprint : alertWindows.keySet()) {
+			if (removed >= excess) {
+				return;
+			}
+			if (alertWindows.remove(fingerprint) != null) {
+				removed++;
+			}
+		}
 	}
 
 	private String createFingerprint(String serviceName, String method, String uri, Throwable exception) {
@@ -240,9 +246,6 @@ public class DiscordAlertNotifier {
 			return Duration.between(lastTouchedAt, now).compareTo(ttl) >= 0;
 		}
 
-		private Instant lastTouchedAt() {
-			return lastTouchedAt;
-		}
 	}
 
 	private record AlertDecision(
