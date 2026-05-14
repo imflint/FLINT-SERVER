@@ -28,6 +28,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import feign.FeignException;
 import kr.flint.batch.config.BatchProperties;
 import kr.flint.batch.config.TmdbBatchAsyncConfig;
+import kr.flint.batch.config.TmdbRetryPolicyFactory;
 import kr.flint.batch.download.TmdbExportDownloader;
 import kr.flint.batch.job.ContentUpsertWriter;
 import kr.flint.batch.job.TmdbBatchSkipListener;
@@ -49,6 +50,7 @@ public class TmdbTvImportJobConfig {
 	private final TmdbClient tmdbClient;
 	private final ContentUpsertWriter contentUpsertWriter;
 	private final BatchProperties batchProperties;
+	private final TmdbRetryPolicyFactory tmdbRetryPolicyFactory;
 
 	@Autowired
 	@Qualifier(TmdbBatchAsyncConfig.TMDB_TASK_EXECUTOR)
@@ -76,6 +78,7 @@ public class TmdbTvImportJobConfig {
 			.retry(FeignException.class)
 			.noRetry(FeignException.NotFound.class)
 			.retryLimit(batchProperties.tmdb().retryAttempts())
+			.backOffPolicy(tmdbRetryPolicyFactory.fixedBackOffPolicy())
 			.skip(FeignException.NotFound.class)
 			.skipLimit(Integer.MAX_VALUE)
 			.listener(new TmdbBatchSkipListener())

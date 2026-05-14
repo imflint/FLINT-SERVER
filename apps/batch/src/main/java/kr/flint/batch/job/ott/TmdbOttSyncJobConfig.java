@@ -29,6 +29,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import feign.FeignException;
 import kr.flint.batch.config.BatchProperties;
 import kr.flint.batch.config.TmdbBatchAsyncConfig;
+import kr.flint.batch.config.TmdbRetryPolicyFactory;
 import kr.flint.batch.job.TmdbBatchSkipListener;
 import kr.flint.content.domain.MediaType;
 import kr.flint.infra.tmdb.client.TmdbClient;
@@ -47,6 +48,7 @@ public class TmdbOttSyncJobConfig {
 	private final TmdbClient tmdbClient;
 	private final OttSyncWriter ottSyncWriter;
 	private final BatchProperties batchProperties;
+	private final TmdbRetryPolicyFactory tmdbRetryPolicyFactory;
 
 	@Autowired
 	@Qualifier(TmdbBatchAsyncConfig.TMDB_TASK_EXECUTOR)
@@ -74,6 +76,7 @@ public class TmdbOttSyncJobConfig {
 			.retry(FeignException.class)
 			.noRetry(FeignException.NotFound.class)
 			.retryLimit(batchProperties.tmdb().retryAttempts())
+			.backOffPolicy(tmdbRetryPolicyFactory.fixedBackOffPolicy())
 			.skip(FeignException.NotFound.class)
 			.skipLimit(Integer.MAX_VALUE)
 			.listener(new TmdbBatchSkipListener())
