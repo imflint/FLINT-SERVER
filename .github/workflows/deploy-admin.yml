@@ -36,6 +36,7 @@ jobs:
       AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
       ADMIN_EC2_INSTANCE_ID: ${{ vars.ADMIN_EC2_INSTANCE_ID }}
       ADMIN_ECR_REPOSITORY_URI: ${{ vars.ADMIN_ECR_REPOSITORY_URI }}
+      ADMIN_HEALTH_CHECK_URL: ${{ vars.ADMIN_HEALTH_CHECK_URL }}
       S3_DEPLOY_BUCKET: ${{ vars.S3_DEPLOY_BUCKET }}
 
     steps:
@@ -147,4 +148,10 @@ jobs:
               --query "StandardErrorContent" \
               --output text >&2
             exit 1
+          fi
+
+          if [ -n "${ADMIN_HEALTH_CHECK_URL:-}" ]; then
+            if ! curl --fail --silent --show-error --max-time 15 "${ADMIN_HEALTH_CHECK_URL}"; then
+              exit 1
+            fi
           fi

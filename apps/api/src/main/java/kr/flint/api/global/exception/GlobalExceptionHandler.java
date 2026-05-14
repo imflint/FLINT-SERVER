@@ -1,11 +1,16 @@
 package kr.flint.api.global.exception;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
+import kr.flint.infra.discord.service.DiscordAlertNotifier;
 import kr.flint.shared.exception.AppError;
 import kr.flint.shared.exception.ErrorCode;
 import kr.flint.shared.exception.GeneralException;
 import kr.flint.shared.exception.ProblemDetail;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -18,12 +23,14 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
-import java.util.HashMap;
-import java.util.Map;
-
 @Slf4j
+@RequiredArgsConstructor
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final String SERVICE_NAME = "api";
+
+    private final DiscordAlertNotifier discordAlertNotifier;
 
     @ExceptionHandler(GeneralException.class)
     public ResponseEntity<ProblemDetail> handleGeneralException(GeneralException e, HttpServletRequest request) {
@@ -179,6 +186,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ProblemDetail> handleException(Exception e, HttpServletRequest request) {
         log.error("예상치 못한 오류 발생: {}", e.getMessage(), e);
+        notifyServerError(e, request);
         AppError errorCode = ErrorCode.INTERNAL_SERVER_ERROR;
 
         ProblemDetail problemDetail = ProblemDetail.of(
@@ -189,5 +197,24 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(errorCode.getHttpStatus())
                 .body(problemDetail);
+    }
+
+    private void notifyServerError(Throwable exception, HttpServletRequest request) {
+        discordAlertNotifier.notifyServerError(
+            SERVICE_NAME,
+            request.getMethod(),
+            request.getRequestURI(),
+            request.getQueryString(),
+            clientIp(request),
+            exception
+        );
+    }
+
+    private String clientIp(HttpServletRequest request) {
+        String forwardedFor = request.getHeader("X-Forwarded-For");
+        if (forwardedFor != null && !forwardedFor.isBlank()) {
+            return forwardedFor.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 }

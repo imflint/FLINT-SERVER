@@ -43,7 +43,7 @@ public class ContentCommandFacade {
 		final int cursor,
 		int size
 	){
-		log.info("keyword: {}, genre: {}", keyword, genre);
+		log.debug("콘텐츠 검색 요청. keyword={}, genre={}", keyword, genre);
 
 		if (genre != null) {
 			return getPopularContentByGenre(genre, cursor, size);
@@ -73,7 +73,7 @@ public class ContentCommandFacade {
 
 	private GetPopularContentRes getPopularContent(int page) {
 		try{
-			log.info("실행 메서드: 인기");
+			log.debug("인기 콘텐츠 조회. page={}", page);
 			TmdbCommonRes tmdbList = tmdbClient.getPopularMovieList("ko-KR", page);
 			List<GetContentSearchRes> popularList = tmdbList.contentList().stream()
 				.map(result -> {
@@ -95,8 +95,8 @@ public class ContentCommandFacade {
 					List<Genre> tmdbGenreList = extractMovieGenreList(result.id()).stream()
 						.map(name -> contentService.getGenre(name))
 						.toList();
-					log.info("날짜 1: ", result.firstAirDate());
-					log.info("날짜 2: ", result.releaseDate());
+					log.debug("인기 콘텐츠 날짜. firstAirDate={}, releaseDate={}",
+						result.firstAirDate(), result.releaseDate());
 
 					int year = extractYearFromDate(result.releaseDate());
 					String resolvedTitle = result.resolvedTitle();
@@ -133,7 +133,7 @@ public class ContentCommandFacade {
 
 	@Transactional
 	public List<GetContentSearchRes> getTmdbContentList(final String keyword, final int page) {
-		log.info("실행 메서드 : 전체");
+		log.debug("TMDB 통합 검색 요청. keyword={}, page={}", keyword, page);
 
 		TmdbCommonRes tmdbSearchRes = tmdbClient.getMultiList(keyword, "ko-KR", page);
 
@@ -232,13 +232,14 @@ public class ContentCommandFacade {
 	}
 
 	private int extractYear(String mediaType, String releaseDate, String firstAirDate) {
-		log.info(mediaType + " " + releaseDate + " " + firstAirDate);
+		log.debug("콘텐츠 연도 추출. mediaType={}, releaseDate={}, firstAirDate={}",
+			mediaType, releaseDate, firstAirDate);
 		String date = "movie".equals(mediaType) ? releaseDate : firstAirDate;
 		return extractYearFromDate(date);
 	}
 
 	private int extractYearFromDate(String releaseDate) {
-		log.info(releaseDate);
+		log.debug("날짜에서 연도 추출. date={}", releaseDate);
 		if (releaseDate == null || releaseDate.isBlank() || releaseDate.length() < 4) return 0;
 		return Integer.parseInt(releaseDate.substring(0, 4));
 	}

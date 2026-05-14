@@ -37,32 +37,32 @@ public class FlinerKeywordRecommendation implements CollectionRecommendationPort
 
 	@Override
 	public List<Long> recommend(Long userId, int maxSize) {
-		log.info("[추천 알고리즘] userId={}, maxSize={}", userId, maxSize);
+		log.debug("[추천 알고리즘] userId={}, maxSize={}", userId, maxSize);
 		long startTime = System.currentTimeMillis();
 
 		List<Long> result = new ArrayList<>();
 
 		// 사용자 키워드 조회
 		Set<Long> userKeywordIds = new HashSet<>(userKeywordRepository.findKeywordIdsByUserId(userId));
-		log.info("[1단계] 사용자 키워드 조회 완료. userId={}, keywordIds={}, count={}",
+		log.debug("[1단계] 사용자 키워드 조회 완료. userId={}, keywordIds={}, count={}",
 			userId, userKeywordIds, userKeywordIds.size());
 
 		if (userKeywordIds.isEmpty()) {
-			log.info("사용자 키워드 없음. Fallback으로 이동");
+			log.debug("사용자 키워드 없음. Fallback으로 이동");
 		} else {
 			// Fliner 목록 조회
 			List<Long> flinerIds = homeCollectionRepository.findAllFlinerIds();
-			log.info("Fliner 목록 조회 완료. flinerCount={}", flinerIds.size());
+			log.debug("Fliner 목록 조회 완료. flinerCount={}", flinerIds.size());
 
 			if (flinerIds.isEmpty()) {
-				log.info("Fliner 없음. Fallback으로 이동");
+				log.debug("Fliner 없음. Fallback으로 이동");
 			} else {
 				// 3단계: Jaccard 유사도 계산
 				List<FlinerMatch> flinerMatches = calculateFlinerMatches(flinerIds, userKeywordIds);
-				log.info("Jaccard 유사도 계산 완료. matchedFlinerCount={}", flinerMatches.size());
+				log.debug("Jaccard 유사도 계산 완료. matchedFlinerCount={}", flinerMatches.size());
 
 				if (flinerMatches.isEmpty()) {
-					log.info("유사한 Fliner 없음 (유사도 > 0). Fallback으로 이동");
+					log.debug("유사한 Fliner 없음 (유사도 > 0). Fallback으로 이동");
 				} else {
 					// 상위 5명 Fliner 유사도 로깅
 					flinerMatches.stream().limit(5).forEach(match ->
@@ -75,11 +75,11 @@ public class FlinerKeywordRecommendation implements CollectionRecommendationPort
 					int totalCollections = flinerMatches.stream()
 						.mapToInt(m -> m.collections().size())
 						.sum();
-					log.info("Fliner별 컬렉션 할당 완료. totalCollections={}", totalCollections);
+					log.debug("Fliner별 컬렉션 할당 완료. totalCollections={}", totalCollections);
 
 					// maxSize 조정
 					result.addAll(adjustToLimit(flinerMatches, maxSize));
-					log.info("maxSize 조정 완료. resultSize={}", result.size());
+					log.debug("maxSize 조정 완료. resultSize={}", result.size());
 				}
 			}
 		}
@@ -88,12 +88,12 @@ public class FlinerKeywordRecommendation implements CollectionRecommendationPort
 		if (result.size() < maxSize) {
 			int beforeSize = result.size();
 			result = fillWithPopularCollections(result, maxSize);
-			log.info("인기순 Fallback 적용. beforeSize={}, afterSize={}, addedCount={}",
+			log.debug("인기순 Fallback 적용. beforeSize={}, afterSize={}, addedCount={}",
 				beforeSize, result.size(), result.size() - beforeSize);
 		}
 
 		long elapsed = System.currentTimeMillis() - startTime;
-		log.info("[추천 완료] userId={}, resultSize={}, collectionIds={}, elapsed={}ms",
+		log.debug("[추천 완료] userId={}, resultSize={}, collectionIds={}, elapsed={}ms",
 			userId, result.size(), result, elapsed);
 
 		return result;

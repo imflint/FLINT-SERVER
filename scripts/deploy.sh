@@ -22,6 +22,11 @@ HEALTH_CHECK_PATH="/actuator/health"
 MAX_RETRY=12
 RETRY_INTERVAL=5
 LOG_LINES_ON_FAILURE=120
+DEPLOY_LOG_FILE="$DEPLOY_PATH/logs/deploy.log"
+
+mkdir -p "$DEPLOY_PATH/logs"
+touch "$DEPLOY_LOG_FILE"
+exec > >(tee -a "$DEPLOY_LOG_FILE") 2>&1
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
@@ -319,24 +324,24 @@ login_to_ecr() {
 }
 
 start_docker_app() {
-    local port="$1"
-    local spring_config_import
-    local container_name
+	local port="$1"
+	local spring_config_import
+	local container_name
 
-    log "Starting Docker application on port $port"
+	log "Starting Docker application on port $port"
 
-    spring_config_import=$(build_spring_config_import) || return 1
-    container_name=$(container_name_for_port "$port")
+	spring_config_import=$(build_spring_config_import) || return 1
+	container_name=$(container_name_for_port "$port")
 
-    login_to_ecr || return 1
+	login_to_ecr || return 1
     docker pull "$IMAGE_URI"
     docker rm -f "$container_name" >/dev/null 2>&1 || true
 
     docker run -d \
-        --name "$container_name" \
-        --restart unless-stopped \
-        --network host \
-        "$IMAGE_URI" \
+		--name "$container_name" \
+		--restart unless-stopped \
+		--network host \
+		"$IMAGE_URI" \
         --spring.profiles.active="$PROFILE" \
         --spring.config.import="$spring_config_import" \
         --server.port="$port" >/dev/null

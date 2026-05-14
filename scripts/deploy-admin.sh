@@ -23,6 +23,11 @@ MAX_RETRY=12
 RETRY_INTERVAL=5
 LOG_LINES_ON_FAILURE=120
 PREVIOUS_IMAGE=""
+DEPLOY_LOG_FILE="$DEPLOY_PATH/logs/deploy-admin.log"
+
+mkdir -p "$DEPLOY_PATH/logs"
+touch "$DEPLOY_LOG_FILE"
+exec > >(tee -a "$DEPLOY_LOG_FILE") 2>&1
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
@@ -298,18 +303,18 @@ stop_admin_app() {
 }
 
 start_docker_app() {
-    local image="$1"
-    local spring_config_import
-    local name
+	local image="$1"
+	local spring_config_import
+	local name
 
-    spring_config_import=$(build_spring_config_import) || return 1
-    name=$(container_name)
+	spring_config_import=$(build_spring_config_import) || return 1
+	name=$(container_name)
 
-    docker run -d \
-        --name "$name" \
-        --restart unless-stopped \
-        --network host \
-        "$image" \
+	docker run -d \
+		--name "$name" \
+		--restart unless-stopped \
+		--network host \
+		"$image" \
         --spring.profiles.active="$PROFILE" \
         --spring.config.import="$spring_config_import" \
         --server.port="$ADMIN_PORT" >/dev/null

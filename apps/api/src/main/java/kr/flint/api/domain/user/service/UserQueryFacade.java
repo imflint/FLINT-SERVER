@@ -62,7 +62,7 @@ public class UserQueryFacade {
 		}
 
         List<UserKeywordProjection> keywords = tasteService.getUserKeywords(userId);
-		log.info("keywords: {}", keywords);
+		log.debug("사용자 키워드 조회 완료. userId={}, count={}", userId, keywords.size());
         return UserKeywordsRes.from(keywords, cloudFrontUrlProvider::resolveUrl);
 
 		//TODO: 기획한테 언제 취향 키워드 계산할 건지 물어봐야함

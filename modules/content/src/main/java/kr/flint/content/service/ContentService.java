@@ -119,7 +119,7 @@ public class ContentService {
 	}
 
 	public boolean checkGenre(final String genre) {
-		log.info("checkGenre {}", genre);
+		log.debug("장르 존재 여부 확인. genre={}", genre);
 		return genreRepository.existsByName(genre);
 	}
 

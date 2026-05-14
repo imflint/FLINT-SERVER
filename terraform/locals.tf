@@ -42,4 +42,6 @@ locals {
     && trimspace(var.admin_auth_username) != ""
     && trimspace(var.admin_auth_password_hash) != ""
   )
+
+  discord_webhook_parameter_path = "${local.parameter_prefix}/discord.webhook.alert"
 }

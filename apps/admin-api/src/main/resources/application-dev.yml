@@ -24,8 +24,15 @@ decorator:
   datasource:
     p6spy:
       enable-logging: true
-      multiline: true
+      multiline: false
       logging: slf4j
+      exclude-categories:
+        - info
+        - debug
+        - result
+        - resultset
+        - commit
+        - rollback
 
 jwt:
   secret: ${jwt.secret}
@@ -39,4 +46,15 @@ tmdb:
 
 logging:
   level:
-    kr.flint: debug
+    kr.flint: info
+    org.hibernate.SQL: warn
+    org.hibernate.orm.jdbc.bind: warn
+
+flint:
+  logging:
+    sql:
+      slow-query-threshold-ms: 1000
+      stack:
+        allow-prefixes: kr.flint
+        deny-prefixes: kr.flint.shared.p6spy,kr.flint.shared.config.P6spyConfig
+        max-depth: 5
