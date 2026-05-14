@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import kr.flint.terms.domain.Terms;
+import kr.flint.terms.domain.TermsContext;
 import kr.flint.terms.domain.TermsType;
 import kr.flint.terms.domain.UserTermsAgreement;
 import kr.flint.terms.exception.TermsErrorCode;
@@ -31,11 +32,26 @@ public class TermsService {
 	private final UserTermsAgreementRepository userTermsAgreementRepository;
 
 	public List<Terms> getCurrentTerms(@Nullable TermsType type) {
+		return getCurrentTerms(TermsContext.SIGNUP, type);
+	}
+
+	public List<Terms> getCurrentTerms(TermsContext context, @Nullable TermsType type) {
 		LocalDateTime now = LocalDateTime.now();
+		TermsContext effectiveContext = resolveContext(context);
+		boolean includeLegacySignup = effectiveContext == TermsContext.SIGNUP;
 		if (type != null) {
-			return selectLatestByType(termsRepository.findByTypeAndActiveAtLessThanEqual(type, now));
+			return selectLatestByType(termsRepository.findByContextAndTypeAndActiveAtLessThanEqual(
+				effectiveContext,
+				type,
+				now,
+				includeLegacySignup
+			));
 		}
-		return selectLatestByType(termsRepository.findByActiveAtLessThanEqual(now));
+		return selectLatestByType(termsRepository.findByContextAndActiveAtLessThanEqual(
+			effectiveContext,
+			now,
+			includeLegacySignup
+		));
 	}
 
 	public Terms getById(Long termsId) {
@@ -52,20 +68,45 @@ public class TermsService {
 		boolean required,
 		LocalDateTime activeAt
 	) {
-		if (termsRepository.existsByTypeAndVersion(type, version)) {
+		return createTermsVersion(TermsContext.SIGNUP, type, version, title, content, required, activeAt);
+	}
+
+	@Transactional
+	public Terms createTermsVersion(
+		TermsContext context,
+		TermsType type,
+		Integer version,
+		String title,
+		String content,
+		boolean required,
+		LocalDateTime activeAt
+	) {
+		TermsContext effectiveContext = resolveContext(context);
+		if (termsRepository.existsByContextAndTypeAndVersion(
+			effectiveContext,
+			type,
+			version,
+			effectiveContext == TermsContext.SIGNUP
+		)) {
 			throw new TermsException(TermsErrorCode.DUPLICATE_TERMS_VERSION);
 		}
 
-		return termsRepository.save(Terms.create(type, version, title, content, required, activeAt));
+		return termsRepository.save(Terms.create(effectiveContext, type, version, title, content, required, activeAt));
 	}
 
 	@Transactional
 	public void validateAndCreateAgreements(Long userId, List<Long> agreedTermsIds) {
+		validateAndCreateAgreements(userId, TermsContext.SIGNUP, agreedTermsIds);
+	}
+
+	@Transactional
+	public void validateAndCreateAgreements(Long userId, TermsContext context, List<Long> agreedTermsIds) {
 		if (CollectionUtils.isEmpty(agreedTermsIds)) {
 			throw new TermsException(TermsErrorCode.REQUIRED_TERMS_NOT_AGREED);
 		}
 
-		List<Terms> currentTerms = getCurrentTerms(null);
+		TermsContext effectiveContext = resolveContext(context);
+		List<Terms> currentTerms = getCurrentTerms(effectiveContext, null);
 		Set<Long> currentTermsIds = extractTermsIds(currentTerms);
 		Set<Long> requiredTermsIds = currentTerms.stream()
 			.filter(Terms::isRequired)
@@ -88,7 +129,7 @@ public class TermsService {
 		List<UserTermsAgreement> agreements = currentTerms.stream()
 			.map(Terms::getId)
 			.filter(agreedIds::contains)
-			.map(termsId -> UserTermsAgreement.create(userId, termsId))
+			.map(termsId -> UserTermsAgreement.create(userId, effectiveContext, termsId))
 			.toList();
 
 		userTermsAgreementRepository.saveAll(agreements);
@@ -111,5 +152,9 @@ public class TermsService {
 			.map(latestByType::get)
 			.filter(java.util.Objects::nonNull)
 			.toList();
+	}
+
+	private TermsContext resolveContext(TermsContext context) {
+		return context == null ? TermsContext.SIGNUP : context;
 	}
 }

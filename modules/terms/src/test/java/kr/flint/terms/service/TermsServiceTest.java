@@ -21,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import kr.flint.terms.domain.Terms;
+import kr.flint.terms.domain.TermsContext;
 import kr.flint.terms.domain.TermsType;
 import kr.flint.terms.domain.UserTermsAgreement;
 import kr.flint.terms.exception.TermsErrorCode;
@@ -51,7 +52,11 @@ class TermsServiceTest {
 			Terms oldService = createTerms(1L, TermsType.SERVICE, 1, true, LocalDateTime.now().minusDays(10));
 			Terms newService = createTerms(2L, TermsType.SERVICE, 2, true, LocalDateTime.now().minusDays(1));
 			Terms privacy = createTerms(3L, TermsType.PRIVACY, 1, true, LocalDateTime.now().minusDays(2));
-			when(termsRepository.findByActiveAtLessThanEqual(any(LocalDateTime.class)))
+			when(termsRepository.findByContextAndActiveAtLessThanEqual(
+				org.mockito.ArgumentMatchers.eq(TermsContext.SIGNUP),
+				any(LocalDateTime.class),
+				org.mockito.ArgumentMatchers.eq(true)
+			))
 				.thenReturn(List.of(oldService, privacy, newService));
 
 			// when
@@ -70,7 +75,7 @@ class TermsServiceTest {
 		@DisplayName("같은 유형의 중복 버전은 생성할 수 없음")
 		void duplicateVersion() {
 			// given
-			when(termsRepository.existsByTypeAndVersion(TermsType.SERVICE, 1))
+			when(termsRepository.existsByContextAndTypeAndVersion(TermsContext.SIGNUP, TermsType.SERVICE, 1, true))
 				.thenReturn(true);
 
 			// when & then
@@ -100,7 +105,11 @@ class TermsServiceTest {
 			Terms service = createTerms(1L, TermsType.SERVICE, 1, true, LocalDateTime.now().minusDays(1));
 			Terms privacy = createTerms(2L, TermsType.PRIVACY, 1, true, LocalDateTime.now().minusDays(1));
 			Terms marketing = createTerms(3L, TermsType.MARKETING, 1, false, LocalDateTime.now().minusDays(1));
-			when(termsRepository.findByActiveAtLessThanEqual(any(LocalDateTime.class)))
+			when(termsRepository.findByContextAndActiveAtLessThanEqual(
+				org.mockito.ArgumentMatchers.eq(TermsContext.SIGNUP),
+				any(LocalDateTime.class),
+				org.mockito.ArgumentMatchers.eq(true)
+			))
 				.thenReturn(List.of(service, privacy, marketing));
 
 			// when
@@ -111,6 +120,41 @@ class TermsServiceTest {
 				assertThat(agreements).hasSize(3);
 				assertThat(agreements).extracting(UserTermsAgreement::getTermsId)
 					.containsExactly(1L, 2L, 3L);
+				assertThat(agreements).extracting(UserTermsAgreement::getEffectiveContext)
+					.containsOnly(TermsContext.SIGNUP);
+				return true;
+			}));
+		}
+
+		@Test
+		@DisplayName("회원탈퇴 context의 필수 약관 동의를 저장")
+		void withdrawalSuccess() {
+			// given
+			Terms withdrawal = createTerms(
+				1L,
+				TermsContext.WITHDRAWAL,
+				TermsType.WITHDRAWAL,
+				1,
+				true,
+				LocalDateTime.now().minusDays(1)
+			);
+			when(termsRepository.findByContextAndActiveAtLessThanEqual(
+				org.mockito.ArgumentMatchers.eq(TermsContext.WITHDRAWAL),
+				any(LocalDateTime.class),
+				org.mockito.ArgumentMatchers.eq(false)
+			))
+				.thenReturn(List.of(withdrawal));
+
+			// when
+			termsService.validateAndCreateAgreements(100L, TermsContext.WITHDRAWAL, List.of(1L));
+
+			// then
+			verify(userTermsAgreementRepository).saveAll(argThat(agreements -> {
+				assertThat(agreements).hasSize(1);
+				assertThat(agreements).extracting(UserTermsAgreement::getTermsId)
+					.containsExactly(1L);
+				assertThat(agreements).extracting(UserTermsAgreement::getEffectiveContext)
+					.containsOnly(TermsContext.WITHDRAWAL);
 				return true;
 			}));
 		}
@@ -121,7 +165,11 @@ class TermsServiceTest {
 			// given
 			Terms service = createTerms(1L, TermsType.SERVICE, 1, true, LocalDateTime.now().minusDays(1));
 			Terms privacy = createTerms(2L, TermsType.PRIVACY, 1, true, LocalDateTime.now().minusDays(1));
-			when(termsRepository.findByActiveAtLessThanEqual(any(LocalDateTime.class)))
+			when(termsRepository.findByContextAndActiveAtLessThanEqual(
+				org.mockito.ArgumentMatchers.eq(TermsContext.SIGNUP),
+				any(LocalDateTime.class),
+				org.mockito.ArgumentMatchers.eq(true)
+			))
 				.thenReturn(List.of(service, privacy));
 
 			// when & then
@@ -137,7 +185,11 @@ class TermsServiceTest {
 			// given
 			Terms service = createTerms(2L, TermsType.SERVICE, 1, true, LocalDateTime.now().minusDays(1));
 			Terms privacy = createTerms(3L, TermsType.PRIVACY, 1, true, LocalDateTime.now().minusDays(1));
-			when(termsRepository.findByActiveAtLessThanEqual(any(LocalDateTime.class)))
+			when(termsRepository.findByContextAndActiveAtLessThanEqual(
+				org.mockito.ArgumentMatchers.eq(TermsContext.SIGNUP),
+				any(LocalDateTime.class),
+				org.mockito.ArgumentMatchers.eq(true)
+			))
 				.thenReturn(List.of(service, privacy));
 
 			// when & then
@@ -152,7 +204,11 @@ class TermsServiceTest {
 		void noActiveRequiredTerms() {
 			// given
 			Terms marketing = createTerms(3L, TermsType.MARKETING, 1, false, LocalDateTime.now().minusDays(1));
-			when(termsRepository.findByActiveAtLessThanEqual(any(LocalDateTime.class)))
+			when(termsRepository.findByContextAndActiveAtLessThanEqual(
+				org.mockito.ArgumentMatchers.eq(TermsContext.SIGNUP),
+				any(LocalDateTime.class),
+				org.mockito.ArgumentMatchers.eq(true)
+			))
 				.thenReturn(List.of(marketing));
 
 			// when & then
@@ -164,7 +220,18 @@ class TermsServiceTest {
 	}
 
 	private Terms createTerms(Long id, TermsType type, Integer version, boolean required, LocalDateTime activeAt) {
-		Terms terms = Terms.create(type, version, type.getDescription(), "content", required, activeAt);
+		return createTerms(id, TermsContext.SIGNUP, type, version, required, activeAt);
+	}
+
+	private Terms createTerms(
+		Long id,
+		TermsContext context,
+		TermsType type,
+		Integer version,
+		boolean required,
+		LocalDateTime activeAt
+	) {
+		Terms terms = Terms.create(context, type, version, type.getDescription(), "content", required, activeAt);
 		ReflectionTestUtils.setField(terms, "id", id);
 		return terms;
 	}

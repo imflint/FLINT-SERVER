@@ -35,6 +35,7 @@ import kr.flint.collection.service.CollectionService;
 import kr.flint.content.service.ContentService;
 import kr.flint.ott.service.OttService;
 import kr.flint.taste.service.TasteService;
+import kr.flint.terms.domain.TermsContext;
 import kr.flint.terms.exception.TermsErrorCode;
 import kr.flint.terms.exception.TermsException;
 import kr.flint.terms.service.TermsService;
@@ -127,7 +128,7 @@ class AuthFacadeTest {
 
 			// then
 			assertThat(result.accessToken()).isEqualTo("access");
-			verify(termsService).validateAndCreateAgreements(1L, List.of(10L, 20L));
+			verify(termsService).validateAndCreateAgreements(1L, TermsContext.SIGNUP, List.of(10L, 20L));
 		}
 
 		@Test
@@ -144,7 +145,7 @@ class AuthFacadeTest {
 				.thenReturn(new TempTokenPayload(AuthProvider.KAKAO, "provider-user-id"));
 			when(userService.create("플린트")).thenReturn(UserAuthInfo.of(1L, "플린트", "FLING"));
 			doThrow(new TermsException(TermsErrorCode.REQUIRED_TERMS_NOT_AGREED))
-				.when(termsService).validateAndCreateAgreements(1L, List.of(10L));
+				.when(termsService).validateAndCreateAgreements(1L, TermsContext.SIGNUP, List.of(10L));
 
 			// when & then
 			assertThatThrownBy(() -> authFacade.signup(request))
@@ -153,6 +154,64 @@ class AuthFacadeTest {
 				.isEqualTo(TermsErrorCode.REQUIRED_TERMS_NOT_AGREED);
 			verify(bookmarkCommandService, never()).createContentBookmarks(1L, List.of(100L));
 			verify(authService, never()).issueTokens(1L, "FLING");
+		}
+	}
+
+	@Nested
+	@DisplayName("logoutAll")
+	class LogoutAll {
+
+		@Test
+		@DisplayName("모든 세션 로그아웃은 탈퇴 처리를 호출하지 않음")
+		void doesNotWithdrawUser() {
+			// when
+			authFacade.logoutAll(1L, "access-token");
+
+			// then
+			verify(authService).logoutAll(1L, "access-token");
+			verify(userService, never()).deleteUser(1L);
+			verify(termsService, never()).validateAndCreateAgreements(
+				org.mockito.ArgumentMatchers.any(),
+				org.mockito.ArgumentMatchers.any(),
+				org.mockito.ArgumentMatchers.any()
+			);
+		}
+	}
+
+	@Nested
+	@DisplayName("withdraw")
+	class Withdraw {
+
+		@Test
+		@DisplayName("회원탈퇴 약관 동의 검증 후 탈퇴 처리")
+		void success() {
+			// when
+			authFacade.withdraw(1L, "access-token", List.of(30L));
+
+			// then
+			verify(termsService).validateAndCreateAgreements(1L, TermsContext.WITHDRAWAL, List.of(30L));
+			verify(userService).deleteUser(1L);
+			verify(authService).withdraw(1L, "access-token");
+			verify(collectionService).deleteCollectionByUser(1L);
+			verify(bookmarkCommandService).deleteBookmarkByUser(1L);
+			verify(tasteService).deleteUserKeywords(1L);
+			verify(ottService).deleteUserOtts(1L);
+		}
+
+		@Test
+		@DisplayName("회원탈퇴 약관 미동의 시 탈퇴 처리를 하지 않음")
+		void missingWithdrawalTerms() {
+			// given
+			doThrow(new TermsException(TermsErrorCode.REQUIRED_TERMS_NOT_AGREED))
+				.when(termsService).validateAndCreateAgreements(1L, TermsContext.WITHDRAWAL, List.of());
+
+			// when & then
+			assertThatThrownBy(() -> authFacade.withdraw(1L, "access-token", List.of()))
+				.isInstanceOf(TermsException.class)
+				.extracting("errorCode")
+				.isEqualTo(TermsErrorCode.REQUIRED_TERMS_NOT_AGREED);
+			verify(userService, never()).deleteUser(1L);
+			verify(authService, never()).withdraw(1L, "access-token");
 		}
 	}
 }

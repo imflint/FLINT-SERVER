@@ -121,6 +121,19 @@ public class AuthService {
 
     // 전체 로그아웃 (모든 Refresh Token 무효화)
     @Transactional
+    public void logoutAll(Long userId, String accessToken) {
+        if (accessToken != null) {
+            long remainingTtl = jwtProvider.getRemainingTtlSeconds(accessToken);
+            if (remainingTtl > 0) {
+                accessTokenBlacklist.blacklist(accessToken, remainingTtl);
+            }
+        }
+
+        refreshTokenRepository.deleteAllByUserId(userId);
+    }
+
+    // 회원탈퇴 (모든 Refresh Token 및 소셜 인증 정보 삭제)
+    @Transactional
     public void withdraw(Long userId, String accessToken) {
         // Access Token Blacklist 추가
         if (accessToken != null) {

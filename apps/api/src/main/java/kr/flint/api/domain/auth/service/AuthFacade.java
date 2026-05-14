@@ -28,6 +28,7 @@ import kr.flint.collection.service.CollectionService;
 import kr.flint.content.service.ContentService;
 import kr.flint.ott.service.OttService;
 import kr.flint.taste.service.TasteService;
+import kr.flint.terms.domain.TermsContext;
 import kr.flint.terms.service.TermsService;
 import kr.flint.user.dto.response.UserAuthInfo;
 import kr.flint.user.service.UserService;
@@ -81,7 +82,7 @@ public class AuthFacade {
 
         UserAuthInfo authInfo = userService.create(request.nickname());
         userIdentityService.create(authInfo.userId(), payload.provider(), payload.providerUserId());
-        termsService.validateAndCreateAgreements(authInfo.userId(), agreedTermsIds);
+        termsService.validateAndCreateAgreements(authInfo.userId(), TermsContext.SIGNUP, agreedTermsIds);
 
         bookmarkCommandService.createContentBookmarks(authInfo.userId(), favoriteContentIds);
         favoriteContentIds.forEach(contentService::incContentBookmarkCount);
@@ -116,9 +117,18 @@ public class AuthFacade {
     }
 
     /**
-     * 모든 세션 탈퇴
+     * 모든 세션 로그아웃
      */
-    public void withdraw(Long userId, String accessToken) {
+    public void logoutAll(Long userId, String accessToken) {
+        authService.logoutAll(userId, accessToken);
+    }
+
+    /**
+     * 회원탈퇴
+     */
+    @Transactional
+    public void withdraw(Long userId, String accessToken, List<Long> agreedTermsIds) {
+        termsService.validateAndCreateAgreements(userId, TermsContext.WITHDRAWAL, agreedTermsIds);
 
 		//User 삭제
 		userService.deleteUser(userId);
@@ -137,8 +147,6 @@ public class AuthFacade {
 
 		//ott 삭제
 		ottService.deleteUserOtts(userId);
-
-
     }
 
     /**

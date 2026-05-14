@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
+import kr.flint.terms.domain.TermsContext;
 import kr.flint.terms.domain.TermsType;
 
 @Schema(description = "약관 생성 요청")
@@ -14,6 +15,9 @@ public record TermsCreateReq(
 	@Schema(description = "약관 유형", example = "SERVICE", requiredMode = Schema.RequiredMode.REQUIRED)
 	@NotNull(message = "약관 유형은 필수입니다.")
 	TermsType type,
+
+	@Schema(description = "약관 사용 맥락. 미입력 시 SIGNUP", example = "SIGNUP")
+	TermsContext context,
 
 	@Schema(description = "약관 버전", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
 	@NotNull(message = "약관 버전은 필수입니다.")
@@ -37,4 +41,7 @@ public record TermsCreateReq(
 	@NotNull(message = "활성 시각은 필수입니다.")
 	LocalDateTime activeAt
 ) {
+	public TermsContext contextOrDefault() {
+		return context == null ? TermsContext.SIGNUP : context;
+	}
 }
