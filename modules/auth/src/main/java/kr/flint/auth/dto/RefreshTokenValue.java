@@ -20,7 +20,7 @@ public record RefreshTokenValue(
     }
 
     public RefreshTokenValue withStatus(RefreshTokenStatus newStatus) {
-        return new RefreshTokenValue(userId, newStatus, expiresAt, audienceOrDefault());
+        return new RefreshTokenValue(userId, newStatus, expiresAt, audience);
     }
 
     public RefreshTokenValue withAudienceIfMissing(TokenAudience fallbackAudience) {

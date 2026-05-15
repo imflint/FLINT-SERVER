@@ -8,10 +8,10 @@ public record AccessTokenInfo(
     TokenAudience audience
 ) {
     public boolean isValid() {
-        return userId != null;
+        return userId != null && audience != null;
     }
 
     public boolean isAudience(TokenAudience expectedAudience) {
-        return audience == expectedAudience;
+        return expectedAudience != null && audience == expectedAudience;
     }
 }

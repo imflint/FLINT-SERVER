@@ -1,6 +1,7 @@
 package kr.flint.user.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -116,6 +117,26 @@ class UserServiceTest {
                 .isInstanceOf(UserException.class)
                 .extracting("errorCode")
                 .isEqualTo(UserErrorCode.USER_UPLOAD_RESTRICTED);
+        }
+
+        @Test
+        @DisplayName("미래에 시작되는 업로드 제한은 아직 업로드를 막지 않음")
+        void futureUploadRestrictionDoesNotBlockUpload() {
+            User user = User.createFling("플린트");
+            user.restrictUpload(LocalDateTime.now().plusDays(1), null);
+            when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+            assertThatCode(() -> userService.validateCanUpload(1L)).doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("미래에 시작되는 정지는 아직 서비스 이용을 막지 않음")
+        void futureSuspensionDoesNotBlockService() {
+            User user = User.createFling("플린트");
+            user.suspend(LocalDateTime.now().plusDays(1), null);
+            when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+            assertThat(userService.canUseService(1L)).isTrue();
         }
 
         @Test

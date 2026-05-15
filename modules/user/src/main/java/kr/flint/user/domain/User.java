@@ -109,11 +109,17 @@ public class User extends BaseTime {
     }
 
     public boolean hasActiveSuspension(LocalDateTime now) {
-        return suspendedAt != null && (suspendedUntil == null || suspendedUntil.isAfter(now));
+        return isActiveSanctionWindow(suspendedAt, suspendedUntil, now);
     }
 
     private boolean hasActiveUploadRestriction(LocalDateTime now) {
-        return uploadRestrictedAt != null && (uploadRestrictedUntil == null || uploadRestrictedUntil.isAfter(now));
+        return isActiveSanctionWindow(uploadRestrictedAt, uploadRestrictedUntil, now);
+    }
+
+    private boolean isActiveSanctionWindow(LocalDateTime startsAt, LocalDateTime endsAt, LocalDateTime now) {
+        return startsAt != null
+            && !startsAt.isAfter(now)
+            && (endsAt == null || endsAt.isAfter(now));
     }
 
     public void incrementBookmarksSinceKeywordCalc() {

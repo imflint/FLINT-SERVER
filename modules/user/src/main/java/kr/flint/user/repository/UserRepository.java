@@ -32,6 +32,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
             where u.status = kr.flint.user.domain.UserStatus.ACTIVE
                 and (
                     u.suspendedAt is null
+                    or u.suspendedAt > :now
                     or (u.suspendedUntil is not null and u.suspendedUntil <= :now)
                 )
         """)

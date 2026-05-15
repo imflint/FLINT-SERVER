@@ -20,6 +20,7 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
+import java.util.Objects;
 import java.util.Set;
 
 @Slf4j
@@ -46,6 +47,8 @@ public class JwtProvider {
     }
 
     public String createAccessToken(Long userId, String role, TokenAudience audience) {
+        Objects.requireNonNull(audience, "token audience must not be null");
+
         Instant now = Instant.now();
         Instant expiry = now.plus(jwtProperties.accessExpiration());
 
