@@ -23,5 +23,5 @@ public interface AdminUserStatisticsControllerDocs {
         @ApiResponse(responseCode = "200", description = "사용자 통계 조회 성공", useReturnTypeSchema = true),
         @ApiResponse(responseCode = "403", description = "관리 권한 없음", content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     })
-    ResponseEntity<SuccessResponse<AdminUserStatisticsRes>> getStatistics(@Parameter(hidden = true) Long adminUserId);
+    ResponseEntity<SuccessResponse<AdminUserStatisticsRes>> getStatistics(@Parameter(hidden = true) Long adminId);
 }

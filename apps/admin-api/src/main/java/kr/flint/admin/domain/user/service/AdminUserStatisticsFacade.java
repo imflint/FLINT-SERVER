@@ -16,8 +16,8 @@ public class AdminUserStatisticsFacade {
     private final AdminAuthorizationService adminAuthorizationService;
     private final UserService userService;
 
-    public AdminUserStatisticsRes getStatistics(Long adminUserId) {
-        adminAuthorizationService.validateAdmin(adminUserId);
+    public AdminUserStatisticsRes getStatistics(Long adminId) {
+        adminAuthorizationService.validateAdmin(adminId);
         return AdminUserStatisticsRes.of(userService.countActiveUsers());
     }
 }

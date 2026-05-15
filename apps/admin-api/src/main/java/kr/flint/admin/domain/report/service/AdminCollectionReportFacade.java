@@ -51,12 +51,12 @@ public class AdminCollectionReportFacade {
     private final ModerationDecisionService moderationDecisionService;
 
     public PaginationResponse<AdminCollectionReportSummaryRes> getReports(
-        Long adminUserId,
+        Long adminId,
         ReportStatus status,
         Long cursor,
         Integer size
     ) {
-        adminAuthorizationService.validateAdmin(adminUserId);
+        adminAuthorizationService.validateAdmin(adminId);
         int safeSize = normalizeSize(size);
         List<Long> reportIds = queryRepository.findReportIds(status, cursor, safeSize);
         boolean hasNext = reportIds.size() > safeSize;
@@ -74,8 +74,8 @@ public class AdminCollectionReportFacade {
         return PaginationResponse.ofCursor(SliceCursor.of(data, currentCursor, nextCursor));
     }
 
-    public AdminCollectionReportDetailRes getReport(Long adminUserId, Long reportId) {
-        adminAuthorizationService.validateAdmin(adminUserId);
+    public AdminCollectionReportDetailRes getReport(Long adminId, Long reportId) {
+        adminAuthorizationService.validateAdmin(adminId);
         CollectionReport report = collectionService.getReportById(reportId);
         ReportDetailRow row = queryRepository.findReportDetailRow(reportId);
         if (row == null) {
@@ -90,8 +90,8 @@ public class AdminCollectionReportFacade {
     }
 
     @Transactional
-    public void resolveReport(Long adminUserId, Long reportId, AdminCollectionReportResolutionReq request) {
-        adminAuthorizationService.validateAdmin(adminUserId);
+    public void resolveReport(Long adminId, Long reportId, AdminCollectionReportResolutionReq request) {
+        adminAuthorizationService.validateAdmin(adminId);
         CollectionReport report = collectionService.getReportById(reportId);
         if (report.isResolved()) {
             throw new CollectionException(CollectionErrorCode.COLLECTION_REPORT_ALREADY_RESOLVED);
@@ -104,7 +104,7 @@ public class AdminCollectionReportFacade {
             report.getId(),
             collection.getId(),
             collection.getUserId(),
-            adminUserId,
+            adminId,
             request.collectionAction(),
             request.userAction(),
             request.userActionExpiresAt(),

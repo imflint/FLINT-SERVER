@@ -27,7 +27,7 @@ public record AdminCollectionReportDetailRes(
         CollectionModerationAction collectionAction,
         UserModerationAction userAction,
         LocalDateTime userActionExpiresAt,
-        Long adminUserId,
+        Long adminId,
         String adminMemo,
         LocalDateTime createdAt,
         LocalDateTime processedAt

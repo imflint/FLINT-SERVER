@@ -15,6 +15,7 @@ include 'modules:ott'
 include 'modules:search'
 include 'modules:terms'
 include 'modules:moderation'
+include 'modules:admin'
 
 include 'infra:redis'
 include 'infra:storage'

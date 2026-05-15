@@ -28,7 +28,7 @@ public interface AdminCollectionReportControllerDocs {
         @ApiResponse(responseCode = "403", description = "관리 권한 없음", content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     })
     ResponseEntity<SuccessResponse<PaginationResponse<AdminCollectionReportSummaryRes>>> getReports(
-        @Parameter(hidden = true) Long adminUserId,
+        @Parameter(hidden = true) Long adminId,
         ReportStatus status,
         Long cursor,
         Integer size
@@ -41,7 +41,7 @@ public interface AdminCollectionReportControllerDocs {
         @ApiResponse(responseCode = "404", description = "신고 없음", content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     })
     ResponseEntity<SuccessResponse<AdminCollectionReportDetailRes>> getReport(
-        @Parameter(hidden = true) Long adminUserId,
+        @Parameter(hidden = true) Long adminId,
         Long reportId
     );
 
@@ -52,7 +52,7 @@ public interface AdminCollectionReportControllerDocs {
         @ApiResponse(responseCode = "409", description = "이미 처리된 신고", content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     })
     ResponseEntity<SuccessResponse<Void>> resolveReport(
-        @Parameter(hidden = true) Long adminUserId,
+        @Parameter(hidden = true) Long adminId,
         Long reportId,
         AdminCollectionReportResolutionReq request
     );

@@ -8,6 +8,7 @@ import kr.flint.auth.dto.TempTokenPayload;
 import kr.flint.auth.domain.UserIdentity;
 import kr.flint.auth.enums.AuthProvider;
 import kr.flint.auth.enums.RefreshTokenStatus;
+import kr.flint.auth.enums.TokenAudience;
 import kr.flint.auth.enums.TokenType;
 import kr.flint.auth.exception.AuthErrorCode;
 import kr.flint.auth.jwt.JwtProvider;
@@ -32,9 +33,9 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final AccessTokenBlacklist accessTokenBlacklist;
     private final UserIdentityService userIdentityService;
-	private final UserIdentityRepository userIdentityRepository;
+    private final UserIdentityRepository userIdentityRepository;
 
-	// 소셜 사용자 정보로 로그인/회원가입 분기 처리
+    // 소셜 사용자 정보로 로그인/회원가입 분기 처리
     public SocialVerifyResult verifySocialUser(AuthProvider provider, SocialUserInfo userInfo) {
         Optional<UserIdentity> existingIdentity = userIdentityService
                 .findByProviderAndProviderUserId(provider, userInfo.providerUserId());
@@ -64,12 +65,17 @@ public class AuthService {
     // Access / Refresh Token 발급
     @Transactional
     public AuthTokens issueTokens(Long userId, String role) {
-        String accessToken = jwtProvider.createAccessToken(userId, role);
+        return issueTokens(userId, role, TokenAudience.USER);
+    }
+
+    @Transactional
+    public AuthTokens issueTokens(Long userId, String role, TokenAudience audience) {
+        String accessToken = jwtProvider.createAccessToken(userId, role, audience);
         String refreshToken = refreshTokenRepository.createToken();
 
         // Redis에 Refresh Token 저장 (token → userId)
         long ttlSeconds = jwtProvider.getRefreshTokenTtlSeconds();
-        refreshTokenRepository.save(refreshToken, userId, ttlSeconds);
+        refreshTokenRepository.save(refreshToken, userId, audience, ttlSeconds);
 
         return AuthTokens.of(accessToken, refreshToken, userId);
     }
@@ -77,6 +83,17 @@ public class AuthService {
     // Refresh Token 검증 및 Rotation (원자적 상태 변경)
     @Transactional
     public Long validateAndRotateToken(String refreshToken) {
+        return validateAndRotateToken(refreshToken, TokenAudience.USER);
+    }
+
+    @Transactional
+    public Long validateAndRotateToken(String refreshToken, TokenAudience expectedAudience) {
+        RefreshTokenValue currentTokenValue = refreshTokenRepository.findByToken(refreshToken)
+            .orElseThrow(() -> new AuthException(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND));
+        if (currentTokenValue.audienceOrDefault() != expectedAudience) {
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+        }
+
         // 원자적으로 VALID → USED 변경 시도 (변경 전 상태 반환)
         RefreshTokenValue tokenValue = refreshTokenRepository.markAsUsedIfValid(refreshToken)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND));
@@ -145,7 +162,7 @@ public class AuthService {
 
         // 모든 Refresh Token 삭제
         refreshTokenRepository.deleteAllByUserId(userId);
-		userIdentityRepository.deleteAllByUserId(userId);
+        userIdentityRepository.deleteAllByUserId(userId);
     }
 
 }

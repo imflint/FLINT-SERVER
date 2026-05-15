@@ -24,8 +24,8 @@ public class AdminContentFacade {
     private final CloudFrontUrlProvider cloudFrontUrlProvider;
 
     @Transactional
-    public AdminContentRes updateContent(Long adminUserId, Long contentId, AdminContentUpdateReq request) {
-        adminAuthorizationService.validateAdmin(adminUserId);
+    public AdminContentRes updateContent(Long adminId, Long contentId, AdminContentUpdateReq request) {
+        adminAuthorizationService.validateAdmin(adminId);
         Content content = contentService.updateByAdmin(contentId, request.toCommand());
         List<String> genreNames = contentService.getContentsWithGenres(List.of(content.getId()))
             .stream()

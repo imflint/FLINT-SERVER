@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 import kr.flint.admin.domain.user.controller.spec.AdminUserStatisticsControllerDocs;
 import kr.flint.admin.domain.user.dto.response.AdminUserStatisticsRes;
 import kr.flint.admin.domain.user.service.AdminUserStatisticsFacade;
-import kr.flint.admin.global.security.annotation.CurrentUser;
+import kr.flint.admin.global.security.annotation.CurrentAdmin;
 import kr.flint.shared.dto.response.SuccessCode;
 import kr.flint.shared.dto.response.SuccessResponse;
 import lombok.RequiredArgsConstructor;
@@ -22,10 +22,10 @@ public class AdminUserStatisticsController implements AdminUserStatisticsControl
 
     @Override
     @GetMapping
-    public ResponseEntity<SuccessResponse<AdminUserStatisticsRes>> getStatistics(@CurrentUser Long adminUserId) {
+    public ResponseEntity<SuccessResponse<AdminUserStatisticsRes>> getStatistics(@CurrentAdmin Long adminId) {
         return ResponseEntity.ok(SuccessResponse.of(
             SuccessCode.SUCCESS_FETCH,
-            adminUserStatisticsFacade.getStatistics(adminUserId)
+            adminUserStatisticsFacade.getStatistics(adminId)
         ));
     }
 }

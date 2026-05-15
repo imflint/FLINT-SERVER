@@ -25,7 +25,7 @@ public interface AdminContentControllerDocs {
         @ApiResponse(responseCode = "404", description = "콘텐츠 없음", content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     })
     ResponseEntity<SuccessResponse<AdminContentRes>> updateContent(
-        @Parameter(hidden = true) Long adminUserId,
+        @Parameter(hidden = true) Long adminId,
         Long contentId,
         AdminContentUpdateReq request
     );

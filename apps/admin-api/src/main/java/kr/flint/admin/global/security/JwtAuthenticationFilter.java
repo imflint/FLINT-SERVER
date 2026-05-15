@@ -1,7 +1,6 @@
 package kr.flint.admin.global.security;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
 
 import org.springframework.http.HttpHeaders;
@@ -18,10 +17,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import kr.flint.auth.exception.AuthErrorCode;
 import kr.flint.auth.exception.AuthException;
+import kr.flint.auth.enums.TokenAudience;
 import kr.flint.auth.jwt.AccessTokenBlacklist;
 import kr.flint.auth.jwt.JwtProvider;
 import kr.flint.auth.jwt.dto.AccessTokenInfo;
-import kr.flint.user.service.UserService;
+import kr.flint.adminauth.service.AdminUserService;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -39,7 +39,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
     private final AccessTokenBlacklist accessTokenBlacklist;
-    private final UserService userService;
+    private final AdminUserService adminUserService;
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -69,13 +69,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             AccessTokenInfo claims = jwtProvider.parseAccessToken(token);
 
             if (claims != null && claims.isValid()) {
-                if (!userService.canUseService(claims.userId())) {
+                if (!claims.isAudience(TokenAudience.ADMIN)) {
+                    throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+                }
+                if (!adminUserService.canUseAdmin(claims.userId())) {
                     throw new AuthException(AuthErrorCode.ACCOUNT_SUSPENDED);
                 }
-                UserPrincipal principal = new UserPrincipal(claims.userId(), claims.role());
-                List<SimpleGrantedAuthority> authorities = claims.role() != null
-                    ? List.of(new SimpleGrantedAuthority("ROLE_" + claims.role()))
-                    : Collections.emptyList();
+                AdminPrincipal principal = new AdminPrincipal(claims.userId());
+                List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("ROLE_ADMIN"));
 
                 UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(principal, null, authorities);

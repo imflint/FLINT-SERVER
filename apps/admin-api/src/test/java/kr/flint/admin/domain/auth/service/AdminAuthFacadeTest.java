@@ -6,6 +6,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -15,94 +16,82 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import kr.flint.adminauth.domain.Admin;
+import kr.flint.adminauth.service.AdminUserService;
 import kr.flint.admin.domain.auth.dto.request.AdminLoginReq;
 import kr.flint.admin.domain.auth.dto.response.AdminLoginRes;
-import kr.flint.admin.domain.auth.properties.AdminAuthProperties;
 import kr.flint.auth.dto.AuthTokens;
+import kr.flint.auth.enums.TokenAudience;
 import kr.flint.auth.exception.AuthErrorCode;
 import kr.flint.auth.exception.AuthException;
 import kr.flint.auth.service.AuthService;
-import kr.flint.shared.exception.ErrorCode;
-import kr.flint.shared.exception.GeneralException;
-import kr.flint.user.dto.response.UserAuthInfo;
-import kr.flint.user.service.UserService;
 
 @ExtendWith(MockitoExtension.class)
 class AdminAuthFacadeTest {
 
-	private static final Long ADMIN_USER_ID = 10L;
-	private static final String USERNAME = "admin";
-	private static final String PASSWORD = "password";
+    private static final Long ADMIN_ID = 10L;
+    private static final String USERNAME = "admin";
+    private static final String PASSWORD = "password";
 
-	@Mock
-	private UserService userService;
+    @Mock
+    private AdminUserService adminUserService;
 
-	@Mock
-	private AuthService authService;
+    @Mock
+    private AuthService authService;
 
-	private PasswordEncoder passwordEncoder;
-	private AdminAuthFacade adminAuthFacade;
+    private PasswordEncoder passwordEncoder;
+    private AdminAuthFacade adminAuthFacade;
+    private Admin admin;
 
-	@BeforeEach
-	void setUp() {
-		passwordEncoder = new BCryptPasswordEncoder();
-		AdminAuthProperties properties = new AdminAuthProperties(
-			ADMIN_USER_ID,
-			USERNAME,
-			passwordEncoder.encode(PASSWORD)
-		);
-		adminAuthFacade = new AdminAuthFacade(properties, passwordEncoder, userService, authService);
-	}
+    @BeforeEach
+    void setUp() {
+        passwordEncoder = new BCryptPasswordEncoder();
+        admin = Admin.create(USERNAME, passwordEncoder.encode(PASSWORD), LocalDateTime.now());
+        ReflectionTestUtils.setField(admin, "id", ADMIN_ID);
+        adminAuthFacade = new AdminAuthFacade(passwordEncoder, adminUserService, authService);
+    }
 
-	@Nested
-	@DisplayName("login")
-	class Login {
+    @Nested
+    @DisplayName("login")
+    class Login {
 
-		@Test
-		void adminSuccess() {
-			when(userService.getAuthInfo(ADMIN_USER_ID)).thenReturn(UserAuthInfo.of(ADMIN_USER_ID, "admin", "ADMIN"));
-			when(authService.issueTokens(ADMIN_USER_ID, "ADMIN")).thenReturn(AuthTokens.of("access", "refresh", ADMIN_USER_ID));
+        @Test
+        void adminSuccess() {
+            when(adminUserService.findByUsername(USERNAME)).thenReturn(java.util.Optional.of(admin));
+            when(authService.issueTokens(ADMIN_ID, null, TokenAudience.ADMIN))
+                .thenReturn(AuthTokens.of("access", "refresh", ADMIN_ID));
 
-			AdminLoginRes result = adminAuthFacade.login(new AdminLoginReq(USERNAME, PASSWORD));
+            AdminLoginRes result = adminAuthFacade.login(new AdminLoginReq(USERNAME, PASSWORD));
 
-			assertThat(result.accessToken()).isEqualTo("access");
-			assertThat(result.refreshToken()).isEqualTo("refresh");
-			assertThat(result.userId()).isEqualTo(ADMIN_USER_ID);
-			assertThat(result.nickname()).isEqualTo("admin");
-		}
+            assertThat(result.accessToken()).isEqualTo("access");
+            assertThat(result.refreshToken()).isEqualTo("refresh");
+            assertThat(result.adminId()).isEqualTo(ADMIN_ID);
+        }
 
-		@Test
-		void invalidPassword() {
-			assertThatThrownBy(() -> adminAuthFacade.login(new AdminLoginReq(USERNAME, "wrong")))
-				.isInstanceOf(AuthException.class)
-				.extracting("errorCode")
-				.isEqualTo(AuthErrorCode.INVALID_CREDENTIALS);
+        @Test
+        void invalidPassword() {
+            when(adminUserService.findByUsername(USERNAME)).thenReturn(java.util.Optional.of(admin));
 
-			verify(authService, never()).issueTokens(ADMIN_USER_ID, "ADMIN");
-		}
+            assertThatThrownBy(() -> adminAuthFacade.login(new AdminLoginReq(USERNAME, "wrong")))
+                .isInstanceOf(AuthException.class)
+                .extracting("errorCode")
+                .isEqualTo(AuthErrorCode.INVALID_CREDENTIALS);
 
-		@Test
-		void nonAdminUser() {
-			when(userService.getAuthInfo(ADMIN_USER_ID)).thenReturn(UserAuthInfo.of(ADMIN_USER_ID, "fling", "FLING"));
+            verify(authService, never()).issueTokens(ADMIN_ID, null, TokenAudience.ADMIN);
+        }
 
-			assertThatThrownBy(() -> adminAuthFacade.login(new AdminLoginReq(USERNAME, PASSWORD)))
-				.isInstanceOf(GeneralException.class)
-				.extracting("errorCode")
-				.isEqualTo(ErrorCode.FORBIDDEN);
+        @Test
+        void invalidUsername() {
+            when(adminUserService.findByUsername("other")).thenReturn(java.util.Optional.empty());
 
-			verify(authService, never()).issueTokens(ADMIN_USER_ID, "ADMIN");
-		}
+            assertThatThrownBy(() -> adminAuthFacade.login(new AdminLoginReq("other", PASSWORD)))
+                .isInstanceOf(AuthException.class)
+                .extracting("errorCode")
+                .isEqualTo(AuthErrorCode.INVALID_CREDENTIALS);
 
-		@Test
-		void invalidUsername() {
-			assertThatThrownBy(() -> adminAuthFacade.login(new AdminLoginReq("other", PASSWORD)))
-				.isInstanceOf(AuthException.class)
-				.extracting("errorCode")
-				.isEqualTo(AuthErrorCode.INVALID_CREDENTIALS);
-
-			verify(userService, never()).getAuthInfo(ADMIN_USER_ID);
-			verify(authService, never()).issueTokens(ADMIN_USER_ID, "ADMIN");
-		}
-	}
+            verify(authService, never()).issueTokens(ADMIN_ID, null, TokenAudience.ADMIN);
+        }
+    }
 }

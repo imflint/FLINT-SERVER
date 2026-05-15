@@ -15,7 +15,7 @@ import kr.flint.admin.domain.report.dto.request.AdminCollectionReportResolutionR
 import kr.flint.admin.domain.report.dto.response.AdminCollectionReportDetailRes;
 import kr.flint.admin.domain.report.dto.response.AdminCollectionReportSummaryRes;
 import kr.flint.admin.domain.report.service.AdminCollectionReportFacade;
-import kr.flint.admin.global.security.annotation.CurrentUser;
+import kr.flint.admin.global.security.annotation.CurrentAdmin;
 import kr.flint.collection.domain.ReportStatus;
 import kr.flint.shared.dto.PaginationResponse;
 import kr.flint.shared.dto.response.SuccessCode;
@@ -32,37 +32,37 @@ public class AdminCollectionReportController implements AdminCollectionReportCon
     @Override
     @GetMapping
     public ResponseEntity<SuccessResponse<PaginationResponse<AdminCollectionReportSummaryRes>>> getReports(
-        @CurrentUser Long adminUserId,
+        @CurrentAdmin Long adminId,
         @RequestParam(required = false) ReportStatus status,
         @RequestParam(required = false) Long cursor,
         @RequestParam(required = false) Integer size
     ) {
         return ResponseEntity.ok(SuccessResponse.of(
             SuccessCode.SUCCESS_FETCH,
-            adminCollectionReportFacade.getReports(adminUserId, status, cursor, size)
+            adminCollectionReportFacade.getReports(adminId, status, cursor, size)
         ));
     }
 
     @Override
     @GetMapping("/{reportId}")
     public ResponseEntity<SuccessResponse<AdminCollectionReportDetailRes>> getReport(
-        @CurrentUser Long adminUserId,
+        @CurrentAdmin Long adminId,
         @PathVariable Long reportId
     ) {
         return ResponseEntity.ok(SuccessResponse.of(
             SuccessCode.SUCCESS_FETCH,
-            adminCollectionReportFacade.getReport(adminUserId, reportId)
+            adminCollectionReportFacade.getReport(adminId, reportId)
         ));
     }
 
     @Override
     @PatchMapping("/{reportId}/resolution")
     public ResponseEntity<SuccessResponse<Void>> resolveReport(
-        @CurrentUser Long adminUserId,
+        @CurrentAdmin Long adminId,
         @PathVariable Long reportId,
         @Valid @RequestBody AdminCollectionReportResolutionReq request
     ) {
-        adminCollectionReportFacade.resolveReport(adminUserId, reportId, request);
+        adminCollectionReportFacade.resolveReport(adminId, reportId, request);
         return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_UPDATE));
     }
 }

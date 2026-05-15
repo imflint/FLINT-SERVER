@@ -12,7 +12,7 @@ import kr.flint.admin.domain.content.controller.spec.AdminContentControllerDocs;
 import kr.flint.admin.domain.content.dto.request.AdminContentUpdateReq;
 import kr.flint.admin.domain.content.dto.response.AdminContentRes;
 import kr.flint.admin.domain.content.service.AdminContentFacade;
-import kr.flint.admin.global.security.annotation.CurrentUser;
+import kr.flint.admin.global.security.annotation.CurrentAdmin;
 import kr.flint.shared.dto.response.SuccessCode;
 import kr.flint.shared.dto.response.SuccessResponse;
 import lombok.RequiredArgsConstructor;
@@ -27,13 +27,13 @@ public class AdminContentController implements AdminContentControllerDocs {
     @Override
     @PatchMapping("/{contentId}")
     public ResponseEntity<SuccessResponse<AdminContentRes>> updateContent(
-        @CurrentUser Long adminUserId,
+        @CurrentAdmin Long adminId,
         @PathVariable Long contentId,
         @Valid @RequestBody AdminContentUpdateReq request
     ) {
         return ResponseEntity.ok(SuccessResponse.of(
             SuccessCode.SUCCESS_UPDATE,
-            adminContentFacade.updateContent(adminUserId, contentId, request)
+            adminContentFacade.updateContent(adminId, contentId, request)
         ));
     }
 }

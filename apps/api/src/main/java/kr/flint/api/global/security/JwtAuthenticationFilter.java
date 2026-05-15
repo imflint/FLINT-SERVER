@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import kr.flint.auth.exception.AuthErrorCode;
 import kr.flint.auth.exception.AuthException;
+import kr.flint.auth.enums.TokenAudience;
 import kr.flint.auth.jwt.AccessTokenBlacklist;
 import kr.flint.auth.jwt.dto.AccessTokenInfo;
 import kr.flint.auth.jwt.JwtProvider;
@@ -73,6 +74,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             AccessTokenInfo claims = jwtProvider.parseAccessToken(token);
 
             if (claims != null && claims.isValid()) {
+                if (!claims.isAudience(TokenAudience.USER)) {
+                    throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+                }
                 if (!userService.canUseService(claims.userId())) {
                     throw new AuthException(AuthErrorCode.ACCOUNT_SUSPENDED);
                 }
