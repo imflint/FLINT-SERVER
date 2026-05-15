@@ -16,32 +16,34 @@ import lombok.RequiredArgsConstructor;
 @Component
 @RequiredArgsConstructor
 public class CollectionCommandFacade {
-	private final CollectionService collectionService;
-	private final UserService userService;
-	private final ContentService contentService;
+    private final CollectionService collectionService;
+    private final UserService userService;
+    private final ContentService contentService;
 
-	@Transactional
-	public Long createCollection(final Long userId, final CreateCollectionReq request) {
-		userService.getById(userId);
-		Long contentId = request.contentList().getFirst().contentId();
-		Content content = contentService.getContentById(contentId);
-		String imageUrl = StringUtils.hasText(request.imageUrl()) ? request.imageUrl() : content.getPoster();
-		Long collectionId = collectionService.createCollection(userId, request.toCommand(), imageUrl);
-		return collectionId;
-	}
+    @Transactional
+    public Long createCollection(final Long userId, final CreateCollectionReq request) {
+        userService.getById(userId);
+        userService.validateCanUpload(userId);
+        Long contentId = request.contentList().getFirst().contentId();
+        Content content = contentService.getContentById(contentId);
+        String imageUrl = StringUtils.hasText(request.imageUrl()) ? request.imageUrl() : content.getPoster();
+        Long collectionId = collectionService.createCollection(userId, request.toCommand(), imageUrl);
+        return collectionId;
+    }
 
-	@Transactional
-	public void updateCollection(final Long userId, final Long collectionId, final UpdateCollectionReq request) {
-		userService.getById(userId);
-		Long firstContentId = request.contentList().getFirst().contentId();
-		Content firstContent = contentService.getContentById(firstContentId);
-		String imageUrl = StringUtils.hasText(request.imageUrl()) ? request.imageUrl() : firstContent.getPoster();
-		collectionService.updateCollection(userId, collectionId, request.toCommand(), imageUrl);
-	}
+    @Transactional
+    public void updateCollection(final Long userId, final Long collectionId, final UpdateCollectionReq request) {
+        userService.getById(userId);
+        userService.validateCanUpload(userId);
+        Long firstContentId = request.contentList().getFirst().contentId();
+        Content firstContent = contentService.getContentById(firstContentId);
+        String imageUrl = StringUtils.hasText(request.imageUrl()) ? request.imageUrl() : firstContent.getPoster();
+        collectionService.updateCollection(userId, collectionId, request.toCommand(), imageUrl);
+    }
 
-	@Transactional
-	public Long reportCollection(final Long reporterId, final Long collectionId, final ReportCollectionReq request) {
-		userService.getById(reporterId);
-		return collectionService.reportCollection(reporterId, collectionId, request.toCommand());
-	}
+    @Transactional
+    public Long reportCollection(final Long reporterId, final Long collectionId, final ReportCollectionReq request) {
+        userService.getById(reporterId);
+        return collectionService.reportCollection(reporterId, collectionId, request.toCommand());
+    }
 }

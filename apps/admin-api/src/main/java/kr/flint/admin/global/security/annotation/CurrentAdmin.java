@@ -10,6 +10,6 @@ import io.swagger.v3.oas.annotations.Parameter;
 @Parameter(hidden = true)
 @Target(ElementType.PARAMETER)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface CurrentUser {
-	boolean required() default true;
+public @interface CurrentAdmin {
+    boolean required() default true;
 }

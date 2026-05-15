@@ -49,7 +49,7 @@ public class HomeCollectionRepositoryCustomImpl implements HomeCollectionReposit
             .join(user).on(collection.userId.eq(user.id))
             .where(
                 collection.id.in(collectionIds),
-                collection.isPublic.isTrue()
+                isVisiblePublicCollection()
             )
             .fetch();
     }
@@ -100,7 +100,7 @@ public class HomeCollectionRepositoryCustomImpl implements HomeCollectionReposit
             .from(collection)
             .where(
                 collection.userId.in(flinerIds),
-                collection.isPublic.isTrue(),
+                isVisiblePublicCollection(),
                 hasValidDescription(),
                 hasContentWithValidReason()
             )
@@ -115,7 +115,7 @@ public class HomeCollectionRepositoryCustomImpl implements HomeCollectionReposit
             .select(collection.id)
             .from(collection)
             .where(
-                collection.isPublic.isTrue(),
+                isVisiblePublicCollection(),
                 hasValidDescription(),
                 hasContentWithValidReason()
             )
@@ -135,7 +135,7 @@ public class HomeCollectionRepositoryCustomImpl implements HomeCollectionReposit
                 collectionBookmark.createdAt.goe(since)
             )
             .where(
-                collection.isPublic.isTrue(),
+                isVisiblePublicCollection(),
                 hasValidDescription(),
                 hasContentWithValidReason()
             )

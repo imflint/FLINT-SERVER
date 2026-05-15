@@ -29,10 +29,14 @@ dependencies {
     implementation project(':modules:auth')
     implementation project(':modules:terms')
     implementation project(':modules:content')
+    implementation project(':modules:collection')
+    implementation project(':modules:moderation')
+    implementation project(':modules:admin')
     implementation project(':modules:ott')
 
     implementation project(':infra:aws')
     implementation project(':infra:redis')
+    implementation project(':infra:storage')
     implementation project(':infra:tmdb')
 
     implementation project(':apps:batch')

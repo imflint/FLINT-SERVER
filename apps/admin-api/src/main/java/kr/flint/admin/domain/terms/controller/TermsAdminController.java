@@ -10,7 +10,7 @@ import jakarta.validation.Valid;
 import kr.flint.admin.domain.terms.controller.spec.TermsAdminControllerDocs;
 import kr.flint.admin.domain.terms.dto.request.TermsCreateReq;
 import kr.flint.admin.domain.terms.service.TermsCommandFacade;
-import kr.flint.admin.global.security.annotation.CurrentUser;
+import kr.flint.admin.global.security.annotation.CurrentAdmin;
 import kr.flint.shared.dto.response.SuccessCode;
 import kr.flint.shared.dto.response.SuccessResponse;
 import kr.flint.terms.dto.response.TermsRes;
@@ -21,16 +21,16 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/admin/terms")
 public class TermsAdminController implements TermsAdminControllerDocs {
 
-	private final TermsCommandFacade termsCommandFacade;
+    private final TermsCommandFacade termsCommandFacade;
 
-	@Override
-	@PostMapping
-	public ResponseEntity<SuccessResponse<TermsRes>> createTerms(
-		@CurrentUser Long adminUserId,
-		@Valid @RequestBody TermsCreateReq request
-	) {
-		return ResponseEntity
-			.status(SuccessCode.SUCCESS_CREATE.getHttpStatus())
-			.body(SuccessResponse.of(SuccessCode.SUCCESS_CREATE, termsCommandFacade.createTerms(adminUserId, request)));
-	}
+    @Override
+    @PostMapping
+    public ResponseEntity<SuccessResponse<TermsRes>> createTerms(
+        @CurrentAdmin Long adminId,
+        @Valid @RequestBody TermsCreateReq request
+    ) {
+        return ResponseEntity
+            .status(SuccessCode.SUCCESS_CREATE.getHttpStatus())
+            .body(SuccessResponse.of(SuccessCode.SUCCESS_CREATE, termsCommandFacade.createTerms(adminId, request)));
+    }
 }

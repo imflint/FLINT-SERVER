@@ -2,10 +2,12 @@ package kr.flint.auth.jwt;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtBuilder;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import kr.flint.auth.enums.AuthProvider;
+import kr.flint.auth.enums.TokenAudience;
 import kr.flint.auth.enums.TokenType;
 import kr.flint.auth.exception.AuthErrorCode;
 import kr.flint.auth.exception.AuthException;
@@ -18,6 +20,8 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
+import java.util.Objects;
+import java.util.Set;
 
 @Slf4j
 @Component
@@ -39,17 +43,27 @@ public class JwtProvider {
 
     // Access Token 생성
     public String createAccessToken(Long userId, String role) {
+        return createAccessToken(userId, role, TokenAudience.USER);
+    }
+
+    public String createAccessToken(Long userId, String role, TokenAudience audience) {
+        Objects.requireNonNull(audience, "token audience must not be null");
+
         Instant now = Instant.now();
         Instant expiry = now.plus(jwtProperties.accessExpiration());
 
-        return Jwts.builder()
+        JwtBuilder builder = Jwts.builder()
                 .claim(CLAIM_USER_ID, userId)
-                .claim(CLAIM_ROLE, role)
                 .claim(CLAIM_TOKEN_TYPE, TokenType.ACCESS.name())
+                .audience().add(audience.name()).and()
                 .issuedAt(Date.from(now))
-                .expiration(Date.from(expiry))
-                .signWith(secretKey)
-                .compact();
+                .expiration(Date.from(expiry));
+
+        if (role != null) {
+            builder.claim(CLAIM_ROLE, role);
+        }
+
+        return builder.signWith(secretKey).compact();
     }
 
     // Temp Token 생성 (소셜 정보 포함, 회원가입용)
@@ -115,8 +129,22 @@ public class JwtProvider {
 
         return new AccessTokenInfo(
                 claims.get(CLAIM_USER_ID, Long.class),
-                claims.get(CLAIM_ROLE, String.class)
+                claims.get(CLAIM_ROLE, String.class),
+                getAudienceOrDefault(claims)
         );
+    }
+
+    private TokenAudience getAudienceOrDefault(Claims claims) {
+        Set<String> audiences = claims.getAudience();
+        if (audiences == null || audiences.isEmpty()) {
+            return TokenAudience.USER;
+        }
+        String audience = audiences.iterator().next();
+        try {
+            return TokenAudience.valueOf(audience);
+        } catch (IllegalArgumentException e) {
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+        }
     }
 
     // 토큰 타입 검증

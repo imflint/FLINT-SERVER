@@ -14,9 +14,10 @@ public enum AuthErrorCode implements AppError {
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "AUTH.INVALID_CREDENTIALS", "Invalid Credentials", "아이디 또는 비밀번호가 올바르지 않습니다."),
 
     // 토큰 관련
-    INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH.INVALID_TOKEN", "Invalid Token", "유효하지 않은 토큰입니다."),
-    EXPIRED_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH.EXPIRED_TOKEN", "Expired Token", "만료된 토큰입니다."),
-    TOKEN_BLACKLISTED(HttpStatus.UNAUTHORIZED, "AUTH.TOKEN_BLACKLISTED", "Token Blacklisted", "로그아웃된 토큰입니다."),
+        INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH.INVALID_TOKEN", "Invalid Token", "유효하지 않은 토큰입니다."),
+        EXPIRED_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH.EXPIRED_TOKEN", "Expired Token", "만료된 토큰입니다."),
+        TOKEN_BLACKLISTED(HttpStatus.UNAUTHORIZED, "AUTH.TOKEN_BLACKLISTED", "Token Blacklisted", "로그아웃된 토큰입니다."),
+        ACCOUNT_SUSPENDED(HttpStatus.FORBIDDEN, "AUTH.ACCOUNT_SUSPENDED", "Account Suspended", "정지된 계정입니다."),
 
     // Refresh Token 관련
     REFRESH_TOKEN_NOT_FOUND(HttpStatus.UNAUTHORIZED, "AUTH.REFRESH_TOKEN_NOT_FOUND", "Refresh Token Not Found", "리프레시 토큰을 찾을 수 없습니다."),

@@ -17,15 +17,15 @@ import kr.flint.terms.dto.response.TermsRes;
 @Tag(name = "Terms Admin", description = "약관 관리 API")
 public interface TermsAdminControllerDocs {
 
-	@Operation(summary = "약관 버전 생성", description = "관리자가 새 약관 버전을 생성합니다.")
-	@SecurityRequirement(name = "bearerAuth")
-	@ApiResponses({
-		@ApiResponse(responseCode = "201", description = "약관 생성 성공", useReturnTypeSchema = true),
-		@ApiResponse(
-			responseCode = "403",
-			description = "관리 권한 없음",
-			content = @Content(schema = @Schema(implementation = ProblemDetail.class))
-		)
-	})
-	ResponseEntity<SuccessResponse<TermsRes>> createTerms(Long adminUserId, TermsCreateReq request);
+    @Operation(summary = "약관 버전 생성", description = "관리자가 새 약관 버전을 생성합니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "약관 생성 성공", useReturnTypeSchema = true),
+        @ApiResponse(
+            responseCode = "403",
+            description = "관리 권한 없음",
+            content = @Content(schema = @Schema(implementation = ProblemDetail.class))
+        )
+    })
+    ResponseEntity<SuccessResponse<TermsRes>> createTerms(Long adminId, TermsCreateReq request);
 }

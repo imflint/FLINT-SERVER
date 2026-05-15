@@ -118,12 +118,6 @@ variable "create_admin_auth_ssm_parameters" {
   default     = false
 }
 
-variable "admin_auth_user_id" {
-  description = "관리자 로그인 성공 시 토큰을 발급할 ADMIN 권한 사용자 ID입니다."
-  type        = number
-  default     = null
-}
-
 variable "admin_auth_username" {
   description = "관리자 로그인 ID입니다."
   type        = string

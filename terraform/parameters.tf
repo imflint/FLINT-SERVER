@@ -48,14 +48,6 @@ resource "aws_ssm_parameter" "cloudfront_url" {
   value = local.cloudfront_url
 }
 
-resource "aws_ssm_parameter" "admin_auth_user_id" {
-  count = local.admin_auth_ssm_enabled ? 1 : 0
-
-  name  = "${local.parameter_prefix}/flint.admin.auth.user-id"
-  type  = "String"
-  value = tostring(var.admin_auth_user_id)
-}
-
 resource "aws_ssm_parameter" "admin_auth_username" {
   count = local.admin_auth_ssm_enabled ? 1 : 0
 
