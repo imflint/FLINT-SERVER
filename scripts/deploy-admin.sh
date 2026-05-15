@@ -21,7 +21,7 @@ NGINX_PROXY_CONF="/etc/nginx/conf.d/flint-admin-api.conf"
 HEALTH_CHECK_PATH="/actuator/health"
 MAX_RETRY=12
 RETRY_INTERVAL=5
-LOG_LINES_ON_FAILURE=120
+LOG_LINES_ON_FAILURE=260
 PREVIOUS_IMAGE=""
 DEPLOY_LOG_FILE="$DEPLOY_PATH/logs/deploy-admin.log"
 

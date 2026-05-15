@@ -20,6 +20,16 @@ spring:
       password: ${redis.password:}
       database: ${redis.database:0}
 
+cloud:
+  aws:
+    s3:
+      bucket: ${s3.bucket}
+      region: ${s3.region:ap-northeast-2}
+      presign-expiration: 10m
+    cloudfront:
+      enabled: true
+      url: ${cloudfront.url}
+
 decorator:
   datasource:
     p6spy:

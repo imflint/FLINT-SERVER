@@ -37,7 +37,7 @@ public class CollectionContent extends Base {
 	@Column(nullable = false)
 	private boolean isSpoiler;
 
-	@Column(nullable = false)
+	@Column(nullable = false, columnDefinition = "TEXT")
 	private String reason;
 
 	@Column(name = "custom_image")

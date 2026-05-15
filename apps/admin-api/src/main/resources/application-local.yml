@@ -22,6 +22,22 @@ spring:
       password: ${REDIS_PASSWORD:}
       database: ${REDIS_DATABASE:0}
 
+cloud:
+  aws:
+    parameterstore:
+      enabled: false
+    secretsmanager:
+      enabled: false
+    s3:
+      bucket: ${S3_BUCKET:local-bucket}
+      region: ${AWS_REGION:ap-northeast-2}
+      access-key: ${S3_ACCESS_KEY:}
+      secret-key: ${S3_SECRET_KEY:}
+      presign-expiration: 10m
+    cloudfront:
+      enabled: false
+      url: ${CLOUDFRONT_URL:}
+
 decorator:
   datasource:
     p6spy:
@@ -35,13 +51,6 @@ p6spy:
       - kr.flint
     deny:
       - kr.flint.shared
-
-cloud:
-  aws:
-    parameterstore:
-      enabled: false
-    secretsmanager:
-      enabled: false
 
 jwt:
   secret: ${JWT_SECRET:local-dev-secret-key-at-least-32-characters-long}
