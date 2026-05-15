@@ -91,7 +91,7 @@ public class AdminCollectionReportQueryRepository {
                 owner.profileImage
             ))
             .from(collectionReport)
-            .leftJoin(collection).on(collection.id.eq(collectionReport.collectionId))
+            .join(collection).on(collection.id.eq(collectionReport.collectionId))
             .leftJoin(reporter).on(reporter.id.eq(collectionReport.reporterId))
             .leftJoin(owner).on(owner.id.eq(collection.userId))
             .where(collectionReport.id.eq(reportId))

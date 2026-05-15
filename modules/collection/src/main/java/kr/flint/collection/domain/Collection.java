@@ -4,7 +4,6 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.Table;
 import kr.flint.shared.domain.BaseTime;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -38,7 +37,7 @@ public class Collection extends BaseTime {
     private int bookmarkCount;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 16)
+    @Column(nullable = false, length = 16)
     private CollectionModerationStatus moderationStatus;
 
     public static Collection create(String title, String description, String image, boolean isPublic, Long userId) {
@@ -46,11 +45,11 @@ public class Collection extends BaseTime {
             .title(title)
             .description(description)
             .image(image)
-                .isPublic(isPublic)
-                .userId(userId)
-                .bookmarkCount(0)
-                .moderationStatus(CollectionModerationStatus.VISIBLE)
-                .build();
+            .isPublic(isPublic)
+            .userId(userId)
+            .bookmarkCount(0)
+            .moderationStatus(CollectionModerationStatus.VISIBLE)
+            .build();
     }
 
     public void update(String title, String description, String image, boolean isPublic) {
@@ -72,7 +71,7 @@ public class Collection extends BaseTime {
         this.moderationStatus = CollectionModerationStatus.DELETED;
     }
 
-        // TODO: 동시성 이슈 및 sync 체크
+    // TODO: 동시성 이슈 및 sync 체크
     public void increaseBookmarkCount() {
         this.bookmarkCount++;
     }
@@ -82,5 +81,4 @@ public class Collection extends BaseTime {
             this.bookmarkCount--;
         }
     }
-
 }

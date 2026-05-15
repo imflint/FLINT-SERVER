@@ -18,6 +18,7 @@ import kr.flint.admin.domain.report.repository.AdminCollectionReportQueryReposit
 import kr.flint.admin.domain.report.repository.AdminCollectionReportQueryRepository.ReportDetailRow;
 import kr.flint.admin.domain.report.repository.AdminCollectionReportQueryRepository.ReportSummaryRow;
 import kr.flint.collection.domain.Collection;
+import kr.flint.collection.domain.CollectionModerationStatus;
 import kr.flint.collection.domain.CollectionReport;
 import kr.flint.collection.domain.ReportStatus;
 import kr.flint.collection.exception.CollectionErrorCode;
@@ -177,7 +178,7 @@ public class AdminCollectionReportFacade {
                 row.collectionDescription(),
                 resolveNullableImage(row.collectionImage()),
                 row.isPublic(),
-                row.moderationStatus(),
+                resolveModerationStatus(row.moderationStatus()),
                 row.bookmarkCount(),
                 row.collectionCreatedAt()
             ),
@@ -208,6 +209,10 @@ public class AdminCollectionReportFacade {
 
     private String resolveNullableImage(String imageUrl) {
         return imageUrl == null ? null : cloudFrontUrlProvider.resolveUrl(imageUrl);
+    }
+
+    private CollectionModerationStatus resolveModerationStatus(CollectionModerationStatus moderationStatus) {
+        return moderationStatus != null ? moderationStatus : CollectionModerationStatus.VISIBLE;
     }
 
     private int normalizeSize(Integer size) {
