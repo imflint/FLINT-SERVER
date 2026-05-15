@@ -19,6 +19,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import kr.flint.admin.domain.terms.dto.request.TermsCreateReq;
 import kr.flint.terms.domain.Terms;
+import kr.flint.terms.domain.TermsContext;
 import kr.flint.terms.domain.TermsType;
 import kr.flint.terms.dto.response.TermsRes;
 import kr.flint.terms.exception.TermsErrorCode;
@@ -48,11 +49,11 @@ class TermsCommandFacadeTest {
 		void adminSuccess() {
 			// given
 			LocalDateTime activeAt = LocalDateTime.now();
-			TermsCreateReq request = new TermsCreateReq(TermsType.SERVICE, 1, "서비스 이용약관", "content", true, activeAt);
-			Terms terms = Terms.create(TermsType.SERVICE, 1, "서비스 이용약관", "content", true, activeAt);
+			TermsCreateReq request = new TermsCreateReq(TermsType.SERVICE, TermsContext.SIGNUP, 1, "서비스 이용약관", "content", true, activeAt);
+			Terms terms = Terms.create(TermsContext.SIGNUP, TermsType.SERVICE, 1, "서비스 이용약관", "content", true, activeAt);
 			ReflectionTestUtils.setField(terms, "id", 1L);
 			when(userService.getAuthInfo(10L)).thenReturn(UserAuthInfo.of(10L, "admin", "ADMIN"));
-			when(termsService.createTermsVersion(TermsType.SERVICE, 1, "서비스 이용약관", "content", true, activeAt))
+			when(termsService.createTermsVersion(TermsContext.SIGNUP, TermsType.SERVICE, 1, "서비스 이용약관", "content", true, activeAt))
 				.thenReturn(terms);
 
 			// when
@@ -60,6 +61,7 @@ class TermsCommandFacadeTest {
 
 			// then
 			assertThat(result.id()).isEqualTo(1L);
+			assertThat(result.context()).isEqualTo(TermsContext.SIGNUP);
 			assertThat(result.type()).isEqualTo(TermsType.SERVICE);
 			assertThat(result.version()).isEqualTo(1);
 		}
@@ -69,7 +71,7 @@ class TermsCommandFacadeTest {
 		void nonAdminForbidden() {
 			// given
 			LocalDateTime activeAt = LocalDateTime.now();
-			TermsCreateReq request = new TermsCreateReq(TermsType.SERVICE, 1, "서비스 이용약관", "content", true, activeAt);
+			TermsCreateReq request = new TermsCreateReq(TermsType.SERVICE, TermsContext.SIGNUP, 1, "서비스 이용약관", "content", true, activeAt);
 			when(userService.getAuthInfo(10L)).thenReturn(UserAuthInfo.of(10L, "user", "FLING"));
 
 			// when & then
@@ -78,6 +80,7 @@ class TermsCommandFacadeTest {
 				.extracting("errorCode")
 				.isEqualTo(TermsErrorCode.FORBIDDEN_TERMS_ADMIN);
 			verify(termsService, never()).createTermsVersion(
+				TermsContext.SIGNUP,
 				TermsType.SERVICE,
 				1,
 				"서비스 이용약관",

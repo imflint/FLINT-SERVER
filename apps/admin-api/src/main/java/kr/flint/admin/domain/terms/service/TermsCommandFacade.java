@@ -22,6 +22,7 @@ public class TermsCommandFacade {
 	public TermsRes createTerms(Long adminUserId, TermsCreateReq request) {
 		validateAdmin(adminUserId);
 		return TermsRes.from(termsService.createTermsVersion(
+			request.contextOrDefault(),
 			request.type(),
 			request.version(),
 			request.title(),

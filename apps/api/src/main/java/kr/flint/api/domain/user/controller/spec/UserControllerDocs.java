@@ -11,6 +11,7 @@ import jakarta.validation.constraints.Size;
 import kr.flint.api.domain.content.dto.GetContentListRes;
 import kr.flint.api.domain.user.dto.request.UpdateNicknameReq;
 import kr.flint.api.domain.user.dto.request.UpdateProfileImageReq;
+import kr.flint.api.domain.user.dto.response.MyProfileRes;
 import kr.flint.api.domain.user.dto.response.UserCollectionsRes;
 import kr.flint.api.domain.user.dto.response.UserKeywordsRes;
 import kr.flint.api.domain.user.dto.response.UserProfileRes;
@@ -39,11 +40,11 @@ public interface UserControllerDocs {
     // === 본인 조회 (인증 필수) ===
 
     @Operation(summary = "내 프로필 조회 - 호주",
-               description = "로그인한 사용자 본인의 프로필 정보를 조회합니다.")
+               description = "로그인한 사용자 본인의 프로필 정보와 필수 약관 추가 동의 필요 여부를 조회합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "프로필 조회 성공", useReturnTypeSchema = true)
     })
-    ResponseEntity<SuccessResponse<UserProfileRes>> getMyProfile(
+    ResponseEntity<SuccessResponse<MyProfileRes>> getMyProfile(
             @Parameter(hidden = true) Long userId
     );
 

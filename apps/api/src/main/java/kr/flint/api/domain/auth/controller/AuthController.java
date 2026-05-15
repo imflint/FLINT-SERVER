@@ -9,6 +9,7 @@ import kr.flint.api.domain.auth.dto.request.LogoutReq;
 import kr.flint.api.domain.auth.dto.request.RefreshTokenReq;
 import kr.flint.api.domain.auth.dto.request.SignupReq;
 import kr.flint.api.domain.auth.dto.request.SocialVerifyReq;
+import kr.flint.api.domain.auth.dto.request.WithdrawalReq;
 import kr.flint.api.domain.auth.dto.response.AuthTokenRes;
 import kr.flint.api.domain.auth.dto.response.SocialVerifyRes;
 import kr.flint.api.global.security.annotation.CurrentUser;
@@ -68,20 +69,22 @@ public class AuthController implements AuthControllerDocs {
             HttpServletRequest httpRequest
     ) {
         String accessToken = jwtProvider.extractToken(httpRequest.getHeader(HttpHeaders.AUTHORIZATION));
-        authFacade.withdraw(userId, accessToken);
+        authFacade.logoutAll(userId, accessToken);
         return ResponseEntity.noContent().build();
     }
 
 	@Override
-	@DeleteMapping("/withdraw")
+	@PostMapping("/withdraw")
 	public ResponseEntity<SuccessResponse<Void>> withdraw(
 		@CurrentUser Long userId,
+		@Valid @RequestBody WithdrawalReq request,
 		HttpServletRequest httpRequest
-	){
+	) {
 		String accessToken = jwtProvider.extractToken(httpRequest.getHeader(HttpHeaders.AUTHORIZATION));
-		authFacade.withdraw(userId, accessToken);
+		authFacade.withdraw(userId, accessToken, request.agreedTermsIdValues());
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_DELETE));
 	}
+
     /**
      * 개발용 로그인 (dev/local 환경에서만 사용)
      * userId만으로 토큰을 발급받습니다.

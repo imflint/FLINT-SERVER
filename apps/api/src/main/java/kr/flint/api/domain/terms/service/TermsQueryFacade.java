@@ -2,6 +2,7 @@ package kr.flint.api.domain.terms.service;
 
 import org.springframework.stereotype.Component;
 
+import kr.flint.terms.domain.TermsContext;
 import kr.flint.terms.domain.TermsType;
 import kr.flint.terms.dto.response.TermsListRes;
 import kr.flint.terms.dto.response.TermsRes;
@@ -14,8 +15,8 @@ public class TermsQueryFacade {
 
 	private final TermsService termsService;
 
-	public TermsListRes getTerms(TermsType type) {
-		return TermsListRes.from(termsService.getCurrentTerms(type).stream()
+	public TermsListRes getTerms(TermsContext context, TermsType type) {
+		return TermsListRes.from(termsService.getCurrentTerms(context, type).stream()
 			.map(TermsRes::from)
 			.toList());
 	}

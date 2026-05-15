@@ -17,7 +17,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(
 	uniqueConstraints = {
-		@UniqueConstraint(name = "uk_terms_type_version", columnNames = {"type", "version"})
+		@UniqueConstraint(name = "uk_terms_context_type_version", columnNames = {"context", "type", "version"})
 	}
 )
 @Getter
@@ -27,6 +27,10 @@ public class Terms extends BaseTime {
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 30)
 	private TermsType type;
+
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false, length = 30)
+	private TermsContext context;
 
 	@Column(nullable = false)
 	private Integer version;
@@ -44,7 +48,16 @@ public class Terms extends BaseTime {
 	private LocalDateTime activeAt;
 
 	@Builder(access = AccessLevel.PRIVATE)
-	private Terms(TermsType type, Integer version, String title, String content, boolean required, LocalDateTime activeAt) {
+	private Terms(
+		TermsContext context,
+		TermsType type,
+		Integer version,
+		String title,
+		String content,
+		boolean required,
+		LocalDateTime activeAt
+	) {
+		this.context = context;
 		this.type = type;
 		this.version = version;
 		this.title = title;
@@ -61,7 +74,20 @@ public class Terms extends BaseTime {
 		boolean required,
 		LocalDateTime activeAt
 	) {
+		return create(TermsContext.SIGNUP, type, version, title, content, required, activeAt);
+	}
+
+	public static Terms create(
+		TermsContext context,
+		TermsType type,
+		Integer version,
+		String title,
+		String content,
+		boolean required,
+		LocalDateTime activeAt
+	) {
 		return Terms.builder()
+			.context(context == null ? TermsContext.SIGNUP : context)
 			.type(type)
 			.version(version)
 			.title(title)
@@ -77,5 +103,9 @@ public class Terms extends BaseTime {
 
 	public boolean isNewerThan(Terms other) {
 		return version > other.version;
+	}
+
+	public TermsContext getEffectiveContext() {
+		return context == null ? TermsContext.SIGNUP : context;
 	}
 }

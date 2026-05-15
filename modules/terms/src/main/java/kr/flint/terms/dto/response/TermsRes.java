@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import kr.flint.terms.domain.Terms;
+import kr.flint.terms.domain.TermsContext;
 import kr.flint.terms.domain.TermsType;
 
 @Schema(description = "약관 응답")
@@ -12,6 +13,8 @@ public record TermsRes(
 	Long id,
 	@Schema(description = "약관 유형", example = "SERVICE")
 	TermsType type,
+	@Schema(description = "약관 사용 맥락", example = "SIGNUP")
+	TermsContext context,
 	@Schema(description = "약관 버전", example = "1")
 	Integer version,
 	@Schema(description = "약관 제목", example = "서비스 이용약관")
@@ -27,6 +30,7 @@ public record TermsRes(
 		return new TermsRes(
 			terms.getId(),
 			terms.getType(),
+			terms.getEffectiveContext(),
 			terms.getVersion(),
 			terms.getTitle(),
 			terms.getContent(),

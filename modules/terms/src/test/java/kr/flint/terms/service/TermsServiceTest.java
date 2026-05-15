@@ -4,8 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
@@ -21,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import kr.flint.terms.domain.Terms;
+import kr.flint.terms.domain.TermsContext;
 import kr.flint.terms.domain.TermsType;
 import kr.flint.terms.domain.UserTermsAgreement;
 import kr.flint.terms.exception.TermsErrorCode;
@@ -51,7 +54,11 @@ class TermsServiceTest {
 			Terms oldService = createTerms(1L, TermsType.SERVICE, 1, true, LocalDateTime.now().minusDays(10));
 			Terms newService = createTerms(2L, TermsType.SERVICE, 2, true, LocalDateTime.now().minusDays(1));
 			Terms privacy = createTerms(3L, TermsType.PRIVACY, 1, true, LocalDateTime.now().minusDays(2));
-			when(termsRepository.findByActiveAtLessThanEqual(any(LocalDateTime.class)))
+			when(termsRepository.findByContextAndActiveAtLessThanEqual(
+				org.mockito.ArgumentMatchers.eq(TermsContext.SIGNUP),
+				any(LocalDateTime.class),
+				org.mockito.ArgumentMatchers.eq(true)
+			))
 				.thenReturn(List.of(oldService, privacy, newService));
 
 			// when
@@ -70,7 +77,7 @@ class TermsServiceTest {
 		@DisplayName("같은 유형의 중복 버전은 생성할 수 없음")
 		void duplicateVersion() {
 			// given
-			when(termsRepository.existsByTypeAndVersion(TermsType.SERVICE, 1))
+			when(termsRepository.existsByContextAndTypeAndVersion(TermsContext.SIGNUP, TermsType.SERVICE, 1, true))
 				.thenReturn(true);
 
 			// when & then
@@ -100,8 +107,19 @@ class TermsServiceTest {
 			Terms service = createTerms(1L, TermsType.SERVICE, 1, true, LocalDateTime.now().minusDays(1));
 			Terms privacy = createTerms(2L, TermsType.PRIVACY, 1, true, LocalDateTime.now().minusDays(1));
 			Terms marketing = createTerms(3L, TermsType.MARKETING, 1, false, LocalDateTime.now().minusDays(1));
-			when(termsRepository.findByActiveAtLessThanEqual(any(LocalDateTime.class)))
+			when(termsRepository.findByContextAndActiveAtLessThanEqual(
+				org.mockito.ArgumentMatchers.eq(TermsContext.SIGNUP),
+				any(LocalDateTime.class),
+				org.mockito.ArgumentMatchers.eq(true)
+			))
 				.thenReturn(List.of(service, privacy, marketing));
+			when(userTermsAgreementRepository.findAgreedTermsIdsByUserIdAndContextAndTermsIdIn(
+				100L,
+				TermsContext.SIGNUP,
+				java.util.Set.of(1L, 2L, 3L),
+				true
+			))
+				.thenReturn(List.of());
 
 			// when
 			termsService.validateAndCreateAgreements(100L, List.of(1L, 2L, 3L));
@@ -111,6 +129,48 @@ class TermsServiceTest {
 				assertThat(agreements).hasSize(3);
 				assertThat(agreements).extracting(UserTermsAgreement::getTermsId)
 					.containsExactly(1L, 2L, 3L);
+				assertThat(agreements).extracting(UserTermsAgreement::getEffectiveContext)
+					.containsOnly(TermsContext.SIGNUP);
+				return true;
+			}));
+		}
+
+		@Test
+		@DisplayName("회원탈퇴 context의 필수 약관 동의를 저장")
+		void withdrawalSuccess() {
+			// given
+			Terms withdrawal = createTerms(
+				1L,
+				TermsContext.WITHDRAWAL,
+				TermsType.WITHDRAWAL,
+				1,
+				true,
+				LocalDateTime.now().minusDays(1)
+			);
+			when(termsRepository.findByContextAndActiveAtLessThanEqual(
+				org.mockito.ArgumentMatchers.eq(TermsContext.WITHDRAWAL),
+				any(LocalDateTime.class),
+				org.mockito.ArgumentMatchers.eq(false)
+			))
+				.thenReturn(List.of(withdrawal));
+			when(userTermsAgreementRepository.findAgreedTermsIdsByUserIdAndContextAndTermsIdIn(
+				100L,
+				TermsContext.WITHDRAWAL,
+				java.util.Set.of(1L),
+				false
+			))
+				.thenReturn(List.of());
+
+			// when
+			termsService.validateAndCreateAgreements(100L, TermsContext.WITHDRAWAL, List.of(1L));
+
+			// then
+			verify(userTermsAgreementRepository).saveAll(argThat(agreements -> {
+				assertThat(agreements).hasSize(1);
+				assertThat(agreements).extracting(UserTermsAgreement::getTermsId)
+					.containsExactly(1L);
+				assertThat(agreements).extracting(UserTermsAgreement::getEffectiveContext)
+					.containsOnly(TermsContext.WITHDRAWAL);
 				return true;
 			}));
 		}
@@ -121,7 +181,11 @@ class TermsServiceTest {
 			// given
 			Terms service = createTerms(1L, TermsType.SERVICE, 1, true, LocalDateTime.now().minusDays(1));
 			Terms privacy = createTerms(2L, TermsType.PRIVACY, 1, true, LocalDateTime.now().minusDays(1));
-			when(termsRepository.findByActiveAtLessThanEqual(any(LocalDateTime.class)))
+			when(termsRepository.findByContextAndActiveAtLessThanEqual(
+				org.mockito.ArgumentMatchers.eq(TermsContext.SIGNUP),
+				any(LocalDateTime.class),
+				org.mockito.ArgumentMatchers.eq(true)
+			))
 				.thenReturn(List.of(service, privacy));
 
 			// when & then
@@ -137,7 +201,11 @@ class TermsServiceTest {
 			// given
 			Terms service = createTerms(2L, TermsType.SERVICE, 1, true, LocalDateTime.now().minusDays(1));
 			Terms privacy = createTerms(3L, TermsType.PRIVACY, 1, true, LocalDateTime.now().minusDays(1));
-			when(termsRepository.findByActiveAtLessThanEqual(any(LocalDateTime.class)))
+			when(termsRepository.findByContextAndActiveAtLessThanEqual(
+				org.mockito.ArgumentMatchers.eq(TermsContext.SIGNUP),
+				any(LocalDateTime.class),
+				org.mockito.ArgumentMatchers.eq(true)
+			))
 				.thenReturn(List.of(service, privacy));
 
 			// when & then
@@ -152,7 +220,11 @@ class TermsServiceTest {
 		void noActiveRequiredTerms() {
 			// given
 			Terms marketing = createTerms(3L, TermsType.MARKETING, 1, false, LocalDateTime.now().minusDays(1));
-			when(termsRepository.findByActiveAtLessThanEqual(any(LocalDateTime.class)))
+			when(termsRepository.findByContextAndActiveAtLessThanEqual(
+				org.mockito.ArgumentMatchers.eq(TermsContext.SIGNUP),
+				any(LocalDateTime.class),
+				org.mockito.ArgumentMatchers.eq(true)
+			))
 				.thenReturn(List.of(marketing));
 
 			// when & then
@@ -161,10 +233,139 @@ class TermsServiceTest {
 				.extracting("errorCode")
 				.isEqualTo(TermsErrorCode.NO_ACTIVE_REQUIRED_TERMS);
 		}
+
+		@Test
+		@DisplayName("이미 동의한 약관은 중복 저장하지 않음")
+		void skipAlreadyAgreedTerms() {
+			// given
+			Terms service = createTerms(1L, TermsType.SERVICE, 1, true, LocalDateTime.now().minusDays(1));
+			Terms privacy = createTerms(2L, TermsType.PRIVACY, 1, true, LocalDateTime.now().minusDays(1));
+			when(termsRepository.findByContextAndActiveAtLessThanEqual(
+				org.mockito.ArgumentMatchers.eq(TermsContext.SIGNUP),
+				any(LocalDateTime.class),
+				org.mockito.ArgumentMatchers.eq(true)
+			))
+				.thenReturn(List.of(service, privacy));
+			when(userTermsAgreementRepository.findAgreedTermsIdsByUserIdAndContextAndTermsIdIn(
+				100L,
+				TermsContext.SIGNUP,
+				java.util.Set.of(1L, 2L),
+				true
+			))
+				.thenReturn(List.of(1L, 2L));
+
+			// when
+			termsService.validateAndCreateAgreements(100L, List.of(1L, 2L));
+
+			// then
+			verify(userTermsAgreementRepository, never()).saveAll(any());
+		}
+	}
+
+	@Nested
+	@DisplayName("getPendingRequiredTerms")
+	class GetPendingRequiredTerms {
+
+		@Test
+		@DisplayName("현재 활성 필수 약관을 모두 동의했으면 빈 목록을 반환")
+		void allRequiredTermsAgreed() {
+			// given
+			Terms service = createTerms(1L, TermsType.SERVICE, 1, true, LocalDateTime.now().minusDays(1));
+			Terms privacy = createTerms(2L, TermsType.PRIVACY, 1, true, LocalDateTime.now().minusDays(1));
+			Terms marketing = createTerms(3L, TermsType.MARKETING, 1, false, LocalDateTime.now().minusDays(1));
+			when(termsRepository.findByContextAndActiveAtLessThanEqual(eq(TermsContext.SIGNUP), any(LocalDateTime.class), eq(true)))
+				.thenReturn(List.of(service, privacy, marketing));
+			when(userTermsAgreementRepository.findAgreedTermsIdsByUserIdAndContextAndTermsIdIn(
+				100L,
+				TermsContext.SIGNUP,
+				java.util.Set.of(1L, 2L),
+				true
+			))
+				.thenReturn(List.of(1L, 2L));
+
+			// when
+			List<Terms> result = termsService.getPendingRequiredTerms(100L, TermsContext.SIGNUP);
+
+			// then
+			assertThat(result).isEmpty();
+		}
+
+		@Test
+		@DisplayName("새 필수 약관 버전이 활성화되면 새 버전을 미동의로 반환")
+		void newVersionPending() {
+			// given
+			Terms oldService = createTerms(1L, TermsType.SERVICE, 1, true, LocalDateTime.now().minusDays(10));
+			Terms newService = createTerms(2L, TermsType.SERVICE, 2, true, LocalDateTime.now().minusDays(1));
+			when(termsRepository.findByContextAndActiveAtLessThanEqual(eq(TermsContext.SIGNUP), any(LocalDateTime.class), eq(true)))
+				.thenReturn(List.of(oldService, newService));
+			when(userTermsAgreementRepository.findAgreedTermsIdsByUserIdAndContextAndTermsIdIn(
+				100L,
+				TermsContext.SIGNUP,
+				java.util.Set.of(2L),
+				true
+			))
+				.thenReturn(List.of());
+
+			// when
+			List<Terms> result = termsService.getPendingRequiredTerms(100L, TermsContext.SIGNUP);
+
+			// then
+			assertThat(result).extracting(Terms::getId).containsExactly(2L);
+		}
+
+		@Test
+		@DisplayName("선택 약관만 미동의인 경우에는 미동의 필수 약관이 없음")
+		void optionalTermsNotPending() {
+			// given
+			Terms service = createTerms(1L, TermsType.SERVICE, 1, true, LocalDateTime.now().minusDays(1));
+			Terms marketing = createTerms(2L, TermsType.MARKETING, 1, false, LocalDateTime.now().minusDays(1));
+			when(termsRepository.findByContextAndActiveAtLessThanEqual(eq(TermsContext.SIGNUP), any(LocalDateTime.class), eq(true)))
+				.thenReturn(List.of(service, marketing));
+			when(userTermsAgreementRepository.findAgreedTermsIdsByUserIdAndContextAndTermsIdIn(
+				100L,
+				TermsContext.SIGNUP,
+				java.util.Set.of(1L),
+				true
+			))
+				.thenReturn(List.of(1L));
+
+			// when
+			List<Terms> result = termsService.getPendingRequiredTerms(100L, TermsContext.SIGNUP);
+
+			// then
+			assertThat(result).isEmpty();
+		}
+
+		@Test
+		@DisplayName("활성 필수 약관이 없으면 빈 목록을 반환")
+		void noActiveRequiredTerms() {
+			// given
+			Terms marketing = createTerms(2L, TermsType.MARKETING, 1, false, LocalDateTime.now().minusDays(1));
+			when(termsRepository.findByContextAndActiveAtLessThanEqual(eq(TermsContext.SIGNUP), any(LocalDateTime.class), eq(true)))
+				.thenReturn(List.of(marketing));
+
+			// when
+			List<Terms> result = termsService.getPendingRequiredTerms(100L, TermsContext.SIGNUP);
+
+			// then
+			assertThat(result).isEmpty();
+			verifyNoInteractions(userTermsAgreementRepository);
+		}
 	}
 
 	private Terms createTerms(Long id, TermsType type, Integer version, boolean required, LocalDateTime activeAt) {
-		Terms terms = Terms.create(type, version, type.getDescription(), "content", required, activeAt);
+		return createTerms(id, TermsContext.SIGNUP, type, version, required, activeAt);
+	}
+
+	private Terms createTerms(
+		Long id,
+		TermsContext context,
+		TermsType type,
+		Integer version,
+		boolean required,
+		LocalDateTime activeAt
+	) {
+		Terms terms = Terms.create(context, type, version, type.getDescription(), "content", required, activeAt);
 		ReflectionTestUtils.setField(terms, "id", id);
 		return terms;
 	}
