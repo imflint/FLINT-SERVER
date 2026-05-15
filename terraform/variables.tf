@@ -278,7 +278,7 @@ variable "github_repo" {
 variable "github_repo_refs" {
   description = "배포 역할 사용을 허용할 GitHub OIDC subject ref 목록입니다."
   type        = list(string)
-  default     = ["ref:refs/heads/develop", "ref:refs/heads/main"]
+  default     = ["ref:refs/heads/release"]
 }
 
 variable "create_github_oidc_provider" {

@@ -2,7 +2,7 @@ name: Deploy Admin API
 
 on:
   push:
-    branches: [develop]
+    branches: [release]
     paths:
       - 'apps/admin-api/**'
       - 'apps/batch/**'
