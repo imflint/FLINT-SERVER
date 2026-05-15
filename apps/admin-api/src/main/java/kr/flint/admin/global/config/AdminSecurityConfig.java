@@ -36,66 +36,68 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AdminSecurityConfig {
 
-	private static final String[] PUBLIC_ENDPOINTS = {
-		"/swagger-ui/**",
-		"/v3/api-docs/**",
-		"/actuator/**",
-		"/api/v1/admin/auth/login"
-	};
+    private static final String[] PUBLIC_ENDPOINTS = {
+        "/swagger-ui/**",
+        "/v3/api-docs/**",
+        "/actuator/**",
+        "/admin/auth/login",
+        "/api/v1/admin/auth/login"
+    };
 
-	private final JwtAuthenticationFilter jwtAuthenticationFilter;
-	private final JwtExceptionFilter jwtExceptionFilter;
-	private final ObjectMapper objectMapper;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtExceptionFilter jwtExceptionFilter;
+    private final ObjectMapper objectMapper;
 
-	@Bean
-	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-		return http
-			.csrf(AbstractHttpConfigurer::disable)
-			.cors(cors -> cors.configurationSource(corsConfigurationSource()))
-			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-			.exceptionHandling(exception -> exception
-				.authenticationEntryPoint((request, response, ex) ->
-					writeErrorResponse(response, request, AuthErrorCode.UNAUTHORIZED))
-				.accessDeniedHandler((request, response, ex) ->
-					writeErrorResponse(response, request, ErrorCode.FORBIDDEN)))
-			.authorizeHttpRequests(auth -> auth
-				.requestMatchers(PUBLIC_ENDPOINTS).permitAll()
-				.requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-				.anyRequest().authenticated())
-			.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-			.addFilterBefore(jwtExceptionFilter, JwtAuthenticationFilter.class)
-			.build();
-	}
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        return http
+            .csrf(AbstractHttpConfigurer::disable)
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .exceptionHandling(exception -> exception
+                .authenticationEntryPoint((request, response, ex) ->
+                    writeErrorResponse(response, request, AuthErrorCode.UNAUTHORIZED))
+                .accessDeniedHandler((request, response, ex) ->
+                    writeErrorResponse(response, request, ErrorCode.FORBIDDEN)))
+                .authorizeHttpRequests(auth -> auth
+                    .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+                    .requestMatchers("/admin/**").hasRole("ADMIN")
+                    .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                    .anyRequest().authenticated())
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(jwtExceptionFilter, JwtAuthenticationFilter.class)
+            .build();
+    }
 
-	@Bean
-	public CorsConfigurationSource corsConfigurationSource() {
-		CorsConfiguration configuration = new CorsConfiguration();
-		configuration.setAllowedOriginPatterns(List.of("*"));
-		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-		configuration.setAllowedHeaders(List.of("*"));
-		configuration.setAllowCredentials(true);
-		configuration.setMaxAge(3600L);
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOriginPatterns(List.of("*"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
 
-		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-		source.registerCorsConfiguration("/**", configuration);
-		return source;
-	}
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
 
-	@Bean
-	public PasswordEncoder passwordEncoder() {
-		return new BCryptPasswordEncoder();
-	}
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 
-	private void writeErrorResponse(
-		HttpServletResponse response,
-		HttpServletRequest request,
-		AppError error
-	) throws IOException {
-		ProblemDetail problemDetail = ProblemDetail.of(error, request.getRequestURI());
+    private void writeErrorResponse(
+        HttpServletResponse response,
+        HttpServletRequest request,
+        AppError error
+    ) throws IOException {
+        ProblemDetail problemDetail = ProblemDetail.of(error, request.getRequestURI());
 
-		response.setStatus(error.getHttpStatus().value());
-		response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-		response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-		response.getWriter().write(objectMapper.writeValueAsString(problemDetail));
-	}
+        response.setStatus(error.getHttpStatus().value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        response.getWriter().write(objectMapper.writeValueAsString(problemDetail));
+    }
 }

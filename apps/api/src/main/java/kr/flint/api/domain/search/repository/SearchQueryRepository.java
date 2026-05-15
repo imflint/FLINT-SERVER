@@ -5,6 +5,7 @@ import static kr.flint.bookmark.domain.QContentBookmark.*;
 import static kr.flint.collection.domain.QCollection.*;
 import static kr.flint.content.domain.QContent.*;
 import static kr.flint.user.domain.QUser.*;
+import static kr.flint.api.common.query.CollectionQueryConditions.*;
 
 import java.util.List;
 
@@ -23,79 +24,80 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SearchQueryRepository {
 
-	private final JPAQueryFactory jpaQueryFactory;
+    private final JPAQueryFactory jpaQueryFactory;
 
-	/**
-	 * 북마크한 컬렉션에서 제목으로 검색
-	 */
-	public List<BookmarkedCollectionSearchRes> searchBookmarkedCollections(
-		final Long userId,
-		final String keyword,
-		final Long cursor,
-		final int size
-	) {
-		return jpaQueryFactory
-			.select(Projections.constructor(
-				BookmarkedCollectionSearchRes.class,
-				collectionBookmark.id,
-				collection.id,
-				collection.image,
-				collection.title,
-				collection.description,
-				collection.bookmarkCount,
-				collection.userId,
-				user.nickname,
-				user.profileImage
-			))
-			.from(collectionBookmark)
-			.join(collection).on(collection.id.eq(collectionBookmark.collectionId))
-			.join(user).on(user.id.eq(collection.userId))
-			.where(
-				collectionBookmark.userId.eq(userId),
-				containsKeyword(keyword, collection.title),
-				cursor != null ? collectionBookmark.id.lt(cursor) : null
-			)
-			.orderBy(collectionBookmark.id.desc())
-			.limit(size + 1L)
-			.fetch();
-	}
+    /**
+     * 북마크한 컬렉션에서 제목으로 검색
+     */
+    public List<BookmarkedCollectionSearchRes> searchBookmarkedCollections(
+        final Long userId,
+        final String keyword,
+        final Long cursor,
+        final int size
+    ) {
+        return jpaQueryFactory
+            .select(Projections.constructor(
+                BookmarkedCollectionSearchRes.class,
+                collectionBookmark.id,
+                collection.id,
+                collection.image,
+                collection.title,
+                collection.description,
+                collection.bookmarkCount,
+                collection.userId,
+                user.nickname,
+                user.profileImage
+            ))
+            .from(collectionBookmark)
+            .join(collection).on(collection.id.eq(collectionBookmark.collectionId))
+            .join(user).on(user.id.eq(collection.userId))
+            .where(
+                    collectionBookmark.userId.eq(userId),
+                    isVisibleCollection(),
+                    containsKeyword(keyword, collection.title),
+                cursor != null ? collectionBookmark.id.lt(cursor) : null
+            )
+            .orderBy(collectionBookmark.id.desc())
+            .limit(size + 1L)
+            .fetch();
+    }
 
-	/**
-	 * 북마크한 콘텐츠에서 제목으로 검색
-	 */
-	public List<BookmarkedContentSearchRes> searchBookmarkedContents(
-		final Long userId,
-		final String keyword,
-		final Long cursor,
-		final int size
-	) {
-		return jpaQueryFactory
-			.select(Projections.constructor(
-				BookmarkedContentSearchRes.class,
-				contentBookmark.id,
-				content.id,
-				content.title,
-				content.author,
-				content.poster,
-				content.year
-			))
-			.from(contentBookmark)
-			.join(content).on(content.id.eq(contentBookmark.contentId))
-			.where(
-				contentBookmark.userId.eq(userId),
-				containsKeyword(keyword, content.title),
-				cursor != null ? contentBookmark.id.lt(cursor) : null
-			)
-			.orderBy(contentBookmark.id.desc())
-			.limit(size + 1L)
-			.fetch();
-	}
+    /**
+     * 북마크한 콘텐츠에서 제목으로 검색
+     */
+    public List<BookmarkedContentSearchRes> searchBookmarkedContents(
+        final Long userId,
+        final String keyword,
+        final Long cursor,
+        final int size
+    ) {
+        return jpaQueryFactory
+            .select(Projections.constructor(
+                BookmarkedContentSearchRes.class,
+                contentBookmark.id,
+                content.id,
+                content.title,
+                content.author,
+                content.poster,
+                content.year
+            ))
+            .from(contentBookmark)
+            .join(content).on(content.id.eq(contentBookmark.contentId))
+            .where(
+                contentBookmark.userId.eq(userId),
+                containsKeyword(keyword, content.title),
+                cursor != null ? contentBookmark.id.lt(cursor) : null
+            )
+            .orderBy(contentBookmark.id.desc())
+            .limit(size + 1L)
+            .fetch();
+    }
 
-	private BooleanBuilder containsKeyword(final String keyword, final StringPath field) {
-		BooleanBuilder builder = new BooleanBuilder();
-		if (keyword == null || keyword.isBlank()) {
-			return builder;
-		}
-		return builder.and(field.containsIgnoreCase(keyword));
-	}
+    private BooleanBuilder containsKeyword(final String keyword, final StringPath field) {
+        BooleanBuilder builder = new BooleanBuilder();
+        if (keyword == null || keyword.isBlank()) {
+            return builder;
+        }
+        return builder.and(field.containsIgnoreCase(keyword));
+    }
 }

@@ -40,6 +40,17 @@ public class User extends BaseTime {
     @ColumnDefault("0")
     private int bookmarksSinceKeywordCalc;
 
+    @ColumnDefault("0")
+    private Integer warningCount;
+
+    private LocalDateTime uploadRestrictedAt;
+
+    private LocalDateTime uploadRestrictedUntil;
+
+    private LocalDateTime suspendedAt;
+
+    private LocalDateTime suspendedUntil;
+
     public static User createFling(String nickname, String profileImage) {
         return create(nickname, profileImage, UserRole.FLING);
     }
@@ -57,6 +68,7 @@ public class User extends BaseTime {
                 .nickname(nickname)
                 .userRole(userRole)
                 .status(UserStatus.ACTIVE)
+                .warningCount(0)
                 .build();
     }
 
@@ -72,6 +84,36 @@ public class User extends BaseTime {
     public void withdraw() {
         this.status = UserStatus.WITHDRAWN;
         this.deletedAt = LocalDateTime.now();
+    }
+
+    public void warn() {
+        this.warningCount = warningCount == null ? 1 : warningCount + 1;
+    }
+
+    public void restrictUpload(LocalDateTime restrictedAt, LocalDateTime restrictedUntil) {
+        this.uploadRestrictedAt = restrictedAt;
+        this.uploadRestrictedUntil = restrictedUntil;
+    }
+
+    public void suspend(LocalDateTime suspendedAt, LocalDateTime suspendedUntil) {
+        this.suspendedAt = suspendedAt;
+        this.suspendedUntil = suspendedUntil;
+    }
+
+    public boolean canUpload(LocalDateTime now) {
+        return canUseService(now) && !hasActiveUploadRestriction(now);
+    }
+
+    public boolean canUseService(LocalDateTime now) {
+        return status == UserStatus.ACTIVE && !hasActiveSuspension(now);
+    }
+
+    public boolean hasActiveSuspension(LocalDateTime now) {
+        return suspendedAt != null && (suspendedUntil == null || suspendedUntil.isAfter(now));
+    }
+
+    private boolean hasActiveUploadRestriction(LocalDateTime now) {
+        return uploadRestrictedAt != null && (uploadRestrictedUntil == null || uploadRestrictedUntil.isAfter(now));
     }
 
     public void incrementBookmarksSinceKeywordCalc() {

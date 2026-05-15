@@ -9,6 +9,7 @@ import kr.flint.auth.exception.AuthException;
 import kr.flint.auth.jwt.AccessTokenBlacklist;
 import kr.flint.auth.jwt.dto.AccessTokenInfo;
 import kr.flint.auth.jwt.JwtProvider;
+import kr.flint.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -42,6 +43,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
     private final AccessTokenBlacklist accessTokenBlacklist;
+    private final UserService userService;
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -71,6 +73,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             AccessTokenInfo claims = jwtProvider.parseAccessToken(token);
 
             if (claims != null && claims.isValid()) {
+                if (!userService.canUseService(claims.userId())) {
+                    throw new AuthException(AuthErrorCode.ACCOUNT_SUSPENDED);
+                }
                 UserPrincipal principal = new UserPrincipal(claims.userId(), claims.role());
                 List<SimpleGrantedAuthority> authorities = claims.role() != null
                         ? List.of(new SimpleGrantedAuthority("ROLE_" + claims.role()))
