@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import kr.flint.api.domain.content.dto.GetContentListRes;
@@ -16,6 +17,7 @@ import kr.flint.api.domain.user.dto.response.UserCollectionsRes;
 import kr.flint.api.domain.user.dto.response.UserKeywordsRes;
 import kr.flint.api.domain.user.dto.response.UserProfileRes;
 import kr.flint.shared.dto.response.SuccessResponse;
+import kr.flint.user.domain.NicknamePolicy;
 import kr.flint.user.dto.response.NicknameCheckResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,9 +33,10 @@ public interface UserControllerDocs {
             @ApiResponse(responseCode = "200", description = "닉네임 체크 성공", useReturnTypeSchema = true)
     })
     ResponseEntity<SuccessResponse<NicknameCheckResponse>> checkNickname(
-            @Parameter(description = "확인할 닉네임 (2-10자, 영문/숫자/한글/밑줄만 가능)", example = "플린트")
-            @Size(min = 2, max = 10, message = "닉네임은 2자 이상 10자 이하여야 합니다.")
-            @Pattern(regexp = "^[a-zA-Z0-9가-힣_]+$", message = "닉네임은 영문, 숫자, 한글, 밑줄만 사용 가능합니다.")
+            @Parameter(description = "확인할 닉네임 (2-8자, 한글/영문/숫자 혼용 가능)", example = "플린트")
+            @NotBlank(message = NicknamePolicy.MESSAGE)
+            @Size(min = NicknamePolicy.MIN_LENGTH, max = NicknamePolicy.MAX_LENGTH, message = NicknamePolicy.MESSAGE)
+            @Pattern(regexp = NicknamePolicy.REGEX, message = NicknamePolicy.MESSAGE)
             String nickname
     );
 
@@ -76,7 +79,7 @@ public interface UserControllerDocs {
     );
 
     @Operation(summary = "닉네임 변경",
-               description = "로그인한 사용자의 닉네임을 변경합니다. 2-10자, 영문/숫자/한글/밑줄만 허용됩니다.")
+               description = "로그인한 사용자의 닉네임을 변경합니다. 2-8자, 한글/영문/숫자만 허용됩니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "닉네임 변경 성공", useReturnTypeSchema = true),
             @ApiResponse(responseCode = "409", description = "이미 사용 중인 닉네임")

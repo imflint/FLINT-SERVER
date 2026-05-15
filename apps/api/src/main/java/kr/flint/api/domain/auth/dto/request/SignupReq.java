@@ -1,11 +1,13 @@
 package kr.flint.api.domain.auth.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import kr.flint.user.domain.NicknamePolicy;
 
 import java.util.List;
 
@@ -15,11 +17,14 @@ public record SignupReq(
         @NotBlank(message = "임시 토큰은 필수입니다.")
         String tempToken,
 
-        @Schema(description = "닉네임 (2-10자, 영문/숫자/한글만 가능)", example = "플린트", minLength = 2, maxLength = 10, requiredMode = Schema.RequiredMode.REQUIRED)
-        @NotBlank(message = "닉네임은 필수입니다.")
-        @Size(min = 2, max = 10, message = "닉네임은 2자 이상 10자 이하여야 합니다.")
-        @Pattern(regexp = "^[a-zA-Z0-9가-힣]+$", message = "닉네임은 영문, 숫자, 한글만 사용 가능합니다.")
+        @Schema(description = "닉네임 (2-8자, 한글/영문/숫자 혼용 가능)", example = "플린트", minLength = NicknamePolicy.MIN_LENGTH, maxLength = NicknamePolicy.MAX_LENGTH, requiredMode = Schema.RequiredMode.REQUIRED)
+        @NotBlank(message = NicknamePolicy.MESSAGE)
+        @Size(min = NicknamePolicy.MIN_LENGTH, max = NicknamePolicy.MAX_LENGTH, message = NicknamePolicy.MESSAGE)
+        @Pattern(regexp = NicknamePolicy.REGEX, message = NicknamePolicy.MESSAGE)
         String nickname,
+
+        @Schema(description = "S3에 업로드된 프로필 이미지 키", example = "user/profile/01J5K3...", requiredMode = RequiredMode.NOT_REQUIRED)
+        String profileImage,
 
         @Schema(description = "선호 콘텐츠 ID 목록 (온보딩에서 선택)", example = "[\"1\", \"2\", \"3\"]")
         List<@NotBlank(message = "선호 콘텐츠 ID는 비어 있을 수 없습니다.")

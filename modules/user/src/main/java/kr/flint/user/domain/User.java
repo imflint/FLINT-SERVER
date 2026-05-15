@@ -5,16 +5,11 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import kr.flint.shared.domain.BaseTime;
-import kr.flint.user.exception.UserErrorCode;
-import kr.flint.user.exception.UserException;
 import lombok.*;
 import org.hibernate.annotations.ColumnDefault;
-import org.hibernate.annotations.SQLRestriction;
-import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 
-@SQLRestriction("deleted_at IS NULL")
 @Entity
 @Getter
 @Builder(access = AccessLevel.PRIVATE)
@@ -25,7 +20,7 @@ public class User extends BaseTime {
 //    @Column(nullable = false)
 //    private String realName;
 
-    @Column(nullable = false, length = 10, unique = true)
+    @Column(nullable = false, length = NicknamePolicy.MAX_LENGTH, unique = true)
     private String nickname;
 
     private String profileImage;
@@ -45,9 +40,12 @@ public class User extends BaseTime {
     @ColumnDefault("0")
     private int bookmarksSinceKeywordCalc;
 
-    // TODO: 프로필 이미지 어떻게 할지 고민
+    public static User createFling(String nickname, String profileImage) {
+        return create(nickname, profileImage, UserRole.FLING);
+    }
+
     public static User createFling(String nickname) {
-        return create(nickname, null, UserRole.FLING);
+        return createFling(nickname, null);
     }
 
 
@@ -85,9 +83,6 @@ public class User extends BaseTime {
     }
 
     private static void validateNickname(String nickname) {
-        // TODO: 닉네임 검증 로직 추가
-        if (!StringUtils.hasText(nickname)) {
-            throw new UserException(UserErrorCode.INVALID_NICKNAME);
-        }
+        NicknamePolicy.validate(nickname);
     }
 }

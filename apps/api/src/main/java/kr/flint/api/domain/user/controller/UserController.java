@@ -3,6 +3,9 @@ package kr.flint.api.domain.user.controller;
 import java.util.List;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import kr.flint.api.domain.content.dto.GetContentDetailRes;
 import kr.flint.api.domain.content.dto.GetContentListRes;
 import kr.flint.api.domain.content.service.ContentQueryFacade;
@@ -18,6 +21,7 @@ import kr.flint.api.domain.user.service.UserQueryFacade;
 import kr.flint.api.global.security.annotation.CurrentUser;
 import kr.flint.shared.dto.response.SuccessCode;
 import kr.flint.shared.dto.response.SuccessResponse;
+import kr.flint.user.domain.NicknamePolicy;
 import kr.flint.user.dto.response.NicknameCheckResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -37,7 +41,11 @@ public class UserController implements UserControllerDocs {
     @Override
     @GetMapping("/nickname/check")
     public ResponseEntity<SuccessResponse<NicknameCheckResponse>> checkNickname(
-            @RequestParam String nickname
+            @RequestParam
+            @NotBlank(message = NicknamePolicy.MESSAGE)
+            @Size(min = NicknamePolicy.MIN_LENGTH, max = NicknamePolicy.MAX_LENGTH, message = NicknamePolicy.MESSAGE)
+            @Pattern(regexp = NicknamePolicy.REGEX, message = NicknamePolicy.MESSAGE)
+            String nickname
     ) {
         return ResponseEntity.ok(
                 SuccessResponse.of(SuccessCode.SUCCESS_NICKNAME_CHECK, userQueryFacade.checkNickname(nickname))

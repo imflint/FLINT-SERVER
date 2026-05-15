@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.util.CollectionUtils;
 
+import kr.flint.user.domain.NicknamePolicy;
 import kr.flint.user.domain.User;
 import kr.flint.user.dto.response.UserAuthInfo;
 import kr.flint.user.dto.response.UserSimpleRes;
@@ -43,11 +44,17 @@ public class UserService {
 
     @Transactional
     public UserAuthInfo create(String nickname) {
+        return create(nickname, null);
+    }
+
+    @Transactional
+    public UserAuthInfo create(String nickname, String profileImage) {
+        NicknamePolicy.validate(nickname);
         if (existsByNickname(nickname)) {
             throw new UserException(UserErrorCode.DUPLICATE_NICKNAME);
         }
 
-        User user = User.createFling(nickname);
+        User user = User.createFling(nickname, profileImage);
         User saved = userRepository.save(user);
         return UserAuthInfo.of(saved.getId(), saved.getNickname(), saved.getUserRole().name());
     }
@@ -66,6 +73,7 @@ public class UserService {
 
 	@Transactional
 	public void updateNickname(Long userId, String nickname) {
+		NicknamePolicy.validate(nickname);
 		if (existsByNickname(nickname)) {
 			throw new UserException(UserErrorCode.DUPLICATE_NICKNAME);
 		}

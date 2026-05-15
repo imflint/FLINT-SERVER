@@ -43,7 +43,10 @@ public interface TermsControllerDocs {
 	})
 	ResponseEntity<SuccessResponse<TermsRes>> getTerms(Long termsId);
 
-	@Operation(summary = "약관 동의 저장", description = "로그인한 사용자의 현재 활성 회원가입 필수 약관 동의를 저장합니다.")
+	@Operation(
+		summary = "로그인 후 약관 재동의 저장",
+		description = "로그인한 사용자가 새로 활성화된 SIGNUP 약관에 재동의할 때 사용합니다. 초기 회원가입 동의는 POST /auth/signup의 agreedTermsIds로 처리합니다."
+	)
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "약관 동의 저장 성공", useReturnTypeSchema = true),
 		@ApiResponse(

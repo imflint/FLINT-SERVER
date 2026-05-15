@@ -115,12 +115,13 @@ class AuthFacadeTest {
 			SignupReq request = new SignupReq(
 				"temp-token",
 				"플린트",
+				"user/profile/profile-key.jpg",
 				List.of("100"),
 				List.of("10", "20")
 			);
 			when(authService.verifyTempToken("temp-token"))
 				.thenReturn(new TempTokenPayload(AuthProvider.KAKAO, "provider-user-id"));
-			when(userService.create("플린트")).thenReturn(UserAuthInfo.of(1L, "플린트", "FLING"));
+			when(userService.create("플린트", "user/profile/profile-key.jpg")).thenReturn(UserAuthInfo.of(1L, "플린트", "FLING"));
 			when(authService.issueTokens(1L, "FLING")).thenReturn(AuthTokens.of("access", "refresh", 1L));
 
 			// when
@@ -138,12 +139,13 @@ class AuthFacadeTest {
 			SignupReq request = new SignupReq(
 				"temp-token",
 				"플린트",
+				null,
 				List.of("100"),
 				List.of("10")
 			);
 			when(authService.verifyTempToken("temp-token"))
 				.thenReturn(new TempTokenPayload(AuthProvider.KAKAO, "provider-user-id"));
-			when(userService.create("플린트")).thenReturn(UserAuthInfo.of(1L, "플린트", "FLING"));
+			when(userService.create("플린트", null)).thenReturn(UserAuthInfo.of(1L, "플린트", "FLING"));
 			doThrow(new TermsException(TermsErrorCode.REQUIRED_TERMS_NOT_AGREED))
 				.when(termsService).validateAndCreateAgreements(1L, TermsContext.SIGNUP, List.of(10L));
 
