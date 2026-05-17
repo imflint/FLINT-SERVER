@@ -1,5 +1,6 @@
 package kr.flint.admin.domain.report.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -10,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
 import java.util.EnumSet;
+import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,9 +24,11 @@ import org.springframework.test.util.ReflectionTestUtils;
 import kr.flint.admin.common.AdminAuthorizationService;
 import kr.flint.admin.domain.report.dto.request.AdminCollectionReportResolutionReq;
 import kr.flint.admin.domain.report.repository.AdminCollectionReportQueryRepository;
+import kr.flint.admin.domain.report.repository.AdminCollectionReportQueryRepository.ReportSummaryRow;
 import kr.flint.collection.domain.Collection;
 import kr.flint.collection.domain.CollectionReport;
 import kr.flint.collection.domain.ReportReason;
+import kr.flint.collection.domain.ReportStatus;
 import kr.flint.collection.exception.CollectionErrorCode;
 import kr.flint.collection.exception.CollectionException;
 import kr.flint.collection.repository.CollectionReportRepository;
@@ -61,6 +65,28 @@ class AdminCollectionReportFacadeTest {
 
     @InjectMocks
     private AdminCollectionReportFacade facade;
+
+    @Test
+    @DisplayName("신고 목록은 offset 페이지와 상태 필터를 적용해 조회")
+    void getReports() {
+        LocalDateTime createdAt = LocalDateTime.now();
+        CollectionReport report = CollectionReport.create(30L, 20L, EnumSet.of(ReportReason.SPAM), null);
+        ReflectionTestUtils.setField(report, "id", 10L);
+        when(queryRepository.findReportIds(ReportStatus.PENDING, 1, 20)).thenReturn(List.of(10L));
+        when(queryRepository.countReports(ReportStatus.PENDING)).thenReturn(1L);
+        when(collectionReportRepository.findAllById(List.of(10L))).thenReturn(List.of(report));
+        when(queryRepository.findReportSummaryRows(List.of(10L))).thenReturn(List.of(
+            new ReportSummaryRow(10L, 20L, "추천 컬렉션", null, 30L, "신고자", 40L, "소유자", ReportStatus.PENDING, createdAt, null)
+        ));
+
+        var result = facade.getReports(99L, ReportStatus.PENDING, null, null);
+
+        assertThat(result.data()).hasSize(1);
+        assertThat(result.data().getFirst().reportId()).isEqualTo(10L);
+        assertThat(result.meta().page()).isEqualTo(1);
+        assertThat(result.meta().size()).isEqualTo(20);
+        assertThat(result.meta().totalElements()).isEqualTo(1L);
+    }
 
     @Test
     @DisplayName("신고 처리 시 컬렉션 조치와 사용자 조치를 함께 적용")

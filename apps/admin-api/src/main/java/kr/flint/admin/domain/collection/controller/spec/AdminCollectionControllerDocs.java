@@ -22,7 +22,7 @@ import kr.flint.shared.exception.ProblemDetail;
 @Tag(name = "Collection Admin", description = "컬렉션 관리 API")
 public interface AdminCollectionControllerDocs {
 
-    @Operation(summary = "컬렉션 목록 조회", description = "관리자가 컬렉션을 검색하고 목록을 cursor 방식으로 조회합니다.")
+    @Operation(summary = "컬렉션 목록 조회", description = "관리자가 컬렉션을 검색하고 목록을 page/size 기반으로 조회합니다.")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "컬렉션 목록 조회 성공", useReturnTypeSchema = true)
@@ -32,7 +32,7 @@ public interface AdminCollectionControllerDocs {
         String keyword,
         AdminCollectionVisibility visibility,
         CollectionModerationStatus moderationStatus,
-        Long cursor,
+        Integer page,
         Integer size
     );
 

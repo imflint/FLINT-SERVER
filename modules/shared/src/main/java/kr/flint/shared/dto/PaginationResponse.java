@@ -36,4 +36,11 @@ public record PaginationResponse<T>(
                 PaginationMeta.ofCursor(data != null ? data.size() : 0, nextCursor)
         );
     }
+
+    public static <T> PaginationResponse<T> ofOffset(List<T> data, int page, int size, long totalElements) {
+        return new PaginationResponse<>(
+                data,
+                PaginationMeta.ofOffset(data != null ? data.size() : 0, page, size, totalElements)
+        );
+    }
 }

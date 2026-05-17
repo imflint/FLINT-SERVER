@@ -21,7 +21,7 @@ import kr.flint.shared.exception.ProblemDetail;
 @Tag(name = "Collection Report Admin", description = "컬렉션 신고 관리 API")
 public interface AdminCollectionReportControllerDocs {
 
-    @Operation(summary = "컬렉션 신고 목록 조회", description = "관리자가 컬렉션 신고 목록을 cursor 기반으로 조회합니다.")
+    @Operation(summary = "컬렉션 신고 목록 조회", description = "관리자가 컬렉션 신고 목록을 page/size 기반으로 조회합니다.")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "컬렉션 신고 목록 조회 성공", useReturnTypeSchema = true),
@@ -30,7 +30,7 @@ public interface AdminCollectionReportControllerDocs {
     ResponseEntity<SuccessResponse<PaginationResponse<AdminCollectionReportSummaryRes>>> getReports(
         @Parameter(hidden = true) Long adminId,
         ReportStatus status,
-        Long cursor,
+        Integer page,
         Integer size
     );
 

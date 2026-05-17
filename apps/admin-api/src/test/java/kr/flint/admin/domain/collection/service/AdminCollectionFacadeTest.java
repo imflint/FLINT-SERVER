@@ -54,11 +54,12 @@ class AdminCollectionFacadeTest {
     private AdminCollectionFacade facade;
 
     @Test
-    @DisplayName("컬렉션 목록은 cursor 페이지와 필터를 적용해 조회")
+    @DisplayName("컬렉션 목록은 offset 페이지와 필터를 적용해 조회")
     void getCollections() {
         LocalDateTime createdAt = LocalDateTime.now();
-        when(queryRepository.findCollectionIds("추천", AdminCollectionVisibility.PUBLIC, CollectionModerationStatus.VISIBLE, null, 20))
+        when(queryRepository.findCollectionIds("추천", AdminCollectionVisibility.PUBLIC, CollectionModerationStatus.VISIBLE, 1, 20))
             .thenReturn(List.of(2L, 1L));
+        when(queryRepository.countCollections("추천", AdminCollectionVisibility.PUBLIC, CollectionModerationStatus.VISIBLE)).thenReturn(2L);
         when(queryRepository.findCollectionSummaryRows(List.of(2L, 1L))).thenReturn(List.of(
             new CollectionSummaryRow(2L, "추천 컬렉션", "설명", "image.jpg", true, CollectionModerationStatus.VISIBLE, 3, 10L, "운영자", 2L, createdAt),
             new CollectionSummaryRow(1L, "지난 컬렉션", "설명", null, true, CollectionModerationStatus.VISIBLE, 1, 11L, "작성자", 1L, createdAt)
@@ -70,6 +71,9 @@ class AdminCollectionFacadeTest {
         assertThat(result.data()).hasSize(2);
         assertThat(result.data().getFirst().collectionId()).isEqualTo(2L);
         assertThat(result.data().getFirst().contentCount()).isEqualTo(2);
+        assertThat(result.meta().page()).isEqualTo(1);
+        assertThat(result.meta().size()).isEqualTo(20);
+        assertThat(result.meta().totalElements()).isEqualTo(2L);
     }
 
     @Test

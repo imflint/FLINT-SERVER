@@ -34,12 +34,12 @@ public class AdminCollectionReportController implements AdminCollectionReportCon
     public ResponseEntity<SuccessResponse<PaginationResponse<AdminCollectionReportSummaryRes>>> getReports(
         @CurrentAdmin Long adminId,
         @RequestParam(required = false) ReportStatus status,
-        @RequestParam(required = false) Long cursor,
+        @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
         return ResponseEntity.ok(SuccessResponse.of(
             SuccessCode.SUCCESS_FETCH,
-            adminCollectionReportFacade.getReports(adminId, status, cursor, size)
+            adminCollectionReportFacade.getReports(adminId, status, page, size)
         ));
     }
 
