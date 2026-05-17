@@ -9,10 +9,10 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import io.hypersistence.tsid.TSID;
 import kr.flint.collection.domain.Collection;
 import kr.flint.collection.domain.CollectionContent;
 import kr.flint.collection.domain.CollectionReport;
-import kr.flint.collection.domain.RecentViewedCollection;
 import kr.flint.collection.domain.ReportReason;
 import kr.flint.collection.dto.CollectionCreateCommand;
 import kr.flint.collection.dto.CollectionUpdateCommand;
@@ -188,15 +188,13 @@ public class CollectionService {
 
     @Transactional
     public void saveRecentCollection(final Long userId, final Long collectionId) {
-        Collection collection = getCollectionById(collectionId);
-        recentViewedCollectionRepository
-            .findByUserIdAndCollection(userId, collection)
-            .ifPresentOrElse(
-                RecentViewedCollection::updateViewedAt,
-                () -> recentViewedCollectionRepository.save(
-                    RecentViewedCollection.create(userId, collection)
-                )
-            );
+        getCollectionById(collectionId);
+        recentViewedCollectionRepository.upsertRecentViewedCollection(
+            TSID.Factory.getTsid().toLong(),
+            userId,
+            collectionId,
+            LocalDateTime.now()
+        );
     }
 
     @Transactional

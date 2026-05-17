@@ -2,6 +2,11 @@ package kr.flint.collection.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
@@ -76,6 +81,45 @@ class CollectionServiceTest {
             collectionService.deleteByAdmin(10L);
 
             assertThat(collection.getModerationStatus()).isEqualTo(CollectionModerationStatus.DELETED);
+        }
+    }
+
+    @Nested
+    @DisplayName("saveRecentCollection")
+    class SaveRecentCollection {
+
+        @Test
+        @DisplayName("최근 본 컬렉션은 native upsert로 저장")
+        void upsertRecentCollection() {
+            Collection collection = Collection.create("제목", "설명", "image.jpg", true, 1L);
+            ReflectionTestUtils.setField(collection, "id", 10L);
+            when(collectionRepository.findById(10L)).thenReturn(Optional.of(collection));
+
+            collectionService.saveRecentCollection(1L, 10L);
+
+            verify(recentViewedCollectionRepository).upsertRecentViewedCollection(
+                anyLong(),
+                eq(1L),
+                eq(10L),
+                any(LocalDateTime.class)
+            );
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 컬렉션이면 최근 조회 기록을 저장하지 않음")
+        void collectionNotFound() {
+            when(collectionRepository.findById(10L)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> collectionService.saveRecentCollection(1L, 10L))
+                .isInstanceOf(CollectionException.class)
+                .extracting("errorCode")
+                .isEqualTo(CollectionErrorCode.COLLECTION_NOT_FOUND);
+            verify(recentViewedCollectionRepository, never()).upsertRecentViewedCollection(
+                anyLong(),
+                anyLong(),
+                anyLong(),
+                any(LocalDateTime.class)
+            );
         }
     }
 
