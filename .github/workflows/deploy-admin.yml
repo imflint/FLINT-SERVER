@@ -86,7 +86,7 @@ jobs:
 
       - name: Build and publish Admin API image
         run: |
-          image_uri="${ADMIN_ECR_REPOSITORY_URI}:sha-${GITHUB_SHA}-${GITHUB_RUN_ATTEMPT}"
+          image_uri="${ADMIN_ECR_REPOSITORY_URI}:sha-${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           ./gradlew :apps:admin-api:bootBuildImage \
             --imageName="${image_uri}" \
             --publishImage \

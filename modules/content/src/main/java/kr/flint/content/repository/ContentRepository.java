@@ -25,6 +25,8 @@ public interface ContentRepository extends JpaRepository<Content, Long> {
 
 	List<Content> findAllByTitleContaining(String title);
 
+	long countByIdIn(List<Long> ids);
+
 	// limit 적용 메서드
 	List<Content> findAllByTitleContaining(String title, Pageable pageable);
 

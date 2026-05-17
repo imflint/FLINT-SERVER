@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.DisplayName;
@@ -27,6 +28,8 @@ import kr.flint.collection.domain.Collection;
 import kr.flint.collection.domain.CollectionModerationStatus;
 import kr.flint.collection.domain.CollectionReport;
 import kr.flint.collection.domain.ReportReason;
+import kr.flint.collection.dto.CollectionCreateCommand.ContentInput;
+import kr.flint.collection.dto.CollectionUpdateCommand;
 import kr.flint.collection.exception.CollectionErrorCode;
 import kr.flint.collection.exception.CollectionException;
 import kr.flint.collection.repository.CollectionContentRepository;
@@ -81,6 +84,29 @@ class CollectionServiceTest {
             collectionService.deleteByAdmin(10L);
 
             assertThat(collection.getModerationStatus()).isEqualTo(CollectionModerationStatus.DELETED);
+        }
+
+        @Test
+        @DisplayName("관리자 수정은 소유자 검증 없이 컬렉션과 포함 콘텐츠를 교체")
+        void updateCollectionByAdmin() {
+            Collection collection = Collection.create("제목", "설명", "image.jpg", true, 1L);
+            ReflectionTestUtils.setField(collection, "id", 10L);
+            when(collectionRepository.findById(10L)).thenReturn(Optional.of(collection));
+            when(collectionContentRepository.findContentIdsByCollectionId(10L)).thenReturn(List.of(1L));
+
+            collectionService.updateCollectionByAdmin(10L, CollectionUpdateCommand.of(
+                "새 제목",
+                "새 설명",
+                "new.jpg",
+                false,
+                List.of(ContentInput.of(2L, false, "새 메모", null))
+            ), "new.jpg");
+
+            assertThat(collection.getTitle()).isEqualTo("새 제목");
+            assertThat(collection.getDescription()).isEqualTo("새 설명");
+            assertThat(collection.isPublic()).isFalse();
+            verify(collectionContentRepository).deleteAllByCollection(collection);
+            verify(collectionContentRepository).saveAll(any());
         }
     }
 
