@@ -2,6 +2,9 @@ spring:
   application:
     name: flint-admin-api
 
+  profiles:
+    default: local
+
   config:
     import:
       - optional:file:.env[.properties]
@@ -40,6 +43,7 @@ springdoc:
     path: /swagger-ui.html
     tags-sorter: alpha
     operations-sorter: alpha
+    disable-swagger-default-url: true
   api-docs:
     path: /v3/api-docs
 

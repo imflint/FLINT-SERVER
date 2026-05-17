@@ -12,11 +12,26 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import kr.flint.admin.domain.content.dto.request.AdminContentUpdateReq;
 import kr.flint.admin.domain.content.dto.response.AdminContentRes;
+import kr.flint.content.domain.MediaType;
+import kr.flint.shared.dto.PaginationResponse;
 import kr.flint.shared.dto.response.SuccessResponse;
 import kr.flint.shared.exception.ProblemDetail;
 
 @Tag(name = "Content Admin", description = "콘텐츠 관리 API")
 public interface AdminContentControllerDocs {
+
+    @Operation(summary = "콘텐츠 목록 조회", description = "관리자가 콘텐츠를 검색하고 목록을 cursor 방식으로 조회합니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "콘텐츠 목록 조회 성공", useReturnTypeSchema = true)
+    })
+    ResponseEntity<SuccessResponse<PaginationResponse<AdminContentRes>>> getContents(
+        @Parameter(hidden = true) Long adminId,
+        String keyword,
+        MediaType mediaType,
+        Long cursor,
+        Integer size
+    );
 
     @Operation(summary = "콘텐츠 수정", description = "관리자가 영화/TV 콘텐츠 메타데이터와 장르를 수정합니다.")
     @SecurityRequirement(name = "bearerAuth")

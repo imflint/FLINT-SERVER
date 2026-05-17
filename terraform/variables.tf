@@ -53,9 +53,9 @@ variable "ec2_architecture" {
 }
 
 variable "ec2_ami_id" {
-  description = "선택적으로 고정할 머신 이미지 ID입니다. 비워두면 최신 Amazon Linux 2023 이미지를 선택합니다."
+  description = "고정할 머신 이미지 ID입니다. 현재 API/Admin EC2가 사용하는 Amazon Linux 2023 ARM64 AMI입니다."
   type        = string
-  default     = ""
+  default     = "ami-0c0260912a0a5add4"
 }
 
 variable "ec2_key_name" {
@@ -285,6 +285,18 @@ variable "admin_frontend_domain_name" {
   description = "관리자 웹 프론트엔드 CloudFront alias와 Route53 record에 사용할 기본 도메인입니다."
   type        = string
   default     = "admin.flint.r-e.kr"
+}
+
+variable "admin_frontend_create_cloudfront_certificate" {
+  description = "관리자 웹 프론트엔드 CloudFront alias용 us-east-1 ACM 인증서를 Terraform에서 요청할지 여부입니다. Route53을 쓰지 않으면 출력된 DNS 검증 CNAME을 외부 DNS에 직접 등록해야 합니다."
+  type        = bool
+  default     = true
+}
+
+variable "admin_frontend_attach_custom_domain" {
+  description = "관리자 웹 프론트엔드 CloudFront 배포에 custom domain alias를 실제로 연결할지 여부입니다. ACM 인증서가 ISSUED 상태가 된 뒤 true로 변경합니다."
+  type        = bool
+  default     = false
 }
 
 variable "admin_frontend_cloudfront_aliases" {

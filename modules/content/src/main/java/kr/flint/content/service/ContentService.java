@@ -41,6 +41,18 @@ public class ContentService {
             .orElseThrow(() -> new ContentException(ContentErrorCode.CONTENT_NOT_FOUND));
     }
 
+    public void validateContentIdsExist(final List<Long> contentIds) {
+        if (CollectionUtils.isEmpty(contentIds)) {
+            return;
+        }
+
+        long expectedCount = contentIds.stream().distinct().count();
+        long actualCount = contentRepository.countByIdIn(contentIds.stream().distinct().toList());
+        if (actualCount != expectedCount) {
+            throw new ContentException(ContentErrorCode.CONTENT_NOT_FOUND);
+        }
+    }
+
     @Transactional
     public void increaseBookmarkCount(final Long contentId) {
         Content content = getContentById(contentId);

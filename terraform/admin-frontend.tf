@@ -40,6 +40,62 @@ resource "aws_s3_bucket_lifecycle_configuration" "admin_frontend" {
   }
 }
 
+resource "aws_acm_certificate" "admin_frontend" {
+  count = local.admin_frontend_managed_certificate_enabled ? 1 : 0
+
+  provider = aws.us_east_1
+
+  domain_name = local.admin_frontend_custom_domain_aliases[0]
+  subject_alternative_names = slice(
+    local.admin_frontend_custom_domain_aliases,
+    1,
+    length(local.admin_frontend_custom_domain_aliases),
+  )
+  validation_method = "DNS"
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  tags = {
+    Name = "${local.name_prefix}-admin-frontend-certificate"
+  }
+}
+
+resource "aws_route53_record" "admin_frontend_certificate_validation" {
+  for_each = (
+    local.admin_frontend_managed_certificate_enabled && local.admin_frontend_route53_zone_id != ""
+    ? {
+      for dvo in aws_acm_certificate.admin_frontend[0].domain_validation_options : dvo.domain_name => {
+        name   = dvo.resource_record_name
+        record = dvo.resource_record_value
+        type   = dvo.resource_record_type
+      }
+    }
+    : {}
+  )
+
+  allow_overwrite = true
+  name            = each.value.name
+  records         = [each.value.record]
+  ttl             = 60
+  type            = each.value.type
+  zone_id         = local.admin_frontend_route53_zone_id
+}
+
+resource "aws_acm_certificate_validation" "admin_frontend" {
+  count = (
+    local.admin_frontend_managed_certificate_enabled && local.admin_frontend_route53_zone_id != ""
+    ? 1
+    : 0
+  )
+
+  provider = aws.us_east_1
+
+  certificate_arn         = aws_acm_certificate.admin_frontend[0].arn
+  validation_record_fqdns = [for record in aws_route53_record.admin_frontend_certificate_validation : record.fqdn]
+}
+
 resource "aws_cloudfront_origin_access_control" "admin_frontend" {
   name                              = "${local.name_prefix}-admin-frontend-oac"
   description                       = "OAC for ${local.name_prefix} admin frontend bucket"
@@ -123,9 +179,16 @@ resource "aws_cloudfront_distribution" "admin_frontend" {
 
   viewer_certificate {
     cloudfront_default_certificate = length(local.admin_frontend_aliases) == 0
-    acm_certificate_arn            = length(local.admin_frontend_aliases) > 0 ? var.admin_frontend_cloudfront_certificate_arn : null
+    acm_certificate_arn            = length(local.admin_frontend_aliases) > 0 ? local.admin_frontend_viewer_certificate_arn : null
     ssl_support_method             = length(local.admin_frontend_aliases) > 0 ? "sni-only" : null
     minimum_protocol_version       = length(local.admin_frontend_aliases) > 0 ? "TLSv1.2_2021" : "TLSv1"
+  }
+
+  lifecycle {
+    precondition {
+      condition     = length(local.admin_frontend_aliases) == 0 || local.admin_frontend_viewer_certificate_arn != ""
+      error_message = "A us-east-1 ACM certificate is required when admin frontend CloudFront aliases are set."
+    }
   }
 
   depends_on = [
@@ -165,7 +228,7 @@ resource "aws_s3_bucket_policy" "admin_frontend_cloudfront" {
 }
 
 resource "aws_route53_record" "admin_frontend_a" {
-  count = var.admin_frontend_route53_zone_id != null && var.admin_frontend_route53_zone_id != "" && length(local.admin_frontend_aliases) > 0 ? 1 : 0
+  count = local.admin_frontend_route53_zone_id != "" && length(local.admin_frontend_aliases) > 0 ? 1 : 0
 
   zone_id = var.admin_frontend_route53_zone_id
   name    = local.admin_frontend_aliases[0]
@@ -179,7 +242,7 @@ resource "aws_route53_record" "admin_frontend_a" {
 }
 
 resource "aws_route53_record" "admin_frontend_aaaa" {
-  count = var.admin_frontend_route53_zone_id != null && var.admin_frontend_route53_zone_id != "" && length(local.admin_frontend_aliases) > 0 ? 1 : 0
+  count = local.admin_frontend_route53_zone_id != "" && length(local.admin_frontend_aliases) > 0 ? 1 : 0
 
   zone_id = var.admin_frontend_route53_zone_id
   name    = local.admin_frontend_aliases[0]
@@ -193,7 +256,7 @@ resource "aws_route53_record" "admin_frontend_aaaa" {
 }
 
 resource "aws_route53_record" "admin_api_a" {
-  count = var.admin_api_route53_zone_id != null && var.admin_api_route53_zone_id != "" && var.admin_api_domain_name != "" ? 1 : 0
+  count = local.admin_api_route53_zone_id != "" && local.admin_api_dns_name != "" ? 1 : 0
 
   zone_id = var.admin_api_route53_zone_id
   name    = var.admin_api_domain_name

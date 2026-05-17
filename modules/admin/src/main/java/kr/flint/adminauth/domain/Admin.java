@@ -39,4 +39,6 @@ public class Admin extends BaseTime {
             .passwordChangedAt(now)
             .build();
     }
+
+    // todo: 컬렉션 수정 api
 }

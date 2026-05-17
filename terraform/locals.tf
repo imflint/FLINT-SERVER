@@ -24,14 +24,37 @@ locals {
     ? var.admin_frontend_bucket_name
     : "${local.name_prefix}-admin-frontend-${data.aws_caller_identity.current.account_id}"
   )
-  admin_frontend_aliases = (
+  admin_frontend_certificate_arn = var.admin_frontend_cloudfront_certificate_arn == null ? "" : trimspace(var.admin_frontend_cloudfront_certificate_arn)
+  admin_frontend_route53_zone_id = var.admin_frontend_route53_zone_id == null ? "" : trimspace(var.admin_frontend_route53_zone_id)
+  admin_api_route53_zone_id      = var.admin_api_route53_zone_id == null ? "" : trimspace(var.admin_api_route53_zone_id)
+  admin_api_dns_name             = var.admin_api_domain_name == null ? "" : trimspace(var.admin_api_domain_name)
+  admin_frontend_custom_domain_aliases = (
     length(var.admin_frontend_cloudfront_aliases) > 0
     ? var.admin_frontend_cloudfront_aliases
+    : [var.admin_frontend_domain_name]
+  )
+  admin_frontend_managed_certificate_enabled = (
+    var.admin_frontend_create_cloudfront_certificate
+    && local.admin_frontend_certificate_arn == ""
+    && length(local.admin_frontend_custom_domain_aliases) > 0
+  )
+  admin_frontend_viewer_certificate_arn = (
+    local.admin_frontend_certificate_arn != ""
+    ? local.admin_frontend_certificate_arn
     : (
-      var.admin_frontend_cloudfront_certificate_arn != null && trimspace(var.admin_frontend_cloudfront_certificate_arn) != ""
-      ? [var.admin_frontend_domain_name]
-      : []
+      local.admin_frontend_managed_certificate_enabled && local.admin_frontend_route53_zone_id != ""
+      ? aws_acm_certificate_validation.admin_frontend[0].certificate_arn
+      : (
+        local.admin_frontend_managed_certificate_enabled && var.admin_frontend_attach_custom_domain
+        ? aws_acm_certificate.admin_frontend[0].arn
+        : ""
+      )
     )
+  )
+  admin_frontend_aliases = (
+    var.admin_frontend_attach_custom_domain
+    ? local.admin_frontend_custom_domain_aliases
+    : []
   )
 
   ec2_ami_id                      = var.ec2_ami_id != "" ? var.ec2_ami_id : data.aws_ssm_parameter.al2023_ami[0].value

@@ -100,6 +100,35 @@ output "admin_frontend_cloudfront_domain_name" {
   value       = aws_cloudfront_distribution.admin_frontend.domain_name
 }
 
+output "admin_frontend_cloudfront_certificate_arn" {
+  description = "관리자 웹 프론트엔드 CloudFront alias에 사용할 us-east-1 ACM 인증서 ARN입니다."
+  value = (
+    local.admin_frontend_certificate_arn != ""
+    ? local.admin_frontend_certificate_arn
+    : (
+      local.admin_frontend_managed_certificate_enabled
+      ? aws_acm_certificate.admin_frontend[0].arn
+      : null
+    )
+  )
+}
+
+output "admin_frontend_cloudfront_certificate_dns_validation_records" {
+  description = "Route53을 사용하지 않을 때 외부 DNS에 직접 등록해야 하는 ACM DNS 검증 레코드입니다."
+  value = (
+    local.admin_frontend_managed_certificate_enabled
+    ? [
+      for dvo in aws_acm_certificate.admin_frontend[0].domain_validation_options : {
+        domain_name = dvo.domain_name
+        name        = dvo.resource_record_name
+        type        = dvo.resource_record_type
+        value       = dvo.resource_record_value
+      }
+    ]
+    : []
+  )
+}
+
 output "admin_frontend_url" {
   description = "관리자 웹 프론트엔드 접속 URL입니다."
   value       = length(local.admin_frontend_aliases) > 0 ? "https://${local.admin_frontend_aliases[0]}" : "https://${aws_cloudfront_distribution.admin_frontend.domain_name}"

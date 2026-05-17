@@ -84,6 +84,27 @@ public class CollectionService {
             throw new CollectionException(CollectionErrorCode.COLLECTION_FORBIDDEN);
         }
 
+        replaceCollection(collection, collectionId, command, coverImageUrl);
+    }
+
+    @Transactional
+    public void updateCollectionByAdmin(
+        final Long collectionId,
+        final CollectionUpdateCommand command,
+        final String coverImageUrl
+    ) {
+        Collection collection = collectionRepository.findById(collectionId)
+            .orElseThrow(() -> new CollectionException(CollectionErrorCode.COLLECTION_NOT_FOUND));
+
+        replaceCollection(collection, collectionId, command, coverImageUrl);
+    }
+
+    private void replaceCollection(
+        Collection collection,
+        Long collectionId,
+        CollectionUpdateCommand command,
+        String coverImageUrl
+    ) {
         collection.update(command.title(), command.description(), coverImageUrl, command.isPublic());
 
         // 작품 리스트 replace 전략 (단순/원자적). 이벤트는 실제 add/remove diff에 대해서만 발행.

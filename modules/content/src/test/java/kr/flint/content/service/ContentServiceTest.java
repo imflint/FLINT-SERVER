@@ -1,6 +1,7 @@
 package kr.flint.content.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -20,6 +21,8 @@ import kr.flint.content.domain.Content;
 import kr.flint.content.domain.Genre;
 import kr.flint.content.domain.MediaType;
 import kr.flint.content.dto.ContentUpdateCommand;
+import kr.flint.content.exception.ContentErrorCode;
+import kr.flint.content.exception.ContentException;
 import kr.flint.content.repository.ContentGenreRepository;
 import kr.flint.content.repository.ContentRepository;
 import kr.flint.content.repository.GenreRepository;
@@ -67,5 +70,16 @@ class ContentServiceTest {
         assertThat(result.getPoster()).isEqualTo("new.jpg");
         verify(contentGenreRepository).deleteAllByContent(content);
         verify(contentGenreRepository).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("콘텐츠 ID 목록 검증은 존재하지 않는 콘텐츠가 있으면 예외")
+    void validateContentIdsExist() {
+        when(contentRepository.countByIdIn(List.of(1L, 2L))).thenReturn(1L);
+
+        assertThatThrownBy(() -> contentService.validateContentIdsExist(List.of(1L, 2L)))
+            .isInstanceOf(ContentException.class)
+            .extracting("errorCode")
+            .isEqualTo(ContentErrorCode.CONTENT_NOT_FOUND);
     }
 }

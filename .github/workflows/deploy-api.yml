@@ -85,7 +85,7 @@ jobs:
 
       - name: Build and publish API image
         run: |
-          image_uri="${ECR_REPOSITORY_URI}:sha-${GITHUB_SHA}-${GITHUB_RUN_ATTEMPT}"
+          image_uri="${ECR_REPOSITORY_URI}:sha-${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           ./gradlew :apps:api:bootBuildImage \
             --imageName="${image_uri}" \
             --publishImage \
