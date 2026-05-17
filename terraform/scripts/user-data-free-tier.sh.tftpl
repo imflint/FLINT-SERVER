@@ -2,6 +2,7 @@
 set -euo pipefail
 
 APP_NAME="${app_name}"
+DOMAIN_NAME="${domain_name}"
 ENVIRONMENT="${environment}"
 PARAMETER_PREFIX="${parameter_prefix}"
 REDIS_CONTAINER_NAME="${redis_container_name}"
@@ -12,6 +13,7 @@ echo "=== Flint free-tier EC2 setup ($APP_NAME / $ENVIRONMENT) ==="
 
 dnf update -y
 dnf install -y java-21-amazon-corretto-headless nginx docker awscli curl lsof
+dnf install -y certbot python3-certbot-nginx || echo "WARN: certbot packages were not installed during user-data; deploy.sh will retry."
 
 systemctl enable docker
 systemctl start docker
@@ -22,6 +24,7 @@ chown -R ec2-user:ec2-user "$APP_DIR"
 touch "$APP_DIR/logs/deploy.log"
 chown ec2-user:ec2-user "$APP_DIR/logs/deploy.log"
 mkdir -p /var/log/nginx
+mkdir -p /var/www/certbot
 touch /var/log/nginx/error.log /var/log/nginx/flint-gateway-error.log
 
 cat >/etc/nginx/conf.d/flint-upstream.conf <<'EOF'
@@ -44,10 +47,14 @@ EOF
 
 cat >/etc/nginx/conf.d/flint-api.conf <<'EOF'
 server {
-    listen 80 default_server;
-    server_name _;
+    listen 80;
+    server_name ${domain_name};
 
     client_max_body_size 20m;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
 
     location / {
         proxy_pass http://flint-api;
@@ -86,6 +93,8 @@ App dir: $APP_DIR
 Spring profile expected by current scripts/deploy.sh: dev
 Parameter Store prefix: $PARAMETER_PREFIX
 Redis: localhost:6379 via Docker container $REDIS_CONTAINER_NAME
+Domain: $DOMAIN_NAME
+Nginx: 80 -> flint-api upstream -> active app port
 
 Upload the JAR and run scripts/deploy.sh, or trigger deployment through SSM.
 EOF
