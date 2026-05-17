@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 import kr.flint.adminauth.domain.Admin;
 import kr.flint.adminauth.service.AdminUserService;
 import kr.flint.admin.domain.auth.dto.request.AdminLoginReq;
+import kr.flint.admin.domain.auth.dto.request.AdminRefreshTokenReq;
 import kr.flint.admin.domain.auth.dto.response.AdminLoginRes;
 import kr.flint.auth.dto.AuthTokens;
 import kr.flint.auth.enums.TokenAudience;
@@ -33,6 +34,14 @@ public class AdminAuthFacade {
             throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
         }
 
+        AuthTokens tokens = authService.issueTokens(admin.getId(), null, TokenAudience.ADMIN);
+        return AdminLoginRes.from(tokens, admin);
+    }
+
+    @Transactional
+    public AdminLoginRes refreshTokens(AdminRefreshTokenReq request) {
+        Long adminId = authService.validateAndRotateToken(request.refreshToken(), TokenAudience.ADMIN);
+        Admin admin = adminUserService.getById(adminId);
         AuthTokens tokens = authService.issueTokens(admin.getId(), null, TokenAudience.ADMIN);
         return AdminLoginRes.from(tokens, admin);
     }

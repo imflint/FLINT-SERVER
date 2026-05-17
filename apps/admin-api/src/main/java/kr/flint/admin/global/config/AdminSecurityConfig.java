@@ -40,8 +40,8 @@ public class AdminSecurityConfig {
         "/swagger-ui/**",
         "/v3/api-docs/**",
         "/actuator/**",
-        "/admin/auth/login",
-        "/api/v1/admin/auth/login"
+        "/api/v1/admin/auth/login",
+        "/api/v1/admin/auth/refresh"
     };
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;

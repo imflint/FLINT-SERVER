@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import kr.flint.admin.domain.auth.dto.request.AdminLoginReq;
+import kr.flint.admin.domain.auth.dto.request.AdminRefreshTokenReq;
 import kr.flint.admin.domain.auth.dto.response.AdminLoginRes;
 import kr.flint.shared.dto.response.SuccessResponse;
 import kr.flint.shared.exception.ProblemDetail;
@@ -36,4 +37,20 @@ public interface AdminAuthControllerDocs {
 		)
 	})
 	ResponseEntity<SuccessResponse<AdminLoginRes>> login(AdminLoginReq request);
+
+	@Operation(summary = "관리자 토큰 갱신", description = "관리자 Refresh Token을 검증하고 새 Admin API Access Token과 Refresh Token을 발급합니다.")
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "관리자 토큰 갱신 성공", useReturnTypeSchema = true),
+		@ApiResponse(
+			responseCode = "400",
+			description = "잘못된 요청",
+			content = @Content(schema = @Schema(implementation = ProblemDetail.class))
+		),
+		@ApiResponse(
+			responseCode = "401",
+			description = "유효하지 않은 Refresh Token",
+			content = @Content(schema = @Schema(implementation = ProblemDetail.class))
+		)
+	})
+	ResponseEntity<SuccessResponse<AdminLoginRes>> refreshTokens(AdminRefreshTokenReq request);
 }

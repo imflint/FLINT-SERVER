@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 import kr.flint.admin.domain.auth.controller.spec.AdminAuthControllerDocs;
 import kr.flint.admin.domain.auth.dto.request.AdminLoginReq;
+import kr.flint.admin.domain.auth.dto.request.AdminRefreshTokenReq;
 import kr.flint.admin.domain.auth.dto.response.AdminLoginRes;
 import kr.flint.admin.domain.auth.service.AdminAuthFacade;
 import kr.flint.shared.dto.response.SuccessCode;
@@ -29,5 +30,14 @@ public class AdminAuthController implements AdminAuthControllerDocs {
 	) {
 		return ResponseEntity
 			.ok(SuccessResponse.of(SuccessCode.SUCCESS_LOGIN, adminAuthFacade.login(request)));
+	}
+
+	@Override
+	@PostMapping("/refresh")
+	public ResponseEntity<SuccessResponse<AdminLoginRes>> refreshTokens(
+		@Valid @RequestBody AdminRefreshTokenReq request
+	) {
+		return ResponseEntity
+			.ok(SuccessResponse.of(SuccessCode.SUCCESS_TOKEN_REFRESH, adminAuthFacade.refreshTokens(request)));
 	}
 }

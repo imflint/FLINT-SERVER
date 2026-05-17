@@ -21,6 +21,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import kr.flint.adminauth.domain.Admin;
 import kr.flint.adminauth.service.AdminUserService;
 import kr.flint.admin.domain.auth.dto.request.AdminLoginReq;
+import kr.flint.admin.domain.auth.dto.request.AdminRefreshTokenReq;
 import kr.flint.admin.domain.auth.dto.response.AdminLoginRes;
 import kr.flint.auth.dto.AuthTokens;
 import kr.flint.auth.enums.TokenAudience;
@@ -92,6 +93,25 @@ class AdminAuthFacadeTest {
                 .isEqualTo(AuthErrorCode.INVALID_CREDENTIALS);
 
             verify(authService, never()).issueTokens(ADMIN_ID, null, TokenAudience.ADMIN);
+        }
+    }
+
+    @Nested
+    @DisplayName("refreshTokens")
+    class RefreshTokens {
+
+        @Test
+        void adminSuccess() {
+            when(authService.validateAndRotateToken("old-refresh", TokenAudience.ADMIN)).thenReturn(ADMIN_ID);
+            when(adminUserService.getById(ADMIN_ID)).thenReturn(admin);
+            when(authService.issueTokens(ADMIN_ID, null, TokenAudience.ADMIN))
+                .thenReturn(AuthTokens.of("new-access", "new-refresh", ADMIN_ID));
+
+            AdminLoginRes result = adminAuthFacade.refreshTokens(new AdminRefreshTokenReq("old-refresh"));
+
+            assertThat(result.accessToken()).isEqualTo("new-access");
+            assertThat(result.refreshToken()).isEqualTo("new-refresh");
+            assertThat(result.adminId()).isEqualTo(ADMIN_ID);
         }
     }
 }
