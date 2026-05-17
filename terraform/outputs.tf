@@ -55,6 +55,11 @@ output "storage_bucket" {
   value       = aws_s3_bucket.storage.bucket
 }
 
+output "admin_frontend_bucket" {
+  description = "관리자 웹 프론트엔드 정적 파일 S3 버킷 이름입니다."
+  value       = aws_s3_bucket.admin_frontend.bucket
+}
+
 output "ecr_repository_name" {
   description = "API Docker 이미지 ECR 저장소 이름입니다."
   value       = aws_ecr_repository.api.name
@@ -85,6 +90,21 @@ output "cloudfront_storage_url" {
   value       = local.cloudfront_url
 }
 
+output "admin_frontend_cloudfront_distribution_id" {
+  description = "관리자 웹 프론트엔드 CloudFront 배포 ID입니다."
+  value       = aws_cloudfront_distribution.admin_frontend.id
+}
+
+output "admin_frontend_cloudfront_domain_name" {
+  description = "관리자 웹 프론트엔드 CloudFront 배포 도메인 이름입니다."
+  value       = aws_cloudfront_distribution.admin_frontend.domain_name
+}
+
+output "admin_frontend_url" {
+  description = "관리자 웹 프론트엔드 접속 URL입니다."
+  value       = length(local.admin_frontend_aliases) > 0 ? "https://${local.admin_frontend_aliases[0]}" : "https://${aws_cloudfront_distribution.admin_frontend.domain_name}"
+}
+
 output "ssm_parameter_prefix" {
   description = "스프링 앱이 사용하는 파라미터 스토어 prefix입니다."
   value       = local.parameter_prefix
@@ -93,6 +113,12 @@ output "ssm_parameter_prefix" {
 output "github_actions_role_arn" {
   description = "GitHub Actions 배포 역할 ARN입니다. github_repo가 비어 있으면 null입니다."
   value       = var.github_repo != "" ? aws_iam_role.github_actions[0].arn : null
+  sensitive   = true
+}
+
+output "admin_frontend_github_actions_role_arn" {
+  description = "관리자 웹 프론트엔드 GitHub Actions 배포 역할 ARN입니다. admin_frontend_github_repo가 비어 있으면 null입니다."
+  value       = var.admin_frontend_github_repo != "" ? aws_iam_role.admin_frontend_github_actions[0].arn : null
   sensitive   = true
 }
 

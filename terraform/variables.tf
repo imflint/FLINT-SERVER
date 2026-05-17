@@ -275,6 +275,42 @@ variable "cloudfront_certificate_arn" {
   default     = null
 }
 
+variable "admin_frontend_bucket_name" {
+  description = "관리자 웹 프론트엔드 정적 파일을 저장할 S3 버킷 이름입니다. 비워두면 계정 ID를 포함해 자동 생성합니다."
+  type        = string
+  default     = null
+}
+
+variable "admin_frontend_domain_name" {
+  description = "관리자 웹 프론트엔드 CloudFront alias와 Route53 record에 사용할 기본 도메인입니다."
+  type        = string
+  default     = "admin.flint.r-e.kr"
+}
+
+variable "admin_frontend_cloudfront_aliases" {
+  description = "관리자 웹 프론트엔드 CloudFront에 연결할 alias 목록입니다. 비워두면 인증서 ARN이 있을 때 admin_frontend_domain_name을 사용합니다."
+  type        = list(string)
+  default     = []
+}
+
+variable "admin_frontend_cloudfront_certificate_arn" {
+  description = "관리자 웹 프론트엔드 CloudFront alias에 사용할 us-east-1 ACM 인증서 ARN입니다."
+  type        = string
+  default     = null
+}
+
+variable "admin_frontend_route53_zone_id" {
+  description = "관리자 웹 프론트엔드 A/AAAA alias record를 생성할 Route53 hosted zone ID입니다. 비워두면 DNS record를 만들지 않습니다."
+  type        = string
+  default     = null
+}
+
+variable "admin_api_route53_zone_id" {
+  description = "관리자 API A record를 생성할 Route53 hosted zone ID입니다. 비워두면 DNS record를 만들지 않습니다."
+  type        = string
+  default     = null
+}
+
 variable "github_repo" {
   description = "배포 역할 사용을 허용할 GitHub 저장소입니다. 비워두면 GitHub OIDC 역할을 만들지 않습니다."
   type        = string
@@ -283,6 +319,18 @@ variable "github_repo" {
 
 variable "github_repo_refs" {
   description = "배포 역할 사용을 허용할 GitHub OIDC subject ref 목록입니다."
+  type        = list(string)
+  default     = ["ref:refs/heads/release"]
+}
+
+variable "admin_frontend_github_repo" {
+  description = "관리자 웹 프론트엔드 배포 역할 사용을 허용할 GitHub 저장소입니다. 비워두면 프론트엔드 배포 역할을 만들지 않습니다."
+  type        = string
+  default     = "imflint/FLINT-Admin-Web"
+}
+
+variable "admin_frontend_github_repo_refs" {
+  description = "관리자 웹 프론트엔드 배포 역할 사용을 허용할 GitHub OIDC subject ref 목록입니다."
   type        = list(string)
   default     = ["ref:refs/heads/release"]
 }

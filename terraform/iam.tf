@@ -223,7 +223,7 @@ resource "aws_iam_instance_profile" "admin_ec2" {
 }
 
 resource "aws_iam_openid_connect_provider" "github" {
-  count = var.github_repo != "" && var.create_github_oidc_provider ? 1 : 0
+  count = local.github_oidc_enabled && var.create_github_oidc_provider ? 1 : 0
 
   url             = "https://token.actions.githubusercontent.com"
   client_id_list  = ["sts.amazonaws.com"]
@@ -235,14 +235,16 @@ resource "aws_iam_openid_connect_provider" "github" {
 }
 
 data "tls_certificate" "github_oidc" {
-  count = var.github_repo != "" && var.create_github_oidc_provider && var.github_oidc_thumbprint_list == null ? 1 : 0
+  count = local.github_oidc_enabled && var.create_github_oidc_provider && var.github_oidc_thumbprint_list == null ? 1 : 0
 
   url = "https://token.actions.githubusercontent.com/.well-known/openid-configuration"
 }
 
 locals {
+  github_oidc_enabled = var.github_repo != "" || var.admin_frontend_github_repo != ""
+
   github_oidc_thumbprint_list = (
-    var.github_repo != "" && var.create_github_oidc_provider
+    local.github_oidc_enabled && var.create_github_oidc_provider
     ? (
       var.github_oidc_thumbprint_list != null
       ? var.github_oidc_thumbprint_list
@@ -252,7 +254,7 @@ locals {
   )
 
   github_oidc_provider_arn = (
-    var.github_repo == ""
+    !local.github_oidc_enabled
     ? null
     : (
       var.create_github_oidc_provider
@@ -400,4 +402,85 @@ resource "aws_iam_role_policy_attachment" "github_actions_deploy" {
 
   role       = aws_iam_role.github_actions[0].name
   policy_arn = aws_iam_policy.github_actions_deploy[0].arn
+}
+
+data "aws_iam_policy_document" "admin_frontend_github_actions_assume_role" {
+  count = var.admin_frontend_github_repo != "" ? 1 : 0
+
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    principals {
+      type        = "Federated"
+      identifiers = [local.github_oidc_provider_arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringLike"
+      variable = "token.actions.githubusercontent.com:sub"
+      values   = [for ref in var.admin_frontend_github_repo_refs : "repo:${var.admin_frontend_github_repo}:${ref}"]
+    }
+  }
+}
+
+resource "aws_iam_role" "admin_frontend_github_actions" {
+  count = var.admin_frontend_github_repo != "" ? 1 : 0
+
+  name               = local.admin_frontend_github_role_name
+  assume_role_policy = data.aws_iam_policy_document.admin_frontend_github_actions_assume_role[0].json
+}
+
+data "aws_iam_policy_document" "admin_frontend_github_actions_deploy" {
+  count = var.admin_frontend_github_repo != "" ? 1 : 0
+
+  statement {
+    sid    = "AdminFrontendBucketList"
+    effect = "Allow"
+    actions = [
+      "s3:GetBucketLocation",
+      "s3:ListBucket",
+    ]
+    resources = [aws_s3_bucket.admin_frontend.arn]
+  }
+
+  statement {
+    sid    = "AdminFrontendObjectSync"
+    effect = "Allow"
+    actions = [
+      "s3:DeleteObject",
+      "s3:GetObject",
+      "s3:PutObject",
+    ]
+    resources = ["${aws_s3_bucket.admin_frontend.arn}/*"]
+  }
+
+  statement {
+    sid    = "AdminFrontendCloudFrontInvalidation"
+    effect = "Allow"
+    actions = [
+      "cloudfront:CreateInvalidation",
+    ]
+    resources = [aws_cloudfront_distribution.admin_frontend.arn]
+  }
+}
+
+resource "aws_iam_policy" "admin_frontend_github_actions_deploy" {
+  count = var.admin_frontend_github_repo != "" ? 1 : 0
+
+  name   = "${local.name_prefix}-admin-frontend-github-actions-deploy"
+  policy = data.aws_iam_policy_document.admin_frontend_github_actions_deploy[0].json
+}
+
+resource "aws_iam_role_policy_attachment" "admin_frontend_github_actions_deploy" {
+  count = var.admin_frontend_github_repo != "" ? 1 : 0
+
+  role       = aws_iam_role.admin_frontend_github_actions[0].name
+  policy_arn = aws_iam_policy.admin_frontend_github_actions_deploy[0].arn
 }
