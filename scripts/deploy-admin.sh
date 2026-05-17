@@ -139,6 +139,10 @@ ensure_tls_certificate() {
         log "Let's Encrypt certificate already exists for $ADMIN_API_DOMAIN_NAME"
         return 0
     fi
+    if command -v getent >/dev/null 2>&1 && ! getent hosts "$ADMIN_API_DOMAIN_NAME" >/dev/null; then
+        log "ERROR: DNS record for $ADMIN_API_DOMAIN_NAME was not found; create the A record first or deploy with ENABLE_SSL=false"
+        exit 1
+    fi
 
     log "Issuing Let's Encrypt certificate for $ADMIN_API_DOMAIN_NAME"
     if [ -n "$CERTBOT_EMAIL" ]; then

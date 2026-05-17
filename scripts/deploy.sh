@@ -13,7 +13,7 @@ REDIS_CONTAINER_NAME="${REDIS_CONTAINER_NAME:-flint-$PROFILE-redis}"
 AWS_REGION="${AWS_REGION:-ap-northeast-2}"
 PARAMETER_BASE_PREFIX="/config/$APP_NAME"
 PARAMETER_ENV_PREFIX="$PARAMETER_BASE_PREFIX/$PROFILE"
-API_DOMAIN_NAME="${API_DOMAIN_NAME:-api.flint.r-e.kr}"
+API_DOMAIN_NAME="${API_DOMAIN_NAME:-flint.r-e.kr}"
 ENABLE_SSL="${ENABLE_SSL:-true}"
 CERTBOT_EMAIL="${CERTBOT_EMAIL:-}"
 
@@ -138,6 +138,10 @@ ensure_tls_certificate() {
     if certbot_certificate_exists; then
         log "Let's Encrypt certificate already exists for $API_DOMAIN_NAME"
         return 0
+    fi
+    if command -v getent >/dev/null 2>&1 && ! getent hosts "$API_DOMAIN_NAME" >/dev/null; then
+        log "ERROR: DNS record for $API_DOMAIN_NAME was not found; create the A record first or deploy with ENABLE_SSL=false"
+        exit 1
     fi
 
     log "Issuing Let's Encrypt certificate for $API_DOMAIN_NAME"

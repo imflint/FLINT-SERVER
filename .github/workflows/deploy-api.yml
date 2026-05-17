@@ -36,7 +36,8 @@ jobs:
       EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
       ECR_REPOSITORY_URI: ${{ vars.ECR_REPOSITORY_URI }}
       API_HEALTH_CHECK_URL: ${{ vars.API_HEALTH_CHECK_URL }}
-      API_DOMAIN_NAME: ${{ vars.API_DOMAIN_NAME || 'api.flint.r-e.kr' }}
+      API_DOMAIN_NAME: ${{ vars.API_DOMAIN_NAME || 'flint.r-e.kr' }}
+      ENABLE_SSL: ${{ vars.ENABLE_SSL || 'true' }}
       CERTBOT_EMAIL: ${{ vars.CERTBOT_EMAIL }}
       S3_DEPLOY_BUCKET: ${{ vars.S3_DEPLOY_BUCKET }}
 
@@ -104,7 +105,7 @@ jobs:
               "mkdir -p /home/ubuntu/deploy",
               "aws s3 cp \"s3://${S3_DEPLOY_BUCKET}/${API_DEPLOY_PREFIX}/${GITHUB_SHA}/deploy.sh\" \"/home/ubuntu/deploy.sh\"",
               "chmod +x /home/ubuntu/deploy.sh",
-              "DEPLOY_MODE=docker IMAGE_URI=\"${IMAGE_URI}\" AWS_REGION=\"${AWS_REGION}\" API_DOMAIN_NAME=\"${API_DOMAIN_NAME}\" CERTBOT_EMAIL=\"${CERTBOT_EMAIL}\" /home/ubuntu/deploy.sh"
+              "DEPLOY_MODE=docker IMAGE_URI=\"${IMAGE_URI}\" AWS_REGION=\"${AWS_REGION}\" API_DOMAIN_NAME=\"${API_DOMAIN_NAME}\" ENABLE_SSL=\"${ENABLE_SSL}\" CERTBOT_EMAIL=\"${CERTBOT_EMAIL}\" /home/ubuntu/deploy.sh"
             ]
           }
           EOF
