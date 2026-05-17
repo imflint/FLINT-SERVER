@@ -15,9 +15,13 @@ REDIS_CONTAINER_NAME="${REDIS_CONTAINER_NAME:-flint-$PROFILE-admin-redis}"
 AWS_REGION="${AWS_REGION:-ap-northeast-2}"
 PARAMETER_BASE_PREFIX="/config/$CONFIG_APP_NAME"
 PARAMETER_ENV_PREFIX="$PARAMETER_BASE_PREFIX/$PROFILE"
+ADMIN_API_DOMAIN_NAME="${ADMIN_API_DOMAIN_NAME:-admin-api.flint.r-e.kr}"
+ENABLE_SSL="${ENABLE_SSL:-true}"
+CERTBOT_EMAIL="${CERTBOT_EMAIL:-}"
 
 NGINX_CONF="/etc/nginx/conf.d/flint-admin-upstream.conf"
 NGINX_PROXY_CONF="/etc/nginx/conf.d/flint-admin-api.conf"
+NGINX_DEFAULT_LOCATION_CONF="/etc/nginx/default.d/flint-admin-api.conf"
 HEALTH_CHECK_PATH="/actuator/health"
 MAX_RETRY=12
 RETRY_INTERVAL=5
@@ -85,10 +89,146 @@ ensure_redis() {
         redis-server --appendonly yes >/dev/null
 }
 
+certbot_certificate_exists() {
+    [ -s "/etc/letsencrypt/live/$ADMIN_API_DOMAIN_NAME/fullchain.pem" ] \
+        && [ -s "/etc/letsencrypt/live/$ADMIN_API_DOMAIN_NAME/privkey.pem" ]
+}
+
+enable_certbot_timer() {
+    if systemctl list-unit-files certbot-renew.timer 2>/dev/null | grep -q '^certbot-renew.timer'; then
+        run_as_root systemctl enable --now certbot-renew.timer
+    elif systemctl list-unit-files certbot.timer 2>/dev/null | grep -q '^certbot.timer'; then
+        run_as_root systemctl enable --now certbot.timer
+    else
+        log "WARN: certbot systemd timer was not found"
+    fi
+}
+
+ensure_certbot() {
+    if command -v certbot >/dev/null 2>&1; then
+        enable_certbot_timer
+        return 0
+    fi
+
+    log "Certbot not found; installing certbot"
+    if command -v dnf >/dev/null 2>&1; then
+        run_as_root dnf install -y certbot python3-certbot-nginx
+    elif command -v yum >/dev/null 2>&1; then
+        run_as_root yum install -y certbot python3-certbot-nginx
+    elif command -v apt-get >/dev/null 2>&1; then
+        run_as_root apt-get update
+        run_as_root apt-get install -y certbot python3-certbot-nginx
+    else
+        log "ERROR: supported package manager not found for certbot installation"
+        exit 1
+    fi
+
+    enable_certbot_timer
+}
+
+ensure_tls_certificate() {
+    local email_args
+
+    if [ "$ENABLE_SSL" != "true" ]; then
+        log "SSL setup skipped because ENABLE_SSL=$ENABLE_SSL"
+        return 0
+    fi
+
+    ensure_certbot
+    if certbot_certificate_exists; then
+        log "Let's Encrypt certificate already exists for $ADMIN_API_DOMAIN_NAME"
+        return 0
+    fi
+
+    log "Issuing Let's Encrypt certificate for $ADMIN_API_DOMAIN_NAME"
+    if [ -n "$CERTBOT_EMAIL" ]; then
+        email_args=(--email "$CERTBOT_EMAIL")
+    else
+        email_args=(--register-unsafely-without-email)
+    fi
+
+    run_as_root certbot certonly \
+        --nginx \
+        --non-interactive \
+        --agree-tos \
+        --no-eff-email \
+        "${email_args[@]}" \
+        -d "$ADMIN_API_DOMAIN_NAME"
+}
+
+write_nginx_http_proxy_config() {
+    local temp_conf
+    temp_conf=$(mktemp)
+    cat > "$temp_conf" <<EOF
+server {
+    listen 80;
+    server_name $ADMIN_API_DOMAIN_NAME;
+
+    client_max_body_size 20m;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        proxy_pass http://flint-admin-api;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 120s;
+    }
+}
+EOF
+    run_as_root install -m 0644 "$temp_conf" "$NGINX_PROXY_CONF"
+    rm -f "$temp_conf"
+}
+
+write_nginx_https_proxy_config() {
+    local temp_conf
+    temp_conf=$(mktemp)
+    cat > "$temp_conf" <<EOF
+server {
+    listen 80;
+    server_name $ADMIN_API_DOMAIN_NAME;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://\$host\$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name $ADMIN_API_DOMAIN_NAME;
+
+    ssl_certificate /etc/letsencrypt/live/$ADMIN_API_DOMAIN_NAME/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/$ADMIN_API_DOMAIN_NAME/privkey.pem;
+
+    client_max_body_size 20m;
+
+    location / {
+        proxy_pass http://flint-admin-api;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 120s;
+    }
+}
+EOF
+    run_as_root install -m 0644 "$temp_conf" "$NGINX_PROXY_CONF"
+    rm -f "$temp_conf"
+}
+
 ensure_nginx() {
-    local default_location_conf="/etc/nginx/default.d/flint-admin-api.conf"
-    local legacy_proxy_conf="$NGINX_PROXY_CONF"
-    local proxy_conf
     local temp_conf
 
     if ! command -v nginx >/dev/null 2>&1; then
@@ -107,6 +247,7 @@ ensure_nginx() {
     fi
 
     run_as_root mkdir -p /etc/nginx/conf.d
+    run_as_root mkdir -p /var/www/certbot
 
     temp_conf=$(mktemp)
     cat > "$temp_conf" <<EOF
@@ -117,57 +258,11 @@ EOF
     run_as_root install -m 0644 "$temp_conf" "$NGINX_CONF"
     rm -f "$temp_conf"
 
-    if [ -d /etc/nginx/default.d ] || grep -q "default.d" /etc/nginx/nginx.conf 2>/dev/null; then
-        proxy_conf="$default_location_conf"
-        run_as_root mkdir -p /etc/nginx/default.d
-        run_as_root rm -f "$legacy_proxy_conf"
-        if [ ! -f "$proxy_conf" ]; then
-            temp_conf=$(mktemp)
-            cat > "$temp_conf" <<'EOF'
-location / {
-    proxy_pass http://flint-admin-api;
-    proxy_http_version 1.1;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-    proxy_connect_timeout 5s;
-    proxy_read_timeout 120s;
-}
-EOF
-            run_as_root install -m 0644 "$temp_conf" "$proxy_conf"
-            rm -f "$temp_conf"
-        fi
+    run_as_root rm -f "$NGINX_DEFAULT_LOCATION_CONF"
+    if [ "$ENABLE_SSL" = "true" ] && certbot_certificate_exists; then
+        write_nginx_https_proxy_config
     else
-        proxy_conf="$legacy_proxy_conf"
-        if [ ! -f "$proxy_conf" ]; then
-            temp_conf=$(mktemp)
-            cat > "$temp_conf" <<'EOF'
-server {
-    listen 80;
-    server_name _;
-
-    client_max_body_size 20m;
-
-    location / {
-        proxy_pass http://flint-admin-api;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_connect_timeout 5s;
-        proxy_read_timeout 120s;
-    }
-}
-EOF
-            run_as_root install -m 0644 "$temp_conf" "$proxy_conf"
-            rm -f "$temp_conf"
-        fi
-    fi
-
-    if [ -f "$NGINX_PROXY_CONF" ] && [ "$NGINX_PROXY_CONF" != "$proxy_conf" ]; then
-        run_as_root rm -f "$NGINX_PROXY_CONF"
+        write_nginx_http_proxy_config
     fi
 
     if ! run_as_root nginx -t >/dev/null 2>&1; then
@@ -179,6 +274,17 @@ EOF
     run_as_root systemctl enable nginx
     run_as_root systemctl start nginx
     run_as_root nginx -s reload || true
+
+    ensure_tls_certificate
+    if [ "$ENABLE_SSL" = "true" ]; then
+        write_nginx_https_proxy_config
+        if ! run_as_root nginx -t >/dev/null 2>&1; then
+            log "ERROR: nginx HTTPS configuration test failed"
+            run_as_root nginx -t || true
+            exit 1
+        fi
+        run_as_root nginx -s reload || true
+    fi
 }
 
 check_dependencies() {

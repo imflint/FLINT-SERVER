@@ -17,6 +17,7 @@ resource "aws_instance" "api" {
 
   user_data = templatefile("${path.module}/scripts/user-data-free-tier.sh.tftpl", {
     app_name             = var.application_name
+    domain_name          = var.api_domain_name
     environment          = var.environment
     parameter_prefix     = local.parameter_prefix
     redis_container_name = "${local.name_prefix}-redis"
@@ -70,6 +71,7 @@ resource "aws_instance" "admin" {
 
   user_data = templatefile("${path.module}/scripts/user-data-admin.sh.tftpl", {
     app_name             = var.admin_application_name
+    domain_name          = var.admin_api_domain_name
     environment          = var.environment
     parameter_prefix     = local.parameter_prefix
     redis_container_name = "${local.name_prefix}-admin-redis"

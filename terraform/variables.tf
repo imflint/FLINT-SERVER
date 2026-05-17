@@ -76,6 +76,12 @@ variable "create_eip" {
   default     = true
 }
 
+variable "api_domain_name" {
+  description = "API 서버 HTTPS 인증서와 Nginx server_name에 사용할 도메인입니다."
+  type        = string
+  default     = "api.flint.r-e.kr"
+}
+
 variable "admin_application_name" {
   description = "관리자 API 애플리케이션 이름입니다. 리소스 태그와 user-data 설명에 사용합니다."
   type        = string
@@ -98,6 +104,12 @@ variable "admin_create_eip" {
   description = "관리자 API 서버에 고정 Elastic IP를 생성하고 연결할지 여부입니다."
   type        = bool
   default     = true
+}
+
+variable "admin_api_domain_name" {
+  description = "관리자 API 서버 HTTPS 인증서와 Nginx server_name에 사용할 도메인입니다."
+  type        = string
+  default     = "admin-api.flint.r-e.kr"
 }
 
 variable "admin_ec2_volume_size" {
