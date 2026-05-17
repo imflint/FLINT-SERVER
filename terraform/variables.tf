@@ -79,7 +79,7 @@ variable "create_eip" {
 variable "api_domain_name" {
   description = "API 서버 HTTPS 인증서와 Nginx server_name에 사용할 도메인입니다."
   type        = string
-  default     = "api.flint.r-e.kr"
+  default     = "flint.r-e.kr"
 }
 
 variable "admin_application_name" {

@@ -38,6 +38,7 @@ jobs:
       ADMIN_ECR_REPOSITORY_URI: ${{ vars.ADMIN_ECR_REPOSITORY_URI }}
       ADMIN_HEALTH_CHECK_URL: ${{ vars.ADMIN_HEALTH_CHECK_URL }}
       ADMIN_API_DOMAIN_NAME: ${{ vars.ADMIN_API_DOMAIN_NAME || 'admin-api.flint.r-e.kr' }}
+      ENABLE_SSL: ${{ vars.ENABLE_SSL || 'true' }}
       CERTBOT_EMAIL: ${{ vars.CERTBOT_EMAIL }}
       S3_DEPLOY_BUCKET: ${{ vars.S3_DEPLOY_BUCKET }}
 
@@ -105,7 +106,7 @@ jobs:
               "mkdir -p /home/ubuntu/deploy",
               "aws s3 cp \"s3://${S3_DEPLOY_BUCKET}/${ADMIN_DEPLOY_PREFIX}/${GITHUB_SHA}/deploy-admin.sh\" \"/home/ubuntu/deploy-admin.sh\"",
               "chmod +x /home/ubuntu/deploy-admin.sh",
-              "DEPLOY_MODE=docker IMAGE_URI=\"${IMAGE_URI}\" AWS_REGION=\"${AWS_REGION}\" ADMIN_API_DOMAIN_NAME=\"${ADMIN_API_DOMAIN_NAME}\" CERTBOT_EMAIL=\"${CERTBOT_EMAIL}\" /home/ubuntu/deploy-admin.sh"
+              "DEPLOY_MODE=docker IMAGE_URI=\"${IMAGE_URI}\" AWS_REGION=\"${AWS_REGION}\" ADMIN_API_DOMAIN_NAME=\"${ADMIN_API_DOMAIN_NAME}\" ENABLE_SSL=\"${ENABLE_SSL}\" CERTBOT_EMAIL=\"${CERTBOT_EMAIL}\" /home/ubuntu/deploy-admin.sh"
             ]
           }
           EOF
