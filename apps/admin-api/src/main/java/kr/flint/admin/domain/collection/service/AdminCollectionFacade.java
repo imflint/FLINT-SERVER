@@ -26,7 +26,6 @@ import kr.flint.content.domain.Content;
 import kr.flint.content.service.ContentService;
 import kr.flint.infra.storage.cloudfront.CloudFrontUrlProvider;
 import kr.flint.shared.dto.PaginationResponse;
-import kr.flint.shared.dto.SliceCursor;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -48,14 +47,14 @@ public class AdminCollectionFacade {
         String keyword,
         AdminCollectionVisibility visibility,
         CollectionModerationStatus moderationStatus,
-        Long cursor,
+        Integer page,
         Integer size
     ) {
         adminAuthorizationService.validateAdmin(adminId);
+        int safePage = normalizePage(page);
         int safeSize = normalizeSize(size);
-        List<Long> collectionIds = queryRepository.findCollectionIds(keyword, visibility, moderationStatus, cursor, safeSize);
-        boolean hasNext = collectionIds.size() > safeSize;
-        List<Long> pageIds = hasNext ? collectionIds.subList(0, safeSize) : collectionIds;
+        List<Long> pageIds = queryRepository.findCollectionIds(keyword, visibility, moderationStatus, safePage, safeSize);
+        long totalElements = queryRepository.countCollections(keyword, visibility, moderationStatus);
 
         Map<Long, CollectionSummaryRow> rows = queryRepository.findCollectionSummaryRows(pageIds)
             .stream()
@@ -66,9 +65,7 @@ public class AdminCollectionFacade {
             .map(this::toSummary)
             .toList();
 
-        String nextCursor = hasNext && !data.isEmpty() ? String.valueOf(data.getLast().collectionId()) : "";
-        String currentCursor = cursor != null ? String.valueOf(cursor) : null;
-        return PaginationResponse.ofCursor(SliceCursor.of(data, currentCursor, nextCursor));
+        return PaginationResponse.ofOffset(data, safePage, safeSize, totalElements);
     }
 
     public AdminCollectionDetailRes getCollection(Long adminId, Long collectionId) {
@@ -154,5 +151,12 @@ public class AdminCollectionFacade {
             return DEFAULT_SIZE;
         }
         return Math.min(size, MAX_SIZE);
+    }
+
+    private int normalizePage(Integer page) {
+        if (page == null || page < 1) {
+            return 1;
+        }
+        return page;
     }
 }

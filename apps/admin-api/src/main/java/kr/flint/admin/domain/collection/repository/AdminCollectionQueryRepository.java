@@ -30,7 +30,7 @@ public class AdminCollectionQueryRepository {
         String keyword,
         AdminCollectionVisibility visibility,
         CollectionModerationStatus moderationStatus,
-        Long cursor,
+        int page,
         int size
     ) {
         return queryFactory
@@ -39,12 +39,29 @@ public class AdminCollectionQueryRepository {
             .where(
                 keywordCondition(keyword),
                 visibilityCondition(visibility),
-                moderationStatusCondition(moderationStatus),
-                cursor != null ? collection.id.lt(cursor) : null
+                moderationStatusCondition(moderationStatus)
             )
             .orderBy(collection.id.desc())
-            .limit(size + 1L)
+            .offset((long) (page - 1) * size)
+            .limit(size)
             .fetch();
+    }
+
+    public long countCollections(
+        String keyword,
+        AdminCollectionVisibility visibility,
+        CollectionModerationStatus moderationStatus
+    ) {
+        Long count = queryFactory
+            .select(collection.id.count())
+            .from(collection)
+            .where(
+                keywordCondition(keyword),
+                visibilityCondition(visibility),
+                moderationStatusCondition(moderationStatus)
+            )
+            .fetchOne();
+        return count != null ? count : 0L;
     }
 
     public List<CollectionSummaryRow> findCollectionSummaryRows(List<Long> collectionIds) {

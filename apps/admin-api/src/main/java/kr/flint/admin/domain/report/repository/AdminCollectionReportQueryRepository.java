@@ -25,17 +25,24 @@ public class AdminCollectionReportQueryRepository {
 
     private final JPAQueryFactory queryFactory;
 
-    public List<Long> findReportIds(ReportStatus status, Long cursor, int size) {
+    public List<Long> findReportIds(ReportStatus status, int page, int size) {
         return queryFactory
             .select(collectionReport.id)
             .from(collectionReport)
-            .where(
-                statusCondition(status),
-                cursor != null ? collectionReport.id.lt(cursor) : null
-            )
+            .where(statusCondition(status))
             .orderBy(collectionReport.id.desc())
-            .limit(size + 1L)
+            .offset((long) (page - 1) * size)
+            .limit(size)
             .fetch();
+    }
+
+    public long countReports(ReportStatus status) {
+        Long count = queryFactory
+            .select(collectionReport.id.count())
+            .from(collectionReport)
+            .where(statusCondition(status))
+            .fetchOne();
+        return count != null ? count : 0L;
     }
 
     public List<ReportSummaryRow> findReportSummaryRows(List<Long> reportIds) {

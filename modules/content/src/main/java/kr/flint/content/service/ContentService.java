@@ -46,8 +46,9 @@ public class ContentService {
             return;
         }
 
-        long expectedCount = contentIds.stream().distinct().count();
-        long actualCount = contentRepository.countByIdIn(contentIds.stream().distinct().toList());
+        List<Long> distinctContentIds = contentIds.stream().distinct().toList();
+        long expectedCount = distinctContentIds.size();
+        long actualCount = contentRepository.countByIdIn(distinctContentIds);
         if (actualCount != expectedCount) {
             throw new ContentException(ContentErrorCode.CONTENT_NOT_FOUND);
         }
