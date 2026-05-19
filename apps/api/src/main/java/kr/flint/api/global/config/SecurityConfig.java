@@ -14,6 +14,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import kr.flint.api.global.security.DailyVisitorActivityFilter;
 import kr.flint.api.global.security.JwtAuthenticationFilter;
 import kr.flint.api.global.security.JwtExceptionFilter;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtExceptionFilter jwtExceptionFilter;
+    private final DailyVisitorActivityFilter dailyVisitorActivityFilter;
 
     private static final String[] PUBLIC_ENDPOINTS = {
             "/swagger-ui/**",
@@ -49,9 +51,10 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
-                        .anyRequest().authenticated())
+                .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+                .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(dailyVisitorActivityFilter, JwtAuthenticationFilter.class)
                 .addFilterBefore(jwtExceptionFilter, JwtAuthenticationFilter.class)
                 .build();
     }

@@ -48,3 +48,9 @@ tmdb:
 logging:
   level:
     kr.flint: info
+
+flint:
+  admin:
+    metrics:
+      scheduling:
+        enabled: true

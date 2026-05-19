@@ -37,4 +37,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
                 )
         """)
         long countActiveUsers(@Param("now") LocalDateTime now);
+
+        long countByCreatedAtGreaterThanEqualAndCreatedAtLessThan(LocalDateTime from, LocalDateTime to);
+
+        long countByCreatedAtLessThan(LocalDateTime before);
+
+        @Query("select min(u.createdAt) from User u")
+        LocalDateTime findFirstCreatedAt();
     }
