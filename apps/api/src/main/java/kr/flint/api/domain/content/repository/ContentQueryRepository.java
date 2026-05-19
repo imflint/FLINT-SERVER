@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.springframework.stereotype.Repository;
 
@@ -164,8 +165,13 @@ public class ContentQueryRepository {
 		return new ArrayList<>(contentMap.values());
 	}
 
-	// 장르별 인기순(bookmarkCount desc) 조회. size+1 fetch 후 호출처가 hasNext 판정.
-	public List<GetContentSearchRes> findPopularByGenreName(String genreName, int page, int size) {
+	// 요청한 모든 장르를 가진 콘텐츠를 인기순(bookmarkCount desc)으로 조회한다.
+	public List<GetContentSearchRes> findPopularByGenreNames(List<String> genreNames, int page, int size) {
+		List<String> normalizedGenreNames = normalizeGenreNames(genreNames);
+		if (normalizedGenreNames.isEmpty()) {
+			return List.of();
+		}
+
 		int safePage = Math.max(page, 1);
 		return jpaQueryFactory
 			.select(
@@ -178,7 +184,16 @@ public class ContentQueryRepository {
 			.from(content)
 			.join(contentGenre).on(contentGenre.content.eq(content))
 			.join(contentGenre.genre, genre)
-			.where(genre.name.eq(genreName))
+			.where(genre.name.in(normalizedGenreNames))
+			.groupBy(
+				content.id,
+				content.title,
+				content.author,
+				content.poster,
+				content.year,
+				content.bookmarkCount
+			)
+			.having(genre.name.countDistinct().eq((long) normalizedGenreNames.size()))
 			.orderBy(content.bookmarkCount.desc(), content.id.desc())
 			.offset((long) (safePage - 1) * size)
 			.limit(size + 1L)
@@ -191,6 +206,17 @@ public class ContentQueryRepository {
 				row.get(content.poster),
 				row.get(content.year) == null ? 0 : row.get(content.year)
 			))
+			.toList();
+	}
+
+	private List<String> normalizeGenreNames(List<String> genreNames) {
+		if (genreNames == null || genreNames.isEmpty()) {
+			return List.of();
+		}
+
+		return genreNames.stream()
+			.filter(Objects::nonNull)
+			.distinct()
 			.toList();
 	}
 }

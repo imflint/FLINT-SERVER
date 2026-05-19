@@ -54,11 +54,11 @@ public class ContentController implements ContentControllerDocs {
 	@GetMapping("/search")
 	public ResponseEntity<SuccessResponse<PaginationResponse<GetContentSearchRes>>> searchContent(
 		@RequestParam(required = false, name = "keyword") String keyword,
-		@RequestParam(required = false, name = "genre") SearchGenre genre,
+		@RequestParam(required = false, name = "genre") List<SearchGenre> genres,
 		@RequestParam(required = false, defaultValue = "1") int cursor,
 		@RequestParam(required = false, defaultValue = "20") int size
 	){
-		PaginationResponse<GetContentSearchRes> searchRes = contentCommandFacade.getContentSearchList(keyword, genre, cursor, size);
+		PaginationResponse<GetContentSearchRes> searchRes = contentCommandFacade.getContentSearchList(keyword, genres, cursor, size);
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, searchRes));
 
 	}

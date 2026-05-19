@@ -1,6 +1,7 @@
 package kr.flint.api.domain.content.service;
 
 import java.util.List;
+import java.util.Objects;
 
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,14 +40,15 @@ public class ContentCommandFacade {
 	@Transactional
 	public PaginationResponse<GetContentSearchRes> getContentSearchList(
 		final String keyword,
-		final SearchGenre genre,
+		final List<SearchGenre> genres,
 		final int cursor,
 		int size
 	){
-		log.debug("콘텐츠 검색 요청. keyword={}, genre={}", keyword, genre);
+		log.debug("콘텐츠 검색 요청. keyword={}, genres={}", keyword, genres);
 
-		if (genre != null) {
-			return getPopularContentByGenre(genre, cursor, size);
+		List<String> genreNames = toGenreNames(genres);
+		if (!genreNames.isEmpty()) {
+			return getPopularContentByGenres(genreNames, cursor, size);
 		}
 
 		if (keyword != null && !keyword.isEmpty()) {
@@ -63,8 +65,20 @@ public class ContentCommandFacade {
 		);
 	}
 
-	private PaginationResponse<GetContentSearchRes> getPopularContentByGenre(SearchGenre genre, int cursor, int size) {
-		List<GetContentSearchRes> page = contentQueryRepository.findPopularByGenreName(genre.tmdbName(), cursor, size);
+	private List<String> toGenreNames(List<SearchGenre> genres) {
+		if (genres == null || genres.isEmpty()) {
+			return List.of();
+		}
+
+		return genres.stream()
+			.filter(Objects::nonNull)
+			.map(SearchGenre::tmdbName)
+			.distinct()
+			.toList();
+	}
+
+	private PaginationResponse<GetContentSearchRes> getPopularContentByGenres(List<String> genreNames, int cursor, int size) {
+		List<GetContentSearchRes> page = contentQueryRepository.findPopularByGenreNames(genreNames, cursor, size);
 		boolean hasNext = page.size() > size;
 		List<GetContentSearchRes> data = hasNext ? page.subList(0, size) : page;
 		String nextCursor = hasNext ? String.valueOf(cursor + 1) : null;
