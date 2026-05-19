@@ -47,7 +47,7 @@ public class ContentController implements ContentControllerDocs {
 		@CurrentUser Long userId
 	){
 		List<GetContentDetailRes> getContentDetailResList = contentQueryFacade.getContentDetailList(userId);
-		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, new GetContentListRes(getContentDetailResList)));
+		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, GetContentListRes.from(getContentDetailResList)));
 	}
 
 	@Override
@@ -68,6 +68,6 @@ public class ContentController implements ContentControllerDocs {
 		@PathVariable Long userId
 	){
 		List<GetContentDetailRes> getContentDetailResList = contentQueryFacade.getContentDetailList(userId);
-		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, new GetContentListRes(getContentDetailResList)));
+		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, GetContentListRes.from(getContentDetailResList)));
 	}
 }
