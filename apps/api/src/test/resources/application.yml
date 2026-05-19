@@ -63,7 +63,3 @@ oauth:
     user-info-url: https://kapi.kakao.com/v2/user/me
     connect-timeout: 5s
     read-timeout: 10s
-
-tmdb:
-  base-url: https://api.themoviedb.org
-  api-key: test-api-key

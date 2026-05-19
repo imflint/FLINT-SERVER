@@ -15,13 +15,16 @@ import java.util.Map;
 import java.util.Objects;
 
 import org.springframework.stereotype.Repository;
+import org.springframework.util.StringUtils;
 
 import com.querydsl.core.Tuple;
+import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
 import kr.flint.api.domain.content.dto.GetContentDetailRes;
 import kr.flint.api.domain.search.dto.response.GetContentSearchRes;
 import kr.flint.api.domain.search.dto.response.GetSearchBookmarkContentRes;
+import kr.flint.content.domain.MediaType;
 import lombok.RequiredArgsConstructor;
 
 @Repository
@@ -165,9 +168,58 @@ public class ContentQueryRepository {
 		return new ArrayList<>(contentMap.values());
 	}
 
-	// 요청한 모든 장르를 가진 콘텐츠를 인기순(bookmarkCount desc)으로 조회한다.
-	public List<GetContentSearchRes> findPopularByGenreNames(List<String> genreNames, int page, int size) {
+	public List<GetContentSearchRes> searchContents(
+		String keyword,
+		List<String> genreNames,
+		MediaType mediaType,
+		int page,
+		int size
+	) {
 		List<String> normalizedGenreNames = normalizeGenreNames(genreNames);
+		if (normalizedGenreNames.isEmpty()) {
+			return searchContentsWithoutGenre(keyword, mediaType, page, size);
+		}
+
+		return searchContentsWithGenres(keyword, normalizedGenreNames, mediaType, page, size);
+	}
+
+	private List<GetContentSearchRes> searchContentsWithoutGenre(
+		String keyword,
+		MediaType mediaType,
+		int page,
+		int size
+	) {
+		int safePage = Math.max(page, 1);
+		return jpaQueryFactory
+			.select(
+				content.id,
+				content.title,
+				content.author,
+				content.poster,
+				content.year
+			)
+			.from(content)
+			.where(
+				keywordCondition(keyword),
+				mediaTypeCondition(mediaType)
+			)
+			.orderBy(content.bookmarkCount.desc(), content.id.desc())
+			.offset((long) (safePage - 1) * size)
+			.limit(size + 1L)
+			.fetch()
+			.stream()
+			.map(this::toContentSearchRes)
+			.toList();
+	}
+
+	// 요청한 모든 장르를 가진 콘텐츠를 인기순(bookmarkCount desc)으로 조회한다.
+	private List<GetContentSearchRes> searchContentsWithGenres(
+		String keyword,
+		List<String> normalizedGenreNames,
+		MediaType mediaType,
+		int page,
+		int size
+	) {
 		if (normalizedGenreNames.isEmpty()) {
 			return List.of();
 		}
@@ -184,7 +236,11 @@ public class ContentQueryRepository {
 			.from(content)
 			.join(contentGenre).on(contentGenre.content.eq(content))
 			.join(contentGenre.genre, genre)
-			.where(genre.name.in(normalizedGenreNames))
+			.where(
+				keywordCondition(keyword),
+				mediaTypeCondition(mediaType),
+				genre.name.in(normalizedGenreNames)
+			)
 			.groupBy(
 				content.id,
 				content.title,
@@ -199,14 +255,29 @@ public class ContentQueryRepository {
 			.limit(size + 1L)
 			.fetch()
 			.stream()
-			.map(row -> GetContentSearchRes.of(
-				row.get(content.id),
-				row.get(content.title),
-				row.get(content.author),
-				row.get(content.poster),
-				row.get(content.year) == null ? 0 : row.get(content.year)
-			))
+			.map(this::toContentSearchRes)
 			.toList();
+	}
+
+	private GetContentSearchRes toContentSearchRes(Tuple row) {
+		return GetContentSearchRes.of(
+			row.get(content.id),
+			row.get(content.title),
+			row.get(content.author),
+			row.get(content.poster),
+			row.get(content.year) == null ? 0 : row.get(content.year)
+		);
+	}
+
+	private BooleanExpression keywordCondition(String keyword) {
+		if (!StringUtils.hasText(keyword)) {
+			return null;
+		}
+		return content.title.containsIgnoreCase(keyword.trim());
+	}
+
+	private BooleanExpression mediaTypeCondition(MediaType mediaType) {
+		return mediaType == null ? null : content.mediaType.eq(mediaType);
 	}
 
 	private List<String> normalizeGenreNames(List<String> genreNames) {

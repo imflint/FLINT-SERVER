@@ -89,10 +89,6 @@ flint:
         deny-prefixes: kr.flint.shared.p6spy,kr.flint.shared.config.P6spyConfig
         max-depth: 5
 
-tmdb:
-  base-url: https://api.themoviedb.org
-  api-key: ${tmdb.api-key}
-
 discord:
   webhook:
     # 컬렉션 신고용 디스코드 웹훅

@@ -2,15 +2,19 @@ package kr.flint.api.domain.content.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import kr.flint.api.domain.content.dto.GetContentDetailRes;
+import kr.flint.api.domain.content.dto.SearchGenre;
 import kr.flint.api.domain.content.repository.ContentQueryRepository;
-import kr.flint.content.service.ContentService;
+import kr.flint.api.domain.search.dto.response.GetContentSearchRes;
+import kr.flint.content.domain.MediaType;
 import kr.flint.ott.dto.GetOttResponse;
 import kr.flint.ott.service.OttService;
+import kr.flint.shared.dto.PaginationResponse;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -31,6 +35,34 @@ public class ContentQueryFacade {
 			return new ArrayList<>();
 		}
 		return contentList;
+	}
+
+	public PaginationResponse<GetContentSearchRes> getContentSearchList(
+		final String keyword,
+		final List<SearchGenre> genres,
+		final MediaType mediaType,
+		final int cursor,
+		final int size
+	) {
+		List<String> genreNames = toGenreNames(genres);
+		List<GetContentSearchRes> page =
+			contentQueryRepository.searchContents(keyword, genreNames, mediaType, cursor, size);
+		boolean hasNext = page.size() > size;
+		List<GetContentSearchRes> data = hasNext ? page.subList(0, size) : page;
+		String nextCursor = hasNext ? String.valueOf(cursor + 1) : null;
+		return PaginationResponse.ofCursor(data, nextCursor);
+	}
+
+	private List<String> toGenreNames(List<SearchGenre> genres) {
+		if (genres == null || genres.isEmpty()) {
+			return List.of();
+		}
+
+		return genres.stream()
+			.filter(Objects::nonNull)
+			.map(SearchGenre::genreName)
+			.distinct()
+			.toList();
 	}
 
 }

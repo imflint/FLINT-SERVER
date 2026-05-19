@@ -63,7 +63,7 @@ class ContentQueryRepositoryTest {
 
 	@Test
 	@DisplayName("요청한 모든 장르를 가진 콘텐츠만 인기순으로 조회")
-	void findPopularByGenreNamesMatchesAllGenres() {
+	void searchContentsMatchesAllGenres() {
 		// given
 		Genre action = persistGenre("액션");
 		Genre romance = persistGenre("로맨스");
@@ -83,7 +83,7 @@ class ContentQueryRepositoryTest {
 
 		// when
 		List<GetContentSearchRes> results =
-			contentQueryRepository.findPopularByGenreNames(List.of("액션", "로맨스"), 1, 10);
+			contentQueryRepository.searchContents(null, List.of("액션", "로맨스"), null, 1, 10);
 
 		// then
 		assertThat(results)
@@ -103,12 +103,100 @@ class ContentQueryRepositoryTest {
 
 		// when
 		List<GetContentSearchRes> results =
-			contentQueryRepository.findPopularByGenreNames(List.of("액션", "액션"), 1, 10);
+			contentQueryRepository.searchContents(null, List.of("액션", "액션"), null, 1, 10);
 
 		// then
 		assertThat(results)
 			.extracting(GetContentSearchRes::title)
 			.containsExactly("액션 콘텐츠");
+	}
+
+	@Test
+	@DisplayName("keyword는 콘텐츠 제목 부분 일치로 검색")
+	void searchContentsByKeyword() {
+		// given
+		persistContent(3001L, "눈물의 여왕", 7);
+		persistContent(3002L, "반짝이는 워터멜론", 10);
+		persistContent(3003L, "눈부신 하루", 3);
+		entityManager.flush();
+		entityManager.clear();
+
+		// when
+		List<GetContentSearchRes> results =
+			contentQueryRepository.searchContents("눈", List.of(), null, 1, 10);
+
+		// then
+		assertThat(results)
+			.extracting(GetContentSearchRes::title)
+			.containsExactly("눈물의 여왕", "눈부신 하루");
+	}
+
+	@Test
+	@DisplayName("mediaType을 지정하면 해당 타입만 검색")
+	void searchContentsByMediaType() {
+		// given
+		persistContent(4001L, "영화 콘텐츠", MediaType.MOVIE, 7);
+		persistContent(4002L, "TV 콘텐츠", MediaType.TV, 3);
+		entityManager.flush();
+		entityManager.clear();
+
+		// when
+		List<GetContentSearchRes> results =
+			contentQueryRepository.searchContents(null, List.of(), MediaType.TV, 1, 10);
+
+		// then
+		assertThat(results)
+			.extracting(GetContentSearchRes::title)
+			.containsExactly("TV 콘텐츠");
+	}
+
+	@Test
+	@DisplayName("keyword, genre, mediaType 조건을 모두 AND로 검색")
+	void searchContentsWithAllConditions() {
+		// given
+		Genre action = persistGenre("액션");
+		Genre romance = persistGenre("로맨스");
+
+		Content tvMatched = persistContent(5001L, "눈물 액션 로맨스", MediaType.TV, 1);
+		Content movieMatchedTitleAndGenres = persistContent(5002L, "눈물 액션 로맨스 영화", MediaType.MOVIE, 10);
+		Content tvMatchedGenresOnly = persistContent(5003L, "다른 액션 로맨스", MediaType.TV, 9);
+		Content tvMatchedTitleOnly = persistContent(5004L, "눈물 액션", MediaType.TV, 8);
+
+		persistContentGenres(tvMatched, action, romance);
+		persistContentGenres(movieMatchedTitleAndGenres, action, romance);
+		persistContentGenres(tvMatchedGenresOnly, action, romance);
+		persistContentGenres(tvMatchedTitleOnly, action);
+		entityManager.flush();
+		entityManager.clear();
+
+		// when
+		List<GetContentSearchRes> results =
+			contentQueryRepository.searchContents("눈물", List.of("액션", "로맨스"), MediaType.TV, 1, 10);
+
+		// then
+		assertThat(results)
+			.extracting(GetContentSearchRes::title)
+			.containsExactly("눈물 액션 로맨스");
+	}
+
+	@Test
+	@DisplayName("조건이 없으면 전체 콘텐츠를 인기순으로 조회")
+	void searchContentsWithoutConditionsOrdersByPopularity() {
+		// given
+		persistContent(6001L, "북마크 1", 1);
+		persistContent(6002L, "북마크 5", 5);
+		persistContent(6003L, "북마크 3", 3);
+		entityManager.flush();
+		entityManager.clear();
+
+		// when
+		List<GetContentSearchRes> results =
+			contentQueryRepository.searchContents(null, List.of(), null, 1, 10);
+
+		// then
+		assertThat(results)
+			.extracting(GetContentSearchRes::title)
+			.containsExactly("북마크 5", "북마크 3", "북마크 1");
 	}
 
 	private Genre persistGenre(String name) {
@@ -118,9 +206,13 @@ class ContentQueryRepositoryTest {
 	}
 
 	private Content persistContent(Long tmdbId, String title, int bookmarkCount) {
+		return persistContent(tmdbId, title, MediaType.MOVIE, bookmarkCount);
+	}
+
+	private Content persistContent(Long tmdbId, String title, MediaType mediaType, int bookmarkCount) {
 		Content content = Content.create(
 			tmdbId,
-			MediaType.MOVIE,
+			mediaType,
 			title,
 			2026,
 			"감독",
