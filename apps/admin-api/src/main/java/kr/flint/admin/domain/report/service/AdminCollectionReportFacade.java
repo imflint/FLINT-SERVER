@@ -17,6 +17,7 @@ import kr.flint.admin.domain.report.repository.AdminCollectionReportQueryReposit
 import kr.flint.admin.domain.report.repository.AdminCollectionReportQueryRepository.ReportContentRow;
 import kr.flint.admin.domain.report.repository.AdminCollectionReportQueryRepository.ReportDetailRow;
 import kr.flint.admin.domain.report.repository.AdminCollectionReportQueryRepository.ReportSummaryRow;
+import kr.flint.admin.domain.user.service.AdminUserModerationApplicationService;
 import kr.flint.collection.domain.Collection;
 import kr.flint.collection.domain.CollectionModerationStatus;
 import kr.flint.collection.domain.CollectionReport;
@@ -31,7 +32,6 @@ import kr.flint.moderation.domain.ModerationDecision;
 import kr.flint.moderation.domain.UserModerationAction;
 import kr.flint.moderation.service.ModerationDecisionService;
 import kr.flint.shared.dto.PaginationResponse;
-import kr.flint.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -46,7 +46,7 @@ public class AdminCollectionReportFacade {
     private final AdminCollectionReportQueryRepository queryRepository;
     private final CollectionReportRepository collectionReportRepository;
     private final CollectionService collectionService;
-    private final UserService userService;
+    private final AdminUserModerationApplicationService userModerationApplicationService;
     private final CloudFrontUrlProvider cloudFrontUrlProvider;
     private final ModerationDecisionService moderationDecisionService;
 
@@ -121,13 +121,7 @@ public class AdminCollectionReportFacade {
     }
 
     private void applyUserAction(Long userId, UserModerationAction action, LocalDateTime expiresAt) {
-        switch (action) {
-            case WARN -> userService.warn(userId);
-            case RESTRICT_UPLOAD -> userService.restrictUpload(userId, expiresAt);
-            case SUSPEND -> userService.suspend(userId, expiresAt);
-            case KEEP -> {
-            }
-        }
+        userModerationApplicationService.apply(userId, action, expiresAt);
     }
 
     private AdminCollectionReportSummaryRes toSummary(ReportSummaryRow row, CollectionReport report) {

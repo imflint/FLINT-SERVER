@@ -25,6 +25,7 @@ import kr.flint.admin.common.AdminAuthorizationService;
 import kr.flint.admin.domain.report.dto.request.AdminCollectionReportResolutionReq;
 import kr.flint.admin.domain.report.repository.AdminCollectionReportQueryRepository;
 import kr.flint.admin.domain.report.repository.AdminCollectionReportQueryRepository.ReportSummaryRow;
+import kr.flint.admin.domain.user.service.AdminUserModerationApplicationService;
 import kr.flint.collection.domain.Collection;
 import kr.flint.collection.domain.CollectionReport;
 import kr.flint.collection.domain.ReportReason;
@@ -37,7 +38,6 @@ import kr.flint.infra.storage.cloudfront.CloudFrontUrlProvider;
 import kr.flint.moderation.domain.CollectionModerationAction;
 import kr.flint.moderation.domain.UserModerationAction;
 import kr.flint.moderation.service.ModerationDecisionService;
-import kr.flint.user.service.UserService;
 
 @ExtendWith(MockitoExtension.class)
 class AdminCollectionReportFacadeTest {
@@ -55,7 +55,7 @@ class AdminCollectionReportFacadeTest {
     private CollectionService collectionService;
 
     @Mock
-    private UserService userService;
+    private AdminUserModerationApplicationService userModerationApplicationService;
 
     @Mock
     private CloudFrontUrlProvider cloudFrontUrlProvider;
@@ -106,7 +106,7 @@ class AdminCollectionReportFacadeTest {
         ));
 
         verify(collectionService).hideByAdmin(10L);
-        verify(userService).warn(20L);
+        verify(userModerationApplicationService).apply(20L, UserModerationAction.WARN, null);
         verify(moderationDecisionService).recordCollectionReportDecision(
             eq(100L),
             eq(10L),
@@ -138,6 +138,6 @@ class AdminCollectionReportFacadeTest {
             .extracting("errorCode")
             .isEqualTo(CollectionErrorCode.COLLECTION_REPORT_ALREADY_RESOLVED);
         verify(collectionService, never()).deleteByAdmin(10L);
-        verify(userService, never()).suspend(20L, null);
+        verify(userModerationApplicationService, never()).apply(20L, UserModerationAction.SUSPEND, null);
     }
 }
