@@ -64,6 +64,10 @@ decorator:
       logging: slf4j
 
 flint:
+  admin:
+    metrics:
+      scheduling:
+        enabled: false
   batch:
     scheduling:
       enabled: false

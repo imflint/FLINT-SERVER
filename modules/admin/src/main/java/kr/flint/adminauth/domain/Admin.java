@@ -40,5 +40,14 @@ public class Admin extends BaseTime {
             .build();
     }
 
+    public void changeUsername(String username) {
+        this.username = username;
+    }
+
+    public void changePassword(String passwordHash, LocalDateTime now) {
+        this.passwordHash = passwordHash;
+        this.passwordChangedAt = now;
+    }
+
     // todo: 컬렉션 수정 api
 }

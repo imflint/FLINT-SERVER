@@ -61,6 +61,10 @@ logging:
     org.hibernate.orm.jdbc.bind: warn
 
 flint:
+  admin:
+    metrics:
+      scheduling:
+        enabled: true
   logging:
     sql:
       slow-query-threshold-ms: 1000

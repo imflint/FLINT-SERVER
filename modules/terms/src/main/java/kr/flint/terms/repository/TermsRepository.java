@@ -3,6 +3,7 @@ package kr.flint.terms.repository;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,6 +15,8 @@ import kr.flint.terms.domain.TermsType;
 public interface TermsRepository extends JpaRepository<Terms, Long> {
 
 	boolean existsByTypeAndVersion(TermsType type, Integer version);
+
+	List<Terms> findByType(TermsType type, Sort sort);
 
 	@Query("""
 		select count(t) > 0

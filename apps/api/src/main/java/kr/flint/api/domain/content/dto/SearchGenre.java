@@ -11,13 +11,13 @@ public enum SearchGenre {
 	COMEDY("코미디"),
 	HORROR("공포");
 
-	private final String tmdbName;
+	private final String genreName;
 
-	SearchGenre(String tmdbName) {
-		this.tmdbName = tmdbName;
+	SearchGenre(String genreName) {
+		this.genreName = genreName;
 	}
 
-	public String tmdbName() {
-		return tmdbName;
+	public String genreName() {
+		return genreName;
 	}
 }

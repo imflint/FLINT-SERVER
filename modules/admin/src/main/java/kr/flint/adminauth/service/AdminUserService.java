@@ -38,6 +38,24 @@ public class AdminUserService {
     }
 
     @Transactional
+    public Admin updateAccount(Long adminId, String username, String passwordHash) {
+        Admin admin = getById(adminId);
+        String normalizedUsername = username.trim();
+
+        if (adminUserRepository.existsByUsernameAndIdNot(normalizedUsername, admin.getId())) {
+            throw new AdminException(AdminErrorCode.DUPLICATE_ADMIN_USERNAME);
+        }
+
+        admin.changeUsername(normalizedUsername);
+
+        if (StringUtils.hasText(passwordHash)) {
+            admin.changePassword(passwordHash, LocalDateTime.now());
+        }
+
+        return admin;
+    }
+
+    @Transactional
     public Optional<Admin> bootstrapAdminIfEmpty(String username, String passwordHash) {
         if (adminUserRepository.count() > 0) {
             return Optional.empty();

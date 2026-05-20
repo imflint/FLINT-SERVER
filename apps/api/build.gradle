@@ -36,7 +36,6 @@ dependencies {
     implementation project(':infra:redis')
     implementation project(':infra:storage')
     implementation project(':infra:aws')
-    implementation project(':infra:tmdb')
     implementation project(':infra:gpt')
     implementation project(':infra:discord')
 
