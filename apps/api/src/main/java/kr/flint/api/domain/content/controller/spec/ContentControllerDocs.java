@@ -16,7 +16,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import kr.flint.api.domain.content.dto.GetContentListRes;
 import kr.flint.api.domain.content.dto.GetOttListRes;
 import kr.flint.api.domain.content.dto.SearchGenre;
-import kr.flint.ott.dto.GetOttResponse;
+import kr.flint.content.domain.MediaType;
 import kr.flint.shared.dto.response.SuccessResponse;
 import kr.flint.shared.exception.ProblemDetail;
 
@@ -53,23 +53,31 @@ public interface ContentControllerDocs {
 	@Operation(
 		summary = "콘텐츠 검색 - 재민",
 		description = """
-			- `genre` 지정 시: 로컬 DB에서 해당 장르 작품을 인기순(북마크 많은 순)으로 페이지네이션해 반환합니다.
-			- `keyword` 지정 시(genre 없음): TMDB API로 검색합니다.
-			- 둘 다 없을 시: TMDB 인기 영화를 반환합니다.
-			- `genre`와 `keyword`가 동시에 들어오면 `genre`가 우선합니다.
+			- 로컬 DB에 저장된 콘텐츠를 인기순(북마크 많은 순)으로 페이지네이션해 반환합니다.
+			- `keyword`는 콘텐츠 제목에 대해 부분 검색합니다.
+			- `genre`는 `?genre=ACTION&genre=ROMANCE`처럼 반복 파라미터로 여러 개 지정할 수 있으며, 요청한 모든 장르를 가진 콘텐츠만 반환합니다.
+			- `mediaType` 미입력 시 MOVIE/TV 전체를 대상으로 검색합니다.
+			- 조건이 없으면 로컬 DB 콘텐츠를 인기순으로 반환합니다.
 			"""
 	)
 	@ApiResponses({
-		@ApiResponse(responseCode = "200", description = "검색 성공", useReturnTypeSchema = true)
+		@ApiResponse(responseCode = "200", description = "검색 성공", useReturnTypeSchema = true),
+		@ApiResponse(
+			responseCode = "400",
+			description = "cursor 또는 size가 1보다 작은 경우",
+			content = @Content(schema = @Schema(implementation = ProblemDetail.class))
+		)
 	})
 	ResponseEntity<?> searchContent(
 		@Parameter(description = "검색 키워드", example = "눈물의 여왕")
 		String keyword,
-		@Parameter(description = "장르 필터 (액션/로맨스/SF/드라마/코미디/호러)", example = "ACTION")
-		SearchGenre genre,
-		@Parameter(description = "페이지 번호 (1부터 시작)", example = "1")
+		@Parameter(description = "장르 필터. 반복 파라미터로 여러 개 지정 가능하며 AND 조건으로 검색합니다.", example = "ACTION")
+		List<SearchGenre> genres,
+		@Parameter(description = "미디어 타입 필터. 미입력 시 전체 타입을 검색합니다.", example = "MOVIE")
+		MediaType mediaType,
+		@Parameter(description = "페이지 번호 (1부터 시작, 1 미만이면 400)", example = "1")
 		int cursor,
-		@Parameter(description = "페이지당 결과 수", example = "20")
+		@Parameter(description = "페이지당 결과 수 (1 이상, 1 미만이면 400)", example = "20")
 		int size
 	);
 

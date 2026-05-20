@@ -2,7 +2,9 @@ package kr.flint.api.domain.content.controller;
 
 import java.util.List;
 
+import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,8 +17,8 @@ import kr.flint.api.domain.content.dto.GetContentListRes;
 import kr.flint.api.domain.content.dto.GetOttListRes;
 import kr.flint.api.domain.content.dto.SearchGenre;
 import kr.flint.api.domain.search.dto.response.GetContentSearchRes;
-import kr.flint.api.domain.content.service.ContentCommandFacade;
 import kr.flint.api.domain.content.service.ContentQueryFacade;
+import kr.flint.content.domain.MediaType;
 import kr.flint.api.global.security.annotation.CurrentUser;
 import kr.flint.ott.dto.GetOttResponse;
 import kr.flint.shared.dto.PaginationResponse;
@@ -27,9 +29,9 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/contents")
+@Validated
 public class ContentController implements ContentControllerDocs {
 	private final ContentQueryFacade contentQueryFacade;
-	private final ContentCommandFacade contentCommandFacade;
 
 	@Override
 	@GetMapping("/ott/{contentId}")
@@ -54,11 +56,17 @@ public class ContentController implements ContentControllerDocs {
 	@GetMapping("/search")
 	public ResponseEntity<SuccessResponse<PaginationResponse<GetContentSearchRes>>> searchContent(
 		@RequestParam(required = false, name = "keyword") String keyword,
-		@RequestParam(required = false, name = "genre") SearchGenre genre,
-		@RequestParam(required = false, defaultValue = "1") int cursor,
-		@RequestParam(required = false, defaultValue = "20") int size
+		@RequestParam(required = false, name = "genre") List<SearchGenre> genres,
+		@RequestParam(required = false, name = "mediaType") MediaType mediaType,
+		@RequestParam(required = false, defaultValue = "1")
+		@Min(value = 1, message = "cursor는 1 이상이어야 합니다.")
+		int cursor,
+		@RequestParam(required = false, defaultValue = "20")
+		@Min(value = 1, message = "size는 1 이상이어야 합니다.")
+		int size
 	){
-		PaginationResponse<GetContentSearchRes> searchRes = contentCommandFacade.getContentSearchList(keyword, genre, cursor, size);
+		PaginationResponse<GetContentSearchRes> searchRes =
+			contentQueryFacade.getContentSearchList(keyword, genres, mediaType, cursor, size);
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, searchRes));
 
 	}
