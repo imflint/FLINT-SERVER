@@ -15,6 +15,8 @@ import kr.flint.content.domain.MediaType;
 import kr.flint.ott.dto.GetOttResponse;
 import kr.flint.ott.service.OttService;
 import kr.flint.shared.dto.PaginationResponse;
+import kr.flint.shared.exception.ErrorCode;
+import kr.flint.shared.exception.GeneralException;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -44,6 +46,7 @@ public class ContentQueryFacade {
 		final int cursor,
 		final int size
 	) {
+		validatePageRequest(cursor, size);
 		List<String> genreNames = toGenreNames(genres);
 		List<GetContentSearchRes> page =
 			contentQueryRepository.searchContents(keyword, genreNames, mediaType, cursor, size);
@@ -51,6 +54,15 @@ public class ContentQueryFacade {
 		List<GetContentSearchRes> data = hasNext ? page.subList(0, size) : page;
 		String nextCursor = hasNext ? String.valueOf(cursor + 1) : null;
 		return PaginationResponse.ofCursor(data, nextCursor);
+	}
+
+	private void validatePageRequest(int cursor, int size) {
+		if (cursor < 1) {
+			throw new GeneralException(ErrorCode.INVALID_INPUT, "cursor는 1 이상이어야 합니다.");
+		}
+		if (size < 1) {
+			throw new GeneralException(ErrorCode.INVALID_INPUT, "size는 1 이상이어야 합니다.");
+		}
 	}
 
 	private List<String> toGenreNames(List<SearchGenre> genres) {

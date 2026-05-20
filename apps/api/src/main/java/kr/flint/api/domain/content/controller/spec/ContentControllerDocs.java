@@ -61,7 +61,12 @@ public interface ContentControllerDocs {
 			"""
 	)
 	@ApiResponses({
-		@ApiResponse(responseCode = "200", description = "검색 성공", useReturnTypeSchema = true)
+		@ApiResponse(responseCode = "200", description = "검색 성공", useReturnTypeSchema = true),
+		@ApiResponse(
+			responseCode = "400",
+			description = "cursor 또는 size가 1보다 작은 경우",
+			content = @Content(schema = @Schema(implementation = ProblemDetail.class))
+		)
 	})
 	ResponseEntity<?> searchContent(
 		@Parameter(description = "검색 키워드", example = "눈물의 여왕")
@@ -70,9 +75,9 @@ public interface ContentControllerDocs {
 		List<SearchGenre> genres,
 		@Parameter(description = "미디어 타입 필터. 미입력 시 전체 타입을 검색합니다.", example = "MOVIE")
 		MediaType mediaType,
-		@Parameter(description = "페이지 번호 (1부터 시작)", example = "1")
+		@Parameter(description = "페이지 번호 (1부터 시작, 1 미만이면 400)", example = "1")
 		int cursor,
-		@Parameter(description = "페이지당 결과 수", example = "20")
+		@Parameter(description = "페이지당 결과 수 (1 이상, 1 미만이면 400)", example = "20")
 		int size
 	);
 

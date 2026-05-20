@@ -2,7 +2,9 @@ package kr.flint.api.domain.content.controller;
 
 import java.util.List;
 
+import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,6 +29,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/contents")
+@Validated
 public class ContentController implements ContentControllerDocs {
 	private final ContentQueryFacade contentQueryFacade;
 
@@ -55,8 +58,12 @@ public class ContentController implements ContentControllerDocs {
 		@RequestParam(required = false, name = "keyword") String keyword,
 		@RequestParam(required = false, name = "genre") List<SearchGenre> genres,
 		@RequestParam(required = false, name = "mediaType") MediaType mediaType,
-		@RequestParam(required = false, defaultValue = "1") int cursor,
-		@RequestParam(required = false, defaultValue = "20") int size
+		@RequestParam(required = false, defaultValue = "1")
+		@Min(value = 1, message = "cursor는 1 이상이어야 합니다.")
+		int cursor,
+		@RequestParam(required = false, defaultValue = "20")
+		@Min(value = 1, message = "size는 1 이상이어야 합니다.")
+		int size
 	){
 		PaginationResponse<GetContentSearchRes> searchRes =
 			contentQueryFacade.getContentSearchList(keyword, genres, mediaType, cursor, size);

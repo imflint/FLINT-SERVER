@@ -1,8 +1,10 @@
 package kr.flint.api.domain.content.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -23,6 +25,7 @@ import kr.flint.api.domain.search.dto.response.GetContentSearchRes;
 import kr.flint.content.domain.MediaType;
 import kr.flint.ott.service.OttService;
 import kr.flint.shared.dto.PaginationResponse;
+import kr.flint.shared.exception.GeneralException;
 
 @ExtendWith(MockitoExtension.class)
 class ContentQueryFacadeTest {
@@ -62,6 +65,30 @@ class ContentQueryFacadeTest {
 			assertThat(response.data()).containsExactly(first);
 			assertThat(response.meta().nextCursor()).isEqualTo("2");
 			verify(contentQueryRepository).searchContents("눈물", List.of("액션", "로맨스"), MediaType.TV, 1, 1);
+		}
+
+		@Test
+		@DisplayName("cursor가 1보다 작으면 검색하지 않고 예외를 던진다")
+		void rejectsInvalidCursor() {
+			// when
+			assertThatThrownBy(() -> contentQueryFacade.getContentSearchList(null, null, null, 0, 20))
+				.isInstanceOf(GeneralException.class)
+				.hasMessageContaining("cursor는 1 이상이어야 합니다.");
+
+			// then
+			verifyNoInteractions(contentQueryRepository);
+		}
+
+		@Test
+		@DisplayName("size가 1보다 작으면 검색하지 않고 예외를 던진다")
+		void rejectsInvalidSize() {
+			// when
+			assertThatThrownBy(() -> contentQueryFacade.getContentSearchList(null, null, null, 1, 0))
+				.isInstanceOf(GeneralException.class)
+				.hasMessageContaining("size는 1 이상이어야 합니다.");
+
+			// then
+			verifyNoInteractions(contentQueryRepository);
 		}
 
 		@Test

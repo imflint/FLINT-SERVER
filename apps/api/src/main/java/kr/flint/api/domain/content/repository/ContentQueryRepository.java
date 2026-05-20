@@ -25,6 +25,8 @@ import kr.flint.api.domain.content.dto.GetContentDetailRes;
 import kr.flint.api.domain.search.dto.response.GetContentSearchRes;
 import kr.flint.api.domain.search.dto.response.GetSearchBookmarkContentRes;
 import kr.flint.content.domain.MediaType;
+import kr.flint.shared.exception.ErrorCode;
+import kr.flint.shared.exception.GeneralException;
 import lombok.RequiredArgsConstructor;
 
 @Repository
@@ -175,6 +177,7 @@ public class ContentQueryRepository {
 		int page,
 		int size
 	) {
+		validatePageRequest(page, size);
 		List<String> normalizedGenreNames = normalizeGenreNames(genreNames);
 		if (normalizedGenreNames.isEmpty()) {
 			return searchContentsWithoutGenre(keyword, mediaType, page, size);
@@ -183,13 +186,21 @@ public class ContentQueryRepository {
 		return searchContentsWithGenres(keyword, normalizedGenreNames, mediaType, page, size);
 	}
 
+	private void validatePageRequest(int page, int size) {
+		if (page < 1) {
+			throw new GeneralException(ErrorCode.INVALID_INPUT, "page는 1 이상이어야 합니다.");
+		}
+		if (size < 1) {
+			throw new GeneralException(ErrorCode.INVALID_INPUT, "size는 1 이상이어야 합니다.");
+		}
+	}
+
 	private List<GetContentSearchRes> searchContentsWithoutGenre(
 		String keyword,
 		MediaType mediaType,
 		int page,
 		int size
 	) {
-		int safePage = Math.max(page, 1);
 		return jpaQueryFactory
 			.select(
 				content.id,
@@ -204,7 +215,7 @@ public class ContentQueryRepository {
 				mediaTypeCondition(mediaType)
 			)
 			.orderBy(content.bookmarkCount.desc(), content.id.desc())
-			.offset((long) (safePage - 1) * size)
+			.offset((long) (page - 1) * size)
 			.limit(size + 1L)
 			.fetch()
 			.stream()
@@ -224,7 +235,6 @@ public class ContentQueryRepository {
 			return List.of();
 		}
 
-		int safePage = Math.max(page, 1);
 		return jpaQueryFactory
 			.select(
 				content.id,
@@ -251,7 +261,7 @@ public class ContentQueryRepository {
 			)
 			.having(genre.name.countDistinct().eq((long) normalizedGenreNames.size()))
 			.orderBy(content.bookmarkCount.desc(), content.id.desc())
-			.offset((long) (safePage - 1) * size)
+			.offset((long) (page - 1) * size)
 			.limit(size + 1L)
 			.fetch()
 			.stream()
@@ -287,6 +297,8 @@ public class ContentQueryRepository {
 
 		return genreNames.stream()
 			.filter(Objects::nonNull)
+			.map(String::trim)
+			.filter(StringUtils::hasText)
 			.distinct()
 			.toList();
 	}

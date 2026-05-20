@@ -2,6 +2,7 @@ package kr.flint.api.domain.content.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.IntStream;
 
@@ -109,6 +110,31 @@ class ContentQueryRepositoryTest {
 		assertThat(results)
 			.extracting(GetContentSearchRes::title)
 			.containsExactly("액션 콘텐츠");
+	}
+
+	@Test
+	@DisplayName("장르명 공백과 빈 문자열은 정규화해서 검색")
+	void genreNamesAreTrimmedAndBlankNamesAreIgnored() {
+		// given
+		Genre action = persistGenre("액션");
+		Content actionContent = persistContent(2101L, "공백 정규화 콘텐츠", 1);
+		persistContentGenres(actionContent, action);
+		entityManager.flush();
+		entityManager.clear();
+
+		// when
+		List<GetContentSearchRes> results = contentQueryRepository.searchContents(
+			null,
+			Arrays.asList(" 액션 ", " ", "", null, "액션"),
+			null,
+			1,
+			10
+		);
+
+		// then
+		assertThat(results)
+			.extracting(GetContentSearchRes::title)
+			.containsExactly("공백 정규화 콘텐츠");
 	}
 
 	@Test
