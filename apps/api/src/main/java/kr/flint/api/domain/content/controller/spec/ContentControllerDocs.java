@@ -2,6 +2,7 @@ package kr.flint.api.domain.content.controller.spec;
 
 import java.util.List;
 
+import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -76,8 +77,10 @@ public interface ContentControllerDocs {
 		@Parameter(description = "미디어 타입 필터. 미입력 시 전체 타입을 검색합니다.", example = "MOVIE")
 		MediaType mediaType,
 		@Parameter(description = "페이지 번호 (1부터 시작, 1 미만이면 400)", example = "1")
+		@Min(value = 1, message = "cursor는 1 이상이어야 합니다.")
 		int cursor,
 		@Parameter(description = "페이지당 결과 수 (1 이상, 1 미만이면 400)", example = "20")
+		@Min(value = 1, message = "size는 1 이상이어야 합니다.")
 		int size
 	);
 
