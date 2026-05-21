@@ -49,7 +49,7 @@ public class ContentQueryRepository {
 
 		// 2) 컨텐츠 기본 정보
 		List<Tuple> contentRows = jpaQueryFactory
-			.select(content.id, content.title, content.year, content.poster)
+			.select(content.id, content.title, content.year, content.poster, content.bookmarkCount)
 			.from(content)
 			.where(content.id.in(topContentIds))
 			.fetch();
@@ -59,11 +59,13 @@ public class ContentQueryRepository {
 			Long id = row.get(content.id);
 			if (id == null) continue;
 
+			Integer bookmarkCount = row.get(content.bookmarkCount);
 			contentMap.put(id, new GetContentDetailRes(
 				id,
 				row.get(content.title),
 				row.get(content.poster),
 				row.get(content.year),
+				bookmarkCount == null ? 0 : bookmarkCount,
 				new ArrayList<>()
 			));
 		}

@@ -11,6 +11,7 @@ public record GetContentDetailRes(
 	String title,
 	String imageUrl,
 	int year,
+	int bookmarkCount,
 	List<GetOttSimpleRes> getOttSimpleList
 ) {
 	public record GetOttSimpleRes(
