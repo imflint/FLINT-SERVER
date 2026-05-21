@@ -47,9 +47,9 @@ public class ContentQueryRepository {
 
 		if (topContentIds.isEmpty()) return List.of();
 
-		// 2) 컨텐츠 기본 정보
+		// 2) 컨텐츠 기본 정보 (year/bookmark_count NULL 행 방어를 위해 coalesce)
 		List<Tuple> contentRows = jpaQueryFactory
-			.select(content.id, content.title, content.year, content.poster, content.bookmarkCount)
+			.select(content.id, content.title, content.year.coalesce(0), content.poster, content.bookmarkCount.coalesce(0))
 			.from(content)
 			.where(content.id.in(topContentIds))
 			.fetch();
@@ -59,12 +59,13 @@ public class ContentQueryRepository {
 			Long id = row.get(content.id);
 			if (id == null) continue;
 
-			Integer bookmarkCount = row.get(content.bookmarkCount);
+			Integer year = row.get(content.year.coalesce(0));
+			Integer bookmarkCount = row.get(content.bookmarkCount.coalesce(0));
 			contentMap.put(id, new GetContentDetailRes(
 				id,
 				row.get(content.title),
 				row.get(content.poster),
-				row.get(content.year),
+				year == null ? 0 : year,
 				bookmarkCount == null ? 0 : bookmarkCount,
 				new ArrayList<>()
 			));
