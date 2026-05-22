@@ -1,7 +1,7 @@
 resource "aws_ssm_parameter" "database_url" {
   name  = "${local.parameter_prefix}/database.url"
   type  = "String"
-  value = "jdbc:mysql://${aws_db_instance.mysql.address}:${aws_db_instance.mysql.port}/${var.rds_db_name}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8"
+  value = "jdbc:mysql://${aws_db_instance.mysql.address}:${aws_db_instance.mysql.port}/${var.rds_db_name}?connectionTimeZone=%2B09:00&forceConnectionTimeZoneToSession=true&preserveInstants=true&characterEncoding=UTF-8"
 }
 
 resource "aws_ssm_parameter" "database_username" {
