@@ -192,6 +192,12 @@ variable "rds_manage_master_user_password" {
   default     = true
 }
 
+variable "rds_disable_master_user_secret_rotation" {
+  description = "RDS managed master user secret의 자동 rotation을 Terraform apply마다 비활성화할지 여부입니다."
+  type        = bool
+  default     = true
+}
+
 variable "rds_allocated_storage" {
   description = "관리형 데이터베이스 스토리지 크기입니다. 단위는 GB이며, 20GB는 프리 티어 목표 범위입니다."
   type        = number

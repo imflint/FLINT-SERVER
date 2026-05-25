@@ -47,3 +47,28 @@ resource "aws_db_instance" "mysql" {
     }
   }
 }
+
+resource "terraform_data" "disable_mysql_master_user_secret_rotation" {
+  count = var.rds_manage_master_user_password && var.rds_disable_master_user_secret_rotation ? 1 : 0
+
+  input = {
+    region     = var.aws_region
+    secret_arn = aws_db_instance.mysql.master_user_secret[0].secret_arn
+  }
+
+  # The AWS provider exposes the RDS-managed secret ARN, but not a declarative
+  # switch for disabling that secret's automatic rotation.
+  triggers_replace = {
+    enforce_at = timestamp()
+    secret_arn = aws_db_instance.mysql.master_user_secret[0].secret_arn
+  }
+
+  provisioner "local-exec" {
+    command = "aws secretsmanager cancel-rotate-secret --region \"$AWS_REGION\" --secret-id \"$SECRET_ARN\" >/dev/null"
+
+    environment = {
+      AWS_REGION = self.input.region
+      SECRET_ARN = self.input.secret_arn
+    }
+  }
+}

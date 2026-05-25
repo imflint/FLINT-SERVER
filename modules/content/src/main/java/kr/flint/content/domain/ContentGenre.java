@@ -2,6 +2,7 @@ package kr.flint.content.domain;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -22,7 +23,8 @@ import lombok.NoArgsConstructor;
 			name = "uk_content_genre",
 			columnNames = {"content_id", "genre_id"}
 		)
-	}
+	},
+	indexes = @Index(name = "idx_content_genre_genre_content", columnList = "genre_id, content_id")
 )
 public class ContentGenre extends Base {
 	@ManyToOne(targetEntity = Content.class, fetch = FetchType.LAZY)

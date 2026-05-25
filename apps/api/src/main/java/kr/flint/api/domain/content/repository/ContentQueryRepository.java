@@ -12,27 +12,42 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import java.util.regex.Pattern;
 
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
 
 import com.querydsl.core.Tuple;
-import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
+import kr.flint.api.domain.content.dto.ContentSearchCondition;
 import kr.flint.api.domain.content.dto.GetContentDetailRes;
 import kr.flint.api.domain.search.dto.response.GetContentSearchRes;
 import kr.flint.api.domain.search.dto.response.GetSearchBookmarkContentRes;
-import kr.flint.content.domain.MediaType;
-import kr.flint.shared.exception.ErrorCode;
-import kr.flint.shared.exception.GeneralException;
 import lombok.RequiredArgsConstructor;
 
 @Repository
 @RequiredArgsConstructor
 public class ContentQueryRepository {
+	private static final Pattern FULLTEXT_BOOLEAN_OPERATOR_PATTERN = Pattern.compile("[+\\-<>()~*\"@]");
+
 	private final JPAQueryFactory jpaQueryFactory;
+	private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+
+	public record ContentSearchRow(
+		Long id,
+		String title,
+		String author,
+		String posterUrl,
+		int year,
+		int bookmarkCount
+	) {
+		public GetContentSearchRes toResponse() {
+			return GetContentSearchRes.of(id, title, author, posterUrl, year);
+		}
+	}
 
 	public List<GetContentDetailRes> getContentDetailList(Long userId){
 
@@ -173,136 +188,75 @@ public class ContentQueryRepository {
 		return new ArrayList<>(contentMap.values());
 	}
 
-	public List<GetContentSearchRes> searchContents(
-		String keyword,
-		List<String> genreNames,
-		MediaType mediaType,
-		int page,
-		int size
-	) {
-		validatePageRequest(page, size);
-		List<String> normalizedGenreNames = normalizeGenreNames(genreNames);
-		if (normalizedGenreNames.isEmpty()) {
-			return searchContentsWithoutGenre(keyword, mediaType, page, size);
+	public List<ContentSearchRow> searchContents(ContentSearchCondition condition) {
+		StringBuilder sql = new StringBuilder("""
+			SELECT c.id,
+			       c.title,
+			       c.author,
+			       c.poster AS poster_url,
+			       c.year,
+			       c.bookmark_count
+			FROM content c
+			""");
+		MapSqlParameterSource params = new MapSqlParameterSource();
+
+		if (condition.hasGenres()) {
+			sql.append("""
+				JOIN (
+				    SELECT cg.content_id
+				    FROM content_genre cg
+				    JOIN genre g ON g.id = cg.genre_id
+				    WHERE g.name IN (:genreNames)
+				    GROUP BY cg.content_id
+				    HAVING COUNT(DISTINCT g.name) = :genreCount
+				) matched_genre ON matched_genre.content_id = c.id
+				""");
+			params.addValue("genreNames", condition.genreNames());
+			params.addValue("genreCount", condition.genreNames().size());
 		}
 
-		return searchContentsWithGenres(keyword, normalizedGenreNames, mediaType, page, size);
-	}
-
-	private void validatePageRequest(int page, int size) {
-		if (page < 1) {
-			throw new GeneralException(ErrorCode.INVALID_INPUT, "page는 1 이상이어야 합니다.");
+		sql.append("WHERE 1 = 1\n");
+		if (condition.hasKeyword()) {
+			String fullTextKeyword = toFullTextKeyword(condition.keyword());
+			if (condition.usesFullTextSearch() && StringUtils.hasText(fullTextKeyword)) {
+				sql.append("AND MATCH(c.title) AGAINST (:keyword IN BOOLEAN MODE)\n");
+				params.addValue("keyword", fullTextKeyword);
+			} else {
+				sql.append("AND c.title LIKE CONCAT('%', :keyword, '%')\n");
+				params.addValue("keyword", condition.keyword());
+			}
 		}
-		if (size < 1) {
-			throw new GeneralException(ErrorCode.INVALID_INPUT, "size는 1 이상이어야 합니다.");
-		}
-	}
-
-	private List<GetContentSearchRes> searchContentsWithoutGenre(
-		String keyword,
-		MediaType mediaType,
-		int page,
-		int size
-	) {
-		return jpaQueryFactory
-			.select(
-				content.id,
-				content.title,
-				content.author,
-				content.poster,
-				content.year
-			)
-			.from(content)
-			.where(
-				keywordCondition(keyword),
-				mediaTypeCondition(mediaType)
-			)
-			.orderBy(content.bookmarkCount.desc(), content.id.desc())
-			.offset((long) (page - 1) * size)
-			.limit(size + 1L)
-			.fetch()
-			.stream()
-			.map(this::toContentSearchRes)
-			.toList();
-	}
-
-	// 요청한 모든 장르를 가진 콘텐츠를 인기순(bookmarkCount desc)으로 조회한다.
-	private List<GetContentSearchRes> searchContentsWithGenres(
-		String keyword,
-		List<String> normalizedGenreNames,
-		MediaType mediaType,
-		int page,
-		int size
-	) {
-		if (normalizedGenreNames.isEmpty()) {
-			return List.of();
+		if (condition.mediaType() != null) {
+			sql.append("AND c.media_type = :mediaType\n");
+			params.addValue("mediaType", condition.mediaType().name());
 		}
 
-		return jpaQueryFactory
-			.select(
-				content.id,
-				content.title,
-				content.author,
-				content.poster,
-				content.year
-			)
-			.from(content)
-			.join(contentGenre).on(contentGenre.content.eq(content))
-			.join(contentGenre.genre, genre)
-			.where(
-				keywordCondition(keyword),
-				mediaTypeCondition(mediaType),
-				genre.name.in(normalizedGenreNames)
-			)
-			.groupBy(
-				content.id,
-				content.title,
-				content.author,
-				content.poster,
-				content.year,
-				content.bookmarkCount
-			)
-			.having(genre.name.countDistinct().eq((long) normalizedGenreNames.size()))
-			.orderBy(content.bookmarkCount.desc(), content.id.desc())
-			.offset((long) (page - 1) * size)
-			.limit(size + 1L)
-			.fetch()
-			.stream()
-			.map(this::toContentSearchRes)
-			.toList();
-	}
+		sql.append("ORDER BY c.bookmark_count DESC, c.id DESC\n");
+		sql.append("LIMIT :limit OFFSET :offset");
+		params.addValue("limit", condition.queryLimit());
+		params.addValue("offset", condition.offset());
 
-	private GetContentSearchRes toContentSearchRes(Tuple row) {
-		return GetContentSearchRes.of(
-			row.get(content.id),
-			row.get(content.title),
-			row.get(content.author),
-			row.get(content.poster),
-			row.get(content.year) == null ? 0 : row.get(content.year)
+		return namedParameterJdbcTemplate.query(
+			sql.toString(),
+			params,
+			(rs, rowNum) -> new ContentSearchRow(
+				rs.getLong("id"),
+				rs.getString("title"),
+				rs.getString("author"),
+				rs.getString("poster_url"),
+				rs.getInt("year"),
+				rs.getInt("bookmark_count")
+			)
 		);
 	}
 
-	private BooleanExpression keywordCondition(String keyword) {
+	private String toFullTextKeyword(String keyword) {
 		if (!StringUtils.hasText(keyword)) {
 			return null;
 		}
-		return content.title.containsIgnoreCase(keyword.trim());
-	}
-
-	private BooleanExpression mediaTypeCondition(MediaType mediaType) {
-		return mediaType == null ? null : content.mediaType.eq(mediaType);
-	}
-
-	private List<String> normalizeGenreNames(List<String> genreNames) {
-		if (genreNames == null || genreNames.isEmpty()) {
-			return List.of();
-		}
-
-		return genreNames.stream()
-			.filter(Objects::nonNull)
-			.map(String::trim)
-			.filter(StringUtils::hasText)
-			.distinct()
-			.toList();
+		return FULLTEXT_BOOLEAN_OPERATOR_PATTERN.matcher(keyword)
+			.replaceAll(" ")
+			.replaceAll("\\s+", " ")
+			.trim();
 	}
 }

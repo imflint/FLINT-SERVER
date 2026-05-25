@@ -2,6 +2,7 @@ package kr.flint.api.domain.content.controller.spec;
 
 import java.util.List;
 
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -55,17 +56,18 @@ public interface ContentControllerDocs {
 		summary = "콘텐츠 검색 - 재민",
 		description = """
 			- 로컬 DB에 저장된 콘텐츠를 인기순(북마크 많은 순)으로 페이지네이션해 반환합니다.
-			- `keyword`는 콘텐츠 제목에 대해 부분 검색합니다.
+			- `keyword`는 콘텐츠 제목에 대해 검색합니다. 2자 이상 검색어는 FULLTEXT 인덱스를 사용하고, 1자 검색어는 기존 호환을 위해 부분 검색합니다.
 			- `genre`는 `?genre=ACTION&genre=ROMANCE`처럼 반복 파라미터로 여러 개 지정할 수 있으며, 요청한 모든 장르를 가진 콘텐츠만 반환합니다.
 			- `mediaType` 미입력 시 MOVIE/TV 전체를 대상으로 검색합니다.
 			- 조건이 없으면 로컬 DB 콘텐츠를 인기순으로 반환합니다.
+			- `cursor`는 1부터 시작하는 페이지 번호입니다.
 			"""
 	)
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "검색 성공", useReturnTypeSchema = true),
 		@ApiResponse(
 			responseCode = "400",
-			description = "cursor 또는 size가 1보다 작은 경우",
+			description = "cursor 또는 size가 허용 범위를 벗어난 경우",
 			content = @Content(schema = @Schema(implementation = ProblemDetail.class))
 		)
 	})
@@ -79,8 +81,9 @@ public interface ContentControllerDocs {
 		@Parameter(description = "페이지 번호 (1부터 시작, 1 미만이면 400)", example = "1")
 		@Min(value = 1, message = "cursor는 1 이상이어야 합니다.")
 		int cursor,
-		@Parameter(description = "페이지당 결과 수 (1 이상, 1 미만이면 400)", example = "20")
+		@Parameter(description = "페이지당 결과 수 (1~50)", example = "20")
 		@Min(value = 1, message = "size는 1 이상이어야 합니다.")
+		@Max(value = 50, message = "size는 50 이하여야 합니다.")
 		int size
 	);
 
