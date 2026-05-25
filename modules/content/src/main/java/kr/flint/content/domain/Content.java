@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.Index;
 import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
@@ -23,7 +24,11 @@ import lombok.NoArgsConstructor;
 	uniqueConstraints = @UniqueConstraint(
 		name = "uk_content_tmdb",
 		columnNames = {"tmdb_id", "media_type"}
-	)
+	),
+	indexes = {
+		@Index(name = "idx_content_popular", columnList = "bookmark_count DESC, id DESC"),
+		@Index(name = "idx_content_media_popular", columnList = "media_type, bookmark_count DESC, id DESC")
+	}
 )
 public class Content extends BaseTime {
 

@@ -459,6 +459,8 @@ start_docker_app() {
 		--name "$container_name" \
 		--restart unless-stopped \
 		--network host \
+        -e TZ=Asia/Seoul \
+        -e JAVA_TOOL_OPTIONS="-Duser.timezone=Asia/Seoul" \
 		"$IMAGE_URI" \
         --spring.profiles.active="$PROFILE" \
         --spring.config.import="$spring_config_import" \
@@ -476,7 +478,7 @@ start_jar_app() {
     cd "$DEPLOY_PATH" || { log "ERROR: Failed to cd to $DEPLOY_PATH"; return 1; }
     spring_config_import=$(build_spring_config_import) || return 1
 
-    nohup java -jar "$JAR_NAME" \
+    nohup java -Duser.timezone=Asia/Seoul -jar "$JAR_NAME" \
         --spring.profiles.active="$PROFILE" \
         --spring.config.import="$spring_config_import" \
         --server.port="$port" \

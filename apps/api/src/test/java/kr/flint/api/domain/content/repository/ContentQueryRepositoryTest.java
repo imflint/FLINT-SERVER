@@ -2,10 +2,15 @@ package kr.flint.api.domain.content.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.Arrays;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.List;
 import java.util.stream.IntStream;
 
+import javax.sql.DataSource;
+
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,12 +20,16 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.jdbc.Sql;
+import org.springframework.test.context.jdbc.SqlConfig;
+import org.springframework.test.context.transaction.TestTransaction;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import jakarta.persistence.EntityManager;
-import kr.flint.api.domain.search.dto.response.GetContentSearchRes;
+import kr.flint.api.domain.content.dto.ContentSearchCondition;
+import kr.flint.api.domain.content.repository.ContentQueryRepository.ContentSearchRow;
 import kr.flint.content.domain.Content;
 import kr.flint.content.domain.ContentGenre;
 import kr.flint.content.domain.Genre;
@@ -32,6 +41,15 @@ import kr.flint.shared.config.QueryDslConfig;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @EntityScan(basePackageClasses = Content.class)
 @Import({ContentQueryRepository.class, QueryDslConfig.class})
+@Sql(
+	statements = {
+		"DELETE FROM content_genre",
+		"DELETE FROM genre",
+		"DELETE FROM content"
+	},
+	config = @SqlConfig(transactionMode = SqlConfig.TransactionMode.ISOLATED),
+	executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD
+)
 class ContentQueryRepositoryTest {
 
 	@Container
@@ -42,14 +60,17 @@ class ContentQueryRepositoryTest {
 
 	private final EntityManager entityManager;
 	private final ContentQueryRepository contentQueryRepository;
+	private final DataSource dataSource;
 
 	@Autowired
 	ContentQueryRepositoryTest(
 		EntityManager entityManager,
-		ContentQueryRepository contentQueryRepository
+		ContentQueryRepository contentQueryRepository,
+		DataSource dataSource
 	) {
 		this.entityManager = entityManager;
 		this.contentQueryRepository = contentQueryRepository;
+		this.dataSource = dataSource;
 	}
 
 	@DynamicPropertySource
@@ -60,6 +81,18 @@ class ContentQueryRepositoryTest {
 		registry.add("spring.datasource.driver-class-name", MYSQL::getDriverClassName);
 		registry.add("spring.jpa.hibernate.ddl-auto", () -> "create");
 		registry.add("spring.jpa.properties.hibernate.dialect", () -> "org.hibernate.dialect.MySQLDialect");
+	}
+
+	@BeforeEach
+	void ensureFullTextIndex() throws SQLException {
+		try (Connection connection = dataSource.getConnection();
+			 Statement statement = connection.createStatement()) {
+			statement.execute("CREATE FULLTEXT INDEX ft_content_title_ngram ON content (title) WITH PARSER ngram");
+		} catch (SQLException exception) {
+			if (exception.getErrorCode() != 1061) {
+				throw exception;
+			}
+		}
 	}
 
 	@Test
@@ -83,12 +116,12 @@ class ContentQueryRepositoryTest {
 		entityManager.clear();
 
 		// when
-		List<GetContentSearchRes> results =
-			contentQueryRepository.searchContents(null, List.of("액션", "로맨스"), null, 1, 10);
+		List<ContentSearchRow> results =
+			contentQueryRepository.searchContents(condition(null, List.of("액션", "로맨스"), null, 1, 10));
 
 		// then
 		assertThat(results)
-			.extracting(GetContentSearchRes::title)
+			.extracting(ContentSearchRow::title)
 			.containsExactly("액션 로맨스", "액션 로맨스 드라마");
 	}
 
@@ -103,18 +136,18 @@ class ContentQueryRepositoryTest {
 		entityManager.clear();
 
 		// when
-		List<GetContentSearchRes> results =
-			contentQueryRepository.searchContents(null, List.of("액션", "액션"), null, 1, 10);
+		List<ContentSearchRow> results =
+			contentQueryRepository.searchContents(condition(null, List.of("액션", "액션"), null, 1, 10));
 
 		// then
 		assertThat(results)
-			.extracting(GetContentSearchRes::title)
+			.extracting(ContentSearchRow::title)
 			.containsExactly("액션 콘텐츠");
 	}
 
 	@Test
-	@DisplayName("장르명 공백과 빈 문자열은 정규화해서 검색")
-	void genreNamesAreTrimmedAndBlankNamesAreIgnored() {
+	@DisplayName("정규화된 장르명으로 검색")
+	void searchContentsWithNormalizedGenreNames() {
 		// given
 		Genre action = persistGenre("액션");
 		Content actionContent = persistContent(2101L, "공백 정규화 콘텐츠", 1);
@@ -123,37 +156,52 @@ class ContentQueryRepositoryTest {
 		entityManager.clear();
 
 		// when
-		List<GetContentSearchRes> results = contentQueryRepository.searchContents(
-			null,
-			Arrays.asList(" 액션 ", " ", "", null, "액션"),
-			null,
-			1,
-			10
+		List<ContentSearchRow> results = contentQueryRepository.searchContents(
+			condition(null, List.of("액션"), null, 1, 10)
 		);
 
 		// then
 		assertThat(results)
-			.extracting(GetContentSearchRes::title)
+			.extracting(ContentSearchRow::title)
 			.containsExactly("공백 정규화 콘텐츠");
 	}
 
 	@Test
-	@DisplayName("keyword는 콘텐츠 제목 부분 일치로 검색")
+	@DisplayName("keyword는 콘텐츠 제목 FULLTEXT로 검색")
 	void searchContentsByKeyword() {
 		// given
 		persistContent(3001L, "눈물의 여왕", 7);
 		persistContent(3002L, "반짝이는 워터멜론", 10);
 		persistContent(3003L, "눈부신 하루", 3);
+		commitFullTextFixtures();
+
+		// when
+		List<ContentSearchRow> results =
+			contentQueryRepository.searchContents(condition("눈물", List.of(), null, 1, 10));
+
+		// then
+		assertThat(results)
+			.extracting(ContentSearchRow::title)
+			.containsExactly("눈물의 여왕");
+	}
+
+	@Test
+	@DisplayName("1자 keyword는 기존 호환을 위해 부분 검색")
+	void searchContentsByOneCharacterKeyword() {
+		// given
+		persistContent(3101L, "눈물의 여왕", 7);
+		persistContent(3102L, "반짝이는 워터멜론", 10);
+		persistContent(3103L, "눈부신 하루", 3);
 		entityManager.flush();
 		entityManager.clear();
 
 		// when
-		List<GetContentSearchRes> results =
-			contentQueryRepository.searchContents("눈", List.of(), null, 1, 10);
+		List<ContentSearchRow> results =
+			contentQueryRepository.searchContents(condition("눈", List.of(), null, 1, 10));
 
 		// then
 		assertThat(results)
-			.extracting(GetContentSearchRes::title)
+			.extracting(ContentSearchRow::title)
 			.containsExactly("눈물의 여왕", "눈부신 하루");
 	}
 
@@ -167,12 +215,12 @@ class ContentQueryRepositoryTest {
 		entityManager.clear();
 
 		// when
-		List<GetContentSearchRes> results =
-			contentQueryRepository.searchContents(null, List.of(), MediaType.TV, 1, 10);
+		List<ContentSearchRow> results =
+			contentQueryRepository.searchContents(condition(null, List.of(), MediaType.TV, 1, 10));
 
 		// then
 		assertThat(results)
-			.extracting(GetContentSearchRes::title)
+			.extracting(ContentSearchRow::title)
 			.containsExactly("TV 콘텐츠");
 	}
 
@@ -192,16 +240,15 @@ class ContentQueryRepositoryTest {
 		persistContentGenres(movieMatchedTitleAndGenres, action, romance);
 		persistContentGenres(tvMatchedGenresOnly, action, romance);
 		persistContentGenres(tvMatchedTitleOnly, action);
-		entityManager.flush();
-		entityManager.clear();
+		commitFullTextFixtures();
 
 		// when
-		List<GetContentSearchRes> results =
-			contentQueryRepository.searchContents("눈물", List.of("액션", "로맨스"), MediaType.TV, 1, 10);
+		List<ContentSearchRow> results =
+			contentQueryRepository.searchContents(condition("눈물", List.of("액션", "로맨스"), MediaType.TV, 1, 10));
 
 		// then
 		assertThat(results)
-			.extracting(GetContentSearchRes::title)
+			.extracting(ContentSearchRow::title)
 			.containsExactly("눈물 액션 로맨스");
 	}
 
@@ -216,13 +263,33 @@ class ContentQueryRepositoryTest {
 		entityManager.clear();
 
 		// when
-		List<GetContentSearchRes> results =
-			contentQueryRepository.searchContents(null, List.of(), null, 1, 10);
+		List<ContentSearchRow> results =
+			contentQueryRepository.searchContents(condition(null, List.of(), null, 1, 10));
 
 		// then
 		assertThat(results)
-			.extracting(GetContentSearchRes::title)
+			.extracting(ContentSearchRow::title)
 			.containsExactly("북마크 5", "북마크 3", "북마크 1");
+	}
+
+	@Test
+	@DisplayName("cursor 페이지 번호에 맞춰 offset으로 조회")
+	void searchContentsWithCursorPageNumber() {
+		// given
+		persistContent(7001L, "북마크 10", 10);
+		persistContent(7002L, "북마크 7", 7);
+		persistContent(7003L, "북마크 5", 5);
+		entityManager.flush();
+		entityManager.clear();
+
+		// when
+		List<ContentSearchRow> results =
+			contentQueryRepository.searchContents(condition(null, List.of(), null, 2, 1));
+
+		// then
+		assertThat(results)
+			.extracting(ContentSearchRow::title)
+			.containsExactly("북마크 7", "북마크 5");
 	}
 
 	private Genre persistGenre(String name) {
@@ -254,5 +321,22 @@ class ContentQueryRepositoryTest {
 		for (Genre genre : genres) {
 			entityManager.persist(ContentGenre.create(content, genre));
 		}
+	}
+
+	private void commitFullTextFixtures() {
+		entityManager.flush();
+		entityManager.clear();
+		TestTransaction.flagForCommit();
+		TestTransaction.end();
+	}
+
+	private ContentSearchCondition condition(
+		String keyword,
+		List<String> genreNames,
+		MediaType mediaType,
+		int page,
+		int size
+	) {
+		return ContentSearchCondition.of(keyword, genreNames, mediaType, page, size);
 	}
 }

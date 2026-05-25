@@ -22,6 +22,8 @@ spring:
         dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
         default_batch_fetch_size: 100
+        jdbc:
+          time_zone: Asia/Seoul
 
   jackson:
     default-property-inclusion: non_null

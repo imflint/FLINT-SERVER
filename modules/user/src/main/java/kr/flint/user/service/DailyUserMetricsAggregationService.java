@@ -2,7 +2,6 @@ package kr.flint.user.service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -24,8 +23,6 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class DailyUserMetricsAggregationService {
 
-    private static final ZoneId SEOUL_ZONE = ZoneId.of("Asia/Seoul");
-
     private final DailyUserMetricsRepository dailyUserMetricsRepository;
     private final DailyVisitorActivityRepository dailyVisitorActivityRepository;
     private final UserRepository userRepository;
@@ -40,7 +37,7 @@ public class DailyUserMetricsAggregationService {
             nextDayStart
         );
         long memberCount = userRepository.countByCreatedAtLessThan(nextDayStart);
-        LocalDateTime aggregatedAt = LocalDateTime.now(SEOUL_ZONE);
+        LocalDateTime aggregatedAt = LocalDateTime.now();
 
         DailyUserMetrics metrics = dailyUserMetricsRepository.findByMetricDate(metricDate)
             .map(existing -> {

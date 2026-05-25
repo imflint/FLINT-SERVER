@@ -6,10 +6,13 @@ import java.util.Objects;
 
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
+import kr.flint.api.domain.content.dto.ContentSearchCondition;
 import kr.flint.api.domain.content.dto.GetContentDetailRes;
 import kr.flint.api.domain.content.dto.SearchGenre;
 import kr.flint.api.domain.content.repository.ContentQueryRepository;
+import kr.flint.api.domain.content.repository.ContentQueryRepository.ContentSearchRow;
 import kr.flint.api.domain.search.dto.response.GetContentSearchRes;
 import kr.flint.content.domain.MediaType;
 import kr.flint.ott.dto.GetOttResponse;
@@ -23,6 +26,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ContentQueryFacade {
+	private static final int MAX_SEARCH_SIZE = 50;
+
 	private final OttService ottService;
 	private final ContentQueryRepository contentQueryRepository;
 
@@ -46,23 +51,44 @@ public class ContentQueryFacade {
 		final int cursor,
 		final int size
 	) {
-		validatePageRequest(cursor, size);
+		validateSearchRequest(cursor, size);
+		String normalizedKeyword = normalizeKeyword(keyword);
 		List<String> genreNames = toGenreNames(genres);
-		List<GetContentSearchRes> page =
-			contentQueryRepository.searchContents(keyword, genreNames, mediaType, cursor, size);
+		ContentSearchCondition condition = ContentSearchCondition.of(
+			normalizedKeyword,
+			genreNames,
+			mediaType,
+			cursor,
+			size
+		);
+		List<ContentSearchRow> page =
+			contentQueryRepository.searchContents(condition);
 		boolean hasNext = page.size() > size;
-		List<GetContentSearchRes> data = hasNext ? page.subList(0, size) : page;
+		List<ContentSearchRow> rows = hasNext ? page.subList(0, size) : page;
+		List<GetContentSearchRes> data = rows.stream()
+			.map(ContentSearchRow::toResponse)
+			.toList();
 		String nextCursor = hasNext ? String.valueOf(cursor + 1) : null;
 		return PaginationResponse.ofCursor(data, nextCursor);
 	}
 
-	private void validatePageRequest(int cursor, int size) {
+	private void validateSearchRequest(int cursor, int size) {
 		if (cursor < 1) {
 			throw new GeneralException(ErrorCode.INVALID_INPUT, "cursor는 1 이상이어야 합니다.");
 		}
 		if (size < 1) {
 			throw new GeneralException(ErrorCode.INVALID_INPUT, "size는 1 이상이어야 합니다.");
 		}
+		if (size > MAX_SEARCH_SIZE) {
+			throw new GeneralException(ErrorCode.INVALID_INPUT, "size는 50 이하여야 합니다.");
+		}
+	}
+
+	private String normalizeKeyword(String keyword) {
+		if (!StringUtils.hasText(keyword)) {
+			return null;
+		}
+		return keyword.trim();
 	}
 
 	private List<String> toGenreNames(List<SearchGenre> genres) {

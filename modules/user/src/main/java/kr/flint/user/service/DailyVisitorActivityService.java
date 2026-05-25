@@ -2,7 +2,6 @@ package kr.flint.user.service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.Optional;
 
 import io.hypersistence.tsid.TSID;
@@ -18,13 +17,11 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class DailyVisitorActivityService {
 
-    private static final ZoneId SEOUL_ZONE = ZoneId.of("Asia/Seoul");
-
     private final DailyVisitorActivityRepository dailyVisitorActivityRepository;
 
     @Transactional
     public void recordVisit(String visitorKeyHash, Long userId) {
-        LocalDateTime now = LocalDateTime.now(SEOUL_ZONE);
+        LocalDateTime now = LocalDateTime.now();
         recordVisit(visitorKeyHash, userId, now.toLocalDate(), now);
     }
 
