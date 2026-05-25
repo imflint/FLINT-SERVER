@@ -20,6 +20,9 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.jdbc.Sql;
+import org.springframework.test.context.jdbc.SqlConfig;
+import org.springframework.test.context.transaction.TestTransaction;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -38,6 +41,15 @@ import kr.flint.shared.config.QueryDslConfig;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @EntityScan(basePackageClasses = Content.class)
 @Import({ContentQueryRepository.class, QueryDslConfig.class})
+@Sql(
+	statements = {
+		"DELETE FROM content_genre",
+		"DELETE FROM genre",
+		"DELETE FROM content"
+	},
+	config = @SqlConfig(transactionMode = SqlConfig.TransactionMode.ISOLATED),
+	executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD
+)
 class ContentQueryRepositoryTest {
 
 	@Container
@@ -161,8 +173,7 @@ class ContentQueryRepositoryTest {
 		persistContent(3001L, "눈물의 여왕", 7);
 		persistContent(3002L, "반짝이는 워터멜론", 10);
 		persistContent(3003L, "눈부신 하루", 3);
-		entityManager.flush();
-		entityManager.clear();
+		commitFullTextFixtures();
 
 		// when
 		List<ContentSearchRow> results =
@@ -229,8 +240,7 @@ class ContentQueryRepositoryTest {
 		persistContentGenres(movieMatchedTitleAndGenres, action, romance);
 		persistContentGenres(tvMatchedGenresOnly, action, romance);
 		persistContentGenres(tvMatchedTitleOnly, action);
-		entityManager.flush();
-		entityManager.clear();
+		commitFullTextFixtures();
 
 		// when
 		List<ContentSearchRow> results =
@@ -311,6 +321,13 @@ class ContentQueryRepositoryTest {
 		for (Genre genre : genres) {
 			entityManager.persist(ContentGenre.create(content, genre));
 		}
+	}
+
+	private void commitFullTextFixtures() {
+		entityManager.flush();
+		entityManager.clear();
+		TestTransaction.flagForCommit();
+		TestTransaction.end();
 	}
 
 	private ContentSearchCondition condition(

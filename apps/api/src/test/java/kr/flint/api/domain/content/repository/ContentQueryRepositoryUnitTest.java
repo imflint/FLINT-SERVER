@@ -56,6 +56,21 @@ class ContentQueryRepositoryUnitTest {
 	}
 
 	@Test
+	@DisplayName("중복 장르명은 정규화 후 단일 조건으로 조회한다")
+	void deduplicatesGenreNames() {
+		// given
+		givenEmptyResult();
+
+		// when
+		contentQueryRepository.searchContents(ContentSearchCondition.of(null, List.of("액션", " 액션 "), null, 1, 20));
+
+		// then
+		QueryCall queryCall = captureQueryCall();
+		assertThat(queryCall.params().getValue("genreNames")).isEqualTo(List.of("액션"));
+		assertThat(queryCall.params().getValue("genreCount")).isEqualTo(1);
+	}
+
+	@Test
 	@DisplayName("1자 keyword는 기존 호환을 위해 LIKE 검색을 사용한다")
 	void usesLikeFallbackForOneCharacterKeyword() {
 		// given

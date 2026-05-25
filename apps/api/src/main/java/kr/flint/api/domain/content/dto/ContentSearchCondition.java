@@ -14,7 +14,11 @@ public record ContentSearchCondition(
 	int size
 ) {
 	public ContentSearchCondition {
-		genreNames = genreNames == null ? List.of() : List.copyOf(genreNames);
+		genreNames = genreNames == null ? List.of() : genreNames.stream()
+			.filter(StringUtils::hasText)
+			.map(String::trim)
+			.distinct()
+			.toList();
 	}
 
 	public static ContentSearchCondition of(
