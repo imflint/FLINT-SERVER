@@ -1,6 +1,7 @@
 package kr.flint.api.domain.user.dto.response;
 
 import java.util.List;
+import java.util.function.Function;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import kr.flint.terms.domain.Terms;
@@ -21,11 +22,15 @@ public record MyProfileRes(
 	@Schema(description = "약관 동의 상태")
 	TermsAgreementStatusRes termsAgreementStatus
 ) {
-	public static MyProfileRes from(User user, List<Terms> pendingRequiredTerms) {
+	public static MyProfileRes from(
+		User user,
+		List<Terms> pendingRequiredTerms,
+		Function<String, String> imageUrlResolver
+	) {
 		return new MyProfileRes(
 			String.valueOf(user.getId()),
 			user.getNickname(),
-			user.getProfileImage(),
+			imageUrlResolver.apply(user.getProfileImage()),
 			user.getUserRole() == UserRole.FLINER,
 			TermsAgreementStatusRes.from(pendingRequiredTerms)
 		);

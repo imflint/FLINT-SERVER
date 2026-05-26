@@ -1,5 +1,7 @@
 package kr.flint.api.domain.user.dto.response;
 
+import java.util.function.Function;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 import kr.flint.user.domain.User;
 import kr.flint.user.domain.UserRole;
@@ -15,11 +17,11 @@ public record UserProfileRes(
     @Schema(description = "플리너 여부", example = "false")
     boolean isFliner
 ) {
-    public static UserProfileRes from(User user) {
+    public static UserProfileRes from(User user, Function<String, String> imageUrlResolver) {
         return new UserProfileRes(
             String.valueOf(user.getId()),
             user.getNickname(),
-            user.getProfileImage(),
+            imageUrlResolver.apply(user.getProfileImage()),
             user.getUserRole() == UserRole.FLINER
         );
     }

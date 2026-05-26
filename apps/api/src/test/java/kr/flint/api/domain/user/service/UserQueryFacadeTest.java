@@ -82,16 +82,19 @@ class UserQueryFacadeTest {
 		@DisplayName("내 프로필에 필수 약관 추가 동의 상태를 포함")
 		void includeTermsAgreementStatus() {
 			// given
-			User user = createUser(1L, "플린트");
+			User user = createUser(1L, "플린트", "user/profile/profile-key.jpg");
 			Terms service = createTerms(10L, TermsType.SERVICE, 2, true);
 			when(userService.getById(1L)).thenReturn(user);
 			when(termsService.getPendingRequiredTerms(1L, TermsContext.SIGNUP)).thenReturn(List.of(service));
+			when(cloudFrontUrlProvider.resolveUrl("user/profile/profile-key.jpg"))
+				.thenReturn("https://cdn.flint.kr/user/profile/profile-key.jpg");
 
 			// when
 			MyProfileRes response = userQueryFacade.getMyProfile(1L);
 
 			// then
 			assertThat(response.id()).isEqualTo("1");
+			assertThat(response.profileImageUrl()).isEqualTo("https://cdn.flint.kr/user/profile/profile-key.jpg");
 			assertThat(response.termsAgreementStatus().requiredTermsAgreementNeeded()).isTrue();
 			assertThat(response.termsAgreementStatus().pendingRequiredTerms())
 				.extracting("id")
@@ -107,14 +110,17 @@ class UserQueryFacadeTest {
 		@DisplayName("공개 프로필 조회는 약관 동의 상태를 계산하지 않음")
 		void doesNotCalculateTermsStatus() {
 			// given
-			User user = createUser(1L, "플린트");
+			User user = createUser(1L, "플린트", "user/profile/profile-key.jpg");
 			when(userService.getById(1L)).thenReturn(user);
+			when(cloudFrontUrlProvider.resolveUrl("user/profile/profile-key.jpg"))
+				.thenReturn("https://cdn.flint.kr/user/profile/profile-key.jpg");
 
 			// when
 			UserProfileRes response = userQueryFacade.getUserProfile(1L);
 
 			// then
 			assertThat(response.id()).isEqualTo("1");
+			assertThat(response.profileImageUrl()).isEqualTo("https://cdn.flint.kr/user/profile/profile-key.jpg");
 			verifyNoInteractions(termsService);
 		}
 	}
@@ -183,7 +189,11 @@ class UserQueryFacadeTest {
     }
 
 	private User createUser(Long id, String nickname) {
-		User user = User.createFling(nickname);
+		return createUser(id, nickname, null);
+	}
+
+	private User createUser(Long id, String nickname, String profileImage) {
+		User user = User.createFling(nickname, profileImage);
 		ReflectionTestUtils.setField(user, "id", id);
 		return user;
 	}

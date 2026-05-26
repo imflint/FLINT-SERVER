@@ -53,12 +53,12 @@ public class UserQueryFacade {
 	public MyProfileRes getMyProfile(Long userId) {
 		User user = userService.getById(userId);
 		List<Terms> pendingRequiredTerms = termsService.getPendingRequiredTerms(userId, TermsContext.SIGNUP);
-		return MyProfileRes.from(user, pendingRequiredTerms);
+		return MyProfileRes.from(user, pendingRequiredTerms, cloudFrontUrlProvider::resolveUrl);
 	}
 
 	public UserProfileRes getUserProfile(Long userId) {
 		User user = userService.getById(userId);
-		return UserProfileRes.from(user);
+		return UserProfileRes.from(user, cloudFrontUrlProvider::resolveUrl);
 	}
 
 	@Transactional
