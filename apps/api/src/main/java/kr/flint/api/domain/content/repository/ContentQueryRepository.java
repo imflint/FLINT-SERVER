@@ -237,7 +237,7 @@ public class ContentQueryRepository {
 		String fullTextKeyword = toFullTextKeyword(condition.keyword());
 		if (condition.usesFullTextSearch() && StringUtils.hasText(fullTextKeyword)) {
 			return Expressions.booleanTemplate(
-				"function('match_against_boolean', {0}, {1})",
+				"match_against_boolean({0}, {1})",
 				content.title,
 				fullTextKeyword
 			);
