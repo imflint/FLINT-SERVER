@@ -2,7 +2,6 @@ package kr.flint.api.domain.content.controller.spec;
 
 import java.util.List;
 
-import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,6 +13,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Min;
 import kr.flint.api.domain.content.dto.GetContentListRes;
 import kr.flint.api.domain.content.dto.GetOttListRes;
 import kr.flint.api.domain.content.dto.SearchGenre;
@@ -59,7 +59,7 @@ public interface ContentControllerDocs {
 			- `genre`는 `?genre=ACTION&genre=ROMANCE`처럼 반복 파라미터로 여러 개 지정할 수 있으며, 요청한 모든 장르를 가진 콘텐츠만 반환합니다.
 			- `mediaType` 미입력 시 MOVIE/TV 전체를 대상으로 검색합니다.
 			- 조건이 없으면 로컬 DB 콘텐츠를 인기순으로 반환합니다.
-			- `cursor`는 1부터 시작하는 페이지 번호입니다.
+			- `cursor`는 이전 응답의 `meta.nextCursor`를 그대로 전달하는 cursor token입니다.
 			"""
 	)
 	@ApiResponses({
@@ -77,9 +77,8 @@ public interface ContentControllerDocs {
 		List<SearchGenre> genres,
 		@Parameter(description = "미디어 타입 필터. 미입력 시 전체 타입을 검색합니다.", example = "MOVIE")
 		MediaType mediaType,
-		@Parameter(description = "페이지 번호 (1부터 시작, 1 미만이면 400)", example = "1")
-		@Min(value = 1, message = "cursor는 1 이상이어야 합니다.")
-		int cursor,
+		@Parameter(description = "이전 응답의 nextCursor token. 첫 페이지는 미입력", example = "MzoxMjM0NTY3ODkw")
+		String cursor,
 		@Parameter(description = "페이지당 결과 수 (1 이상, 1 미만이면 400)", example = "20")
 		@Min(value = 1, message = "size는 1 이상이어야 합니다.")
 		int size

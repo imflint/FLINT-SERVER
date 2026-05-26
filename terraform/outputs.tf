@@ -156,6 +156,11 @@ output "discord_alert_webhook_parameter_name" {
   value       = local.discord_webhook_parameter_path
 }
 
+output "discord_report_webhook_parameter_name" {
+  description = "컬렉션 신고 Discord webhook URL을 SecureString으로 등록해야 하는 Parameter Store 이름입니다."
+  value       = local.discord_report_webhook_parameter_path
+}
+
 output "manual_secure_parameters" {
   description = "Terraform state에 남기지 않기 위해 수동으로 생성해야 하는 보안 문자열 파라미터 목록입니다."
   value = concat(
@@ -169,6 +174,7 @@ output "manual_secure_parameters" {
       "${local.parameter_prefix}/oauth.kakao.redirect-uri",
       "${local.parameter_prefix}/oauth.apple.client-id",
       local.discord_webhook_parameter_path,
+      local.discord_report_webhook_parameter_path,
     ]
   )
 }

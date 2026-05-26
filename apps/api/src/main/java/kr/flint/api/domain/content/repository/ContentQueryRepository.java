@@ -7,6 +7,7 @@ import static kr.flint.content.domain.QGenre.*;
 import static kr.flint.ott.domain.QOttContent.*;
 import static kr.flint.ott.domain.QOttProvider.*;
 import static kr.flint.ott.domain.QOttUser.*;
+import static kr.flint.shared.util.QueryDslUtil.*;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -14,12 +15,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
 
 import com.querydsl.core.Tuple;
+import com.querydsl.core.types.Predicate;
+import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
 import kr.flint.api.domain.content.dto.ContentSearchCondition;
@@ -34,7 +36,6 @@ public class ContentQueryRepository {
 	private static final Pattern FULLTEXT_BOOLEAN_OPERATOR_PATTERN = Pattern.compile("[+\\-<>()~*\"@]");
 
 	private final JPAQueryFactory jpaQueryFactory;
-	private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
 	public record ContentSearchRow(
 		Long id,
@@ -189,64 +190,80 @@ public class ContentQueryRepository {
 	}
 
 	public List<ContentSearchRow> searchContents(ContentSearchCondition condition) {
-		StringBuilder sql = new StringBuilder("""
-			SELECT c.id,
-			       c.title,
-			       c.author,
-			       c.poster AS poster_url,
-			       c.year,
-			       c.bookmark_count
-			FROM content c
-			""");
-		MapSqlParameterSource params = new MapSqlParameterSource();
-
-		if (condition.hasGenres()) {
-			sql.append("""
-				JOIN (
-				    SELECT cg.content_id
-				    FROM content_genre cg
-				    JOIN genre g ON g.id = cg.genre_id
-				    WHERE g.name IN (:genreNames)
-				    GROUP BY cg.content_id
-				    HAVING COUNT(DISTINCT g.name) = :genreCount
-				) matched_genre ON matched_genre.content_id = c.id
-				""");
-			params.addValue("genreNames", condition.genreNames());
-			params.addValue("genreCount", condition.genreNames().size());
+		List<Long> genreIds = findGenreIds(condition.genreNames());
+		if (condition.hasGenres() && genreIds.size() != condition.genreNames().size()) {
+			return List.of();
 		}
 
-		sql.append("WHERE 1 = 1\n");
-		if (condition.hasKeyword()) {
-			String fullTextKeyword = toFullTextKeyword(condition.keyword());
-			if (condition.usesFullTextSearch() && StringUtils.hasText(fullTextKeyword)) {
-				sql.append("AND MATCH(c.title) AGAINST (:keyword IN BOOLEAN MODE)\n");
-				params.addValue("keyword", fullTextKeyword);
-			} else {
-				sql.append("AND c.title LIKE CONCAT('%', :keyword, '%')\n");
-				params.addValue("keyword", condition.keyword());
-			}
-		}
-		if (condition.mediaType() != null) {
-			sql.append("AND c.media_type = :mediaType\n");
-			params.addValue("mediaType", condition.mediaType().name());
-		}
-
-		sql.append("ORDER BY c.bookmark_count DESC, c.id DESC\n");
-		sql.append("LIMIT :limit OFFSET :offset");
-		params.addValue("limit", condition.queryLimit());
-		params.addValue("offset", condition.offset());
-
-		return namedParameterJdbcTemplate.query(
-			sql.toString(),
-			params,
-			(rs, rowNum) -> new ContentSearchRow(
-				rs.getLong("id"),
-				rs.getString("title"),
-				rs.getString("author"),
-				rs.getString("poster_url"),
-				rs.getInt("year"),
-				rs.getInt("bookmark_count")
+		return jpaQueryFactory
+			.select(Projections.constructor(
+				ContentSearchRow.class,
+				content.id,
+				content.title,
+				content.author,
+				content.poster,
+				content.year,
+				content.bookmarkCount
+			))
+			.from(content)
+			.where(
+				keywordCondition(condition),
+				onCondition(condition.mediaType(), content.mediaType::eq),
+				cursorCondition(condition),
+				genreCondition(genreIds)
 			)
+			.orderBy(content.bookmarkCount.desc(), content.id.desc())
+			.limit(condition.queryLimit())
+			.fetch();
+	}
+
+	private List<Long> findGenreIds(List<String> genreNames) {
+		if (genreNames.isEmpty()) {
+			return List.of();
+		}
+
+		return jpaQueryFactory
+			.select(genre.id)
+			.from(genre)
+			.where(onNotEmpty(genreNames, names -> genre.name.in(names)))
+			.fetch();
+	}
+
+	private Predicate keywordCondition(ContentSearchCondition condition) {
+		if (!condition.hasKeyword()) {
+			return emptyCondition();
+		}
+
+		String fullTextKeyword = toFullTextKeyword(condition.keyword());
+		if (condition.usesFullTextSearch() && StringUtils.hasText(fullTextKeyword)) {
+			return Expressions.booleanTemplate(
+				"match_against_boolean({0}, {1})",
+				content.title,
+				fullTextKeyword
+			);
+		}
+
+		return content.title.contains(condition.keyword());
+	}
+
+	private Predicate cursorCondition(ContentSearchCondition condition) {
+		return onCondition(condition.cursor(), cursor ->
+			content.bookmarkCount.lt(cursor.bookmarkCount())
+				.or(content.bookmarkCount.eq(cursor.bookmarkCount())
+					.and(content.id.lt(cursor.contentId())))
+		);
+	}
+
+	private Predicate genreCondition(List<Long> genreIds) {
+		return onNotEmpty(genreIds, ids ->
+			com.querydsl.jpa.JPAExpressions
+				.select(contentGenre.genre.id.countDistinct())
+				.from(contentGenre)
+				.where(
+					contentGenre.content.id.eq(content.id),
+					contentGenre.genre.id.in(ids)
+				)
+				.eq((long) ids.size())
 		);
 	}
 

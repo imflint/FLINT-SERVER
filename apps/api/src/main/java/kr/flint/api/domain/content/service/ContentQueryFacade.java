@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import kr.flint.api.domain.content.dto.ContentSearchCondition;
+import kr.flint.api.domain.content.dto.ContentSearchCursor;
 import kr.flint.api.domain.content.dto.GetContentDetailRes;
 import kr.flint.api.domain.content.dto.SearchGenre;
 import kr.flint.api.domain.content.repository.ContentQueryRepository;
@@ -48,17 +49,18 @@ public class ContentQueryFacade {
 		final String keyword,
 		final List<SearchGenre> genres,
 		final MediaType mediaType,
-		final int cursor,
+		final String cursor,
 		final int size
 	) {
-		validateSearchRequest(cursor, size);
+		validateSearchRequest(size);
 		String normalizedKeyword = normalizeKeyword(keyword);
 		List<String> genreNames = toGenreNames(genres);
+		ContentSearchCursor decodedCursor = ContentSearchCursor.decodeNullable(cursor);
 		ContentSearchCondition condition = ContentSearchCondition.of(
 			normalizedKeyword,
 			genreNames,
 			mediaType,
-			cursor,
+			decodedCursor,
 			size
 		);
 		List<ContentSearchRow> page =
@@ -68,14 +70,16 @@ public class ContentQueryFacade {
 		List<GetContentSearchRes> data = rows.stream()
 			.map(ContentSearchRow::toResponse)
 			.toList();
-		String nextCursor = hasNext ? String.valueOf(cursor + 1) : null;
+		String nextCursor = hasNext ? createNextCursor(rows) : null;
 		return PaginationResponse.ofCursor(data, nextCursor);
 	}
 
-	private void validateSearchRequest(int cursor, int size) {
-		if (cursor < 1) {
-			throw new GeneralException(ErrorCode.INVALID_INPUT, "cursor는 1 이상이어야 합니다.");
-		}
+	private String createNextCursor(List<ContentSearchRow> rows) {
+		ContentSearchRow last = rows.get(rows.size() - 1);
+		return ContentSearchCursor.of(last.bookmarkCount(), last.id()).encode();
+	}
+
+	private void validateSearchRequest(int size) {
 		if (size < 1) {
 			throw new GeneralException(ErrorCode.INVALID_INPUT, "size는 1 이상이어야 합니다.");
 		}

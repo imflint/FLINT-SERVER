@@ -10,7 +10,7 @@ public record ContentSearchCondition(
 	String keyword,
 	List<String> genreNames,
 	MediaType mediaType,
-	int page,
+	ContentSearchCursor cursor,
 	int size
 ) {
 	public ContentSearchCondition {
@@ -25,10 +25,10 @@ public record ContentSearchCondition(
 		String keyword,
 		List<String> genreNames,
 		MediaType mediaType,
-		int page,
+		ContentSearchCursor cursor,
 		int size
 	) {
-		return new ContentSearchCondition(keyword, genreNames, mediaType, page, size);
+		return new ContentSearchCondition(keyword, genreNames, mediaType, cursor, size);
 	}
 
 	public boolean hasKeyword() {
@@ -45,9 +45,5 @@ public record ContentSearchCondition(
 
 	public int queryLimit() {
 		return size + 1;
-	}
-
-	public long offset() {
-		return (long) (page - 1) * size;
 	}
 }
