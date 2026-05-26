@@ -19,6 +19,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import kr.flint.api.domain.content.dto.ContentSearchCondition;
+import kr.flint.api.domain.content.dto.ContentSearchCursor;
 import kr.flint.api.domain.content.dto.SearchGenre;
 import kr.flint.api.domain.content.repository.ContentQueryRepository;
 import kr.flint.api.domain.content.repository.ContentQueryRepository.ContentSearchRow;
@@ -54,7 +55,7 @@ class ContentQueryFacadeTest {
 				"눈물",
 				List.of("액션", "로맨스"),
 				MediaType.TV,
-				1,
+				null,
 				1
 			);
 			when(contentQueryRepository.searchContents(condition))
@@ -65,7 +66,7 @@ class ContentQueryFacadeTest {
 				"눈물",
 				List.of(SearchGenre.ACTION, SearchGenre.ROMANCE),
 				MediaType.TV,
-				1,
+				null,
 				1
 			);
 
@@ -73,17 +74,17 @@ class ContentQueryFacadeTest {
 			assertThat(response.data())
 				.extracting(GetContentSearchRes::title)
 				.containsExactly("눈물 액션 로맨스");
-			assertThat(response.meta().nextCursor()).isEqualTo("2");
+			assertThat(response.meta().nextCursor()).isEqualTo(ContentSearchCursor.of(10, 1L).encode());
 			verify(contentQueryRepository).searchContents(condition);
 		}
 
 		@Test
-		@DisplayName("cursor가 1보다 작으면 검색하지 않고 예외를 던진다")
+		@DisplayName("cursor 형식이 올바르지 않으면 검색하지 않고 예외를 던진다")
 		void rejectsInvalidCursor() {
 			// when
-			assertThatThrownBy(() -> contentQueryFacade.getContentSearchList(null, null, null, 0, 20))
+			assertThatThrownBy(() -> contentQueryFacade.getContentSearchList(null, null, null, "invalid", 20))
 				.isInstanceOf(GeneralException.class)
-				.hasMessageContaining("cursor는 1 이상이어야 합니다.");
+				.hasMessageContaining("cursor 형식이 올바르지 않습니다.");
 
 			// then
 			verifyNoInteractions(contentQueryRepository);
@@ -93,7 +94,7 @@ class ContentQueryFacadeTest {
 		@DisplayName("size가 1보다 작으면 검색하지 않고 예외를 던진다")
 		void rejectsInvalidSize() {
 			// when
-			assertThatThrownBy(() -> contentQueryFacade.getContentSearchList(null, null, null, 1, 0))
+			assertThatThrownBy(() -> contentQueryFacade.getContentSearchList(null, null, null, null, 0))
 				.isInstanceOf(GeneralException.class)
 				.hasMessageContaining("size는 1 이상이어야 합니다.");
 
@@ -105,7 +106,7 @@ class ContentQueryFacadeTest {
 		@DisplayName("size가 최대값보다 크면 검색하지 않고 예외를 던진다")
 		void rejectsTooLargeSize() {
 			// when
-			assertThatThrownBy(() -> contentQueryFacade.getContentSearchList(null, null, null, 1, 51))
+			assertThatThrownBy(() -> contentQueryFacade.getContentSearchList(null, null, null, null, 51))
 				.isInstanceOf(GeneralException.class)
 				.hasMessageContaining("size는 50 이하여야 합니다.");
 
@@ -117,11 +118,11 @@ class ContentQueryFacadeTest {
 		@DisplayName("keyword가 1자여도 기존 계약대로 조회한다")
 		void acceptsOneCharacterKeyword() {
 			// when
-			contentQueryFacade.getContentSearchList("눈", null, null, 1, 20);
+			contentQueryFacade.getContentSearchList("눈", null, null, null, 20);
 
 			// then
 			verify(contentQueryRepository).searchContents(
-				eq(ContentSearchCondition.of("눈", List.of(), null, 1, 20))
+				eq(ContentSearchCondition.of("눈", List.of(), null, null, 20))
 			);
 		}
 
@@ -134,7 +135,7 @@ class ContentQueryFacadeTest {
 				null,
 				List.of(SearchGenre.ACTION, SearchGenre.ACTION),
 				null,
-				1,
+				null,
 				20
 			);
 
@@ -142,7 +143,7 @@ class ContentQueryFacadeTest {
 			ArgumentCaptor<ContentSearchCondition> captor = ArgumentCaptor.forClass(ContentSearchCondition.class);
 			verify(contentQueryRepository).searchContents(captor.capture());
 			assertThat(captor.getValue().genreNames()).containsExactly("액션");
-			assertThat(captor.getValue().page()).isEqualTo(1);
+			assertThat(captor.getValue().cursor()).isNull();
 			assertThat(captor.getValue().size()).isEqualTo(20);
 		}
 
@@ -150,11 +151,26 @@ class ContentQueryFacadeTest {
 		@DisplayName("조건이 없으면 빈 장르 목록과 전체 mediaType으로 조회한다")
 		void searchesAllContentsWithoutConditions() {
 			// when
-			contentQueryFacade.getContentSearchList(null, null, null, 1, 20);
+			contentQueryFacade.getContentSearchList(null, null, null, null, 20);
 
 			// then
 			verify(contentQueryRepository).searchContents(
-				eq(ContentSearchCondition.of(null, List.of(), null, 1, 20))
+				eq(ContentSearchCondition.of(null, List.of(), null, null, 20))
+			);
+		}
+
+		@Test
+		@DisplayName("cursor token을 검색 조건으로 전달한다")
+		void passesDecodedCursor() {
+			// given
+			String cursor = ContentSearchCursor.of(3, 123L).encode();
+
+			// when
+			contentQueryFacade.getContentSearchList(null, null, null, cursor, 20);
+
+			// then
+			verify(contentQueryRepository).searchContents(
+				eq(ContentSearchCondition.of(null, List.of(), null, ContentSearchCursor.of(3, 123L), 20))
 			);
 		}
 	}

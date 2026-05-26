@@ -29,6 +29,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import jakarta.persistence.EntityManager;
 import kr.flint.api.domain.content.dto.ContentSearchCondition;
+import kr.flint.api.domain.content.dto.ContentSearchCursor;
 import kr.flint.api.domain.content.repository.ContentQueryRepository.ContentSearchRow;
 import kr.flint.content.domain.Content;
 import kr.flint.content.domain.ContentGenre;
@@ -117,7 +118,7 @@ class ContentQueryRepositoryTest {
 
 		// when
 		List<ContentSearchRow> results =
-			contentQueryRepository.searchContents(condition(null, List.of("액션", "로맨스"), null, 1, 10));
+			contentQueryRepository.searchContents(condition(null, List.of("액션", "로맨스"), null, 10));
 
 		// then
 		assertThat(results)
@@ -137,7 +138,7 @@ class ContentQueryRepositoryTest {
 
 		// when
 		List<ContentSearchRow> results =
-			contentQueryRepository.searchContents(condition(null, List.of("액션", "액션"), null, 1, 10));
+			contentQueryRepository.searchContents(condition(null, List.of("액션", "액션"), null, 10));
 
 		// then
 		assertThat(results)
@@ -157,7 +158,7 @@ class ContentQueryRepositoryTest {
 
 		// when
 		List<ContentSearchRow> results = contentQueryRepository.searchContents(
-			condition(null, List.of("액션"), null, 1, 10)
+			condition(null, List.of("액션"), null, 10)
 		);
 
 		// then
@@ -177,7 +178,7 @@ class ContentQueryRepositoryTest {
 
 		// when
 		List<ContentSearchRow> results =
-			contentQueryRepository.searchContents(condition("눈물", List.of(), null, 1, 10));
+			contentQueryRepository.searchContents(condition("눈물", List.of(), null, 10));
 
 		// then
 		assertThat(results)
@@ -197,7 +198,7 @@ class ContentQueryRepositoryTest {
 
 		// when
 		List<ContentSearchRow> results =
-			contentQueryRepository.searchContents(condition("눈", List.of(), null, 1, 10));
+			contentQueryRepository.searchContents(condition("눈", List.of(), null, 10));
 
 		// then
 		assertThat(results)
@@ -216,7 +217,7 @@ class ContentQueryRepositoryTest {
 
 		// when
 		List<ContentSearchRow> results =
-			contentQueryRepository.searchContents(condition(null, List.of(), MediaType.TV, 1, 10));
+			contentQueryRepository.searchContents(condition(null, List.of(), MediaType.TV, 10));
 
 		// then
 		assertThat(results)
@@ -244,7 +245,7 @@ class ContentQueryRepositoryTest {
 
 		// when
 		List<ContentSearchRow> results =
-			contentQueryRepository.searchContents(condition("눈물", List.of("액션", "로맨스"), MediaType.TV, 1, 10));
+			contentQueryRepository.searchContents(condition("눈물", List.of("액션", "로맨스"), MediaType.TV, 10));
 
 		// then
 		assertThat(results)
@@ -264,7 +265,7 @@ class ContentQueryRepositoryTest {
 
 		// when
 		List<ContentSearchRow> results =
-			contentQueryRepository.searchContents(condition(null, List.of(), null, 1, 10));
+			contentQueryRepository.searchContents(condition(null, List.of(), null, 10));
 
 		// then
 		assertThat(results)
@@ -273,10 +274,10 @@ class ContentQueryRepositoryTest {
 	}
 
 	@Test
-	@DisplayName("cursor 페이지 번호에 맞춰 offset으로 조회")
-	void searchContentsWithCursorPageNumber() {
+	@DisplayName("cursor token 이후 콘텐츠를 인기순으로 조회")
+	void searchContentsWithCursorToken() {
 		// given
-		persistContent(7001L, "북마크 10", 10);
+		Content first = persistContent(7001L, "북마크 10", 10);
 		persistContent(7002L, "북마크 7", 7);
 		persistContent(7003L, "북마크 5", 5);
 		entityManager.flush();
@@ -284,12 +285,38 @@ class ContentQueryRepositoryTest {
 
 		// when
 		List<ContentSearchRow> results =
-			contentQueryRepository.searchContents(condition(null, List.of(), null, 2, 1));
+			contentQueryRepository.searchContents(
+				condition(null, List.of(), null, ContentSearchCursor.of(first.getBookmarkCount(), first.getId()), 1)
+			);
 
 		// then
 		assertThat(results)
 			.extracting(ContentSearchRow::title)
 			.containsExactly("북마크 7", "북마크 5");
+	}
+
+	@Test
+	@DisplayName("동일 bookmarkCount에서는 cursor id보다 작은 콘텐츠를 조회")
+	void searchContentsWithCursorTokenTieBreaker() {
+		// given
+		persistContent(7101L, "동점 첫번째", 3);
+		persistContent(7102L, "동점 두번째", 3);
+		persistContent(7103L, "낮은 북마크", 2);
+		entityManager.flush();
+		entityManager.clear();
+
+		List<ContentSearchRow> firstPage = contentQueryRepository.searchContents(condition(null, List.of(), null, 1));
+		ContentSearchCursor cursor = ContentSearchCursor.of(firstPage.getFirst().bookmarkCount(), firstPage.getFirst().id());
+
+		// when
+		List<ContentSearchRow> results = contentQueryRepository.searchContents(
+			condition(null, List.of(), null, cursor, 1)
+		);
+
+		// then
+		assertThat(results)
+			.extracting(ContentSearchRow::title)
+			.containsExactly("동점 첫번째".equals(firstPage.getFirst().title()) ? "동점 두번째" : "동점 첫번째", "낮은 북마크");
 	}
 
 	private Genre persistGenre(String name) {
@@ -334,9 +361,18 @@ class ContentQueryRepositoryTest {
 		String keyword,
 		List<String> genreNames,
 		MediaType mediaType,
-		int page,
 		int size
 	) {
-		return ContentSearchCondition.of(keyword, genreNames, mediaType, page, size);
+		return ContentSearchCondition.of(keyword, genreNames, mediaType, null, size);
+	}
+
+	private ContentSearchCondition condition(
+		String keyword,
+		List<String> genreNames,
+		MediaType mediaType,
+		ContentSearchCursor cursor,
+		int size
+	) {
+		return ContentSearchCondition.of(keyword, genreNames, mediaType, cursor, size);
 	}
 }

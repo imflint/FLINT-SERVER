@@ -87,5 +87,4 @@ logging:
 
 discord:
   webhook:
-    # 컬렉션 신고용 디스코드 웹훅
-    report: https://discord.com/api/webhooks/1502752902899302421/kA7L2eRPNt8MB84AcqiaHiWjwYGjeFiGlfoBkmQiM8v02NMq9e-2u1RHWNOjAM_BbH4U
+    report: ${DISCORD_WEBHOOK_REPORT:}

@@ -57,7 +57,7 @@ public class ContentController implements ContentControllerDocs {
 		@RequestParam(required = false, name = "keyword") String keyword,
 		@RequestParam(required = false, name = "genre") List<SearchGenre> genres,
 		@RequestParam(required = false, name = "mediaType") MediaType mediaType,
-		@RequestParam(required = false, defaultValue = "1") int cursor,
+		@RequestParam(required = false, name = "cursor") String cursor,
 		@RequestParam(required = false, defaultValue = "20") int size
 	){
 		PaginationResponse<GetContentSearchRes> searchRes =
