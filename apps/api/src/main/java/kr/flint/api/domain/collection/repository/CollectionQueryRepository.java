@@ -39,8 +39,7 @@ public class CollectionQueryRepository {
         List<CollectionSimpleRow> collectionRows = jpaQueryFactory
             .select(Projections.constructor(
                 CollectionSimpleRow.class,
-                collection.id,
-                collection.image
+                collection.id
             ))
             .from(collection)
             .where(
@@ -66,6 +65,8 @@ public class CollectionQueryRepository {
             .select(Projections.constructor(
                 CollectionContentInfoRow.class,
                 collectionContent.collection.id,
+                collectionContent.customImage,
+                content.poster,
                 content.title,
                 collectionContent.reason
             ))
@@ -89,26 +90,35 @@ public class CollectionQueryRepository {
                 List<CollectionContentInfoRow> contents = contentMap.get(row.collectionId());
                 int randomIndex = ThreadLocalRandom.current().nextInt(contents.size());
                 CollectionContentInfoRow selected = contents.get(randomIndex);
-                return new GetCollectionSimpleRes(
-                    row.collectionId(),
-                    row.imageUrl(),
-                    selected.contentTitle(),
-                    selected.contentDescription()
-                );
+                return toSimpleResponse(row, selected);
             })
             .toList();
     }
 
+    static GetCollectionSimpleRes toSimpleResponse(CollectionSimpleRow row, CollectionContentInfoRow selected) {
+        return new GetCollectionSimpleRes(
+            row.collectionId(),
+            selected.image(),
+            selected.contentTitle(),
+            selected.contentDescription()
+        );
+    }
+
     public record CollectionSimpleRow(
-        Long collectionId,
-        String imageUrl
+        Long collectionId
     ) {}
 
     public record CollectionContentInfoRow(
         Long collectionId,
+        String customImage,
+        String poster,
         String contentTitle,
         String contentDescription
-    ) {}
+    ) {
+        public String image() {
+            return customImage != null && !customImage.isBlank() ? customImage : poster;
+        }
+    }
 
     //Collection 상세조회 중 상단 부분
     public GetCollectionHeader getHeader(Long collectionId, Long userId){
