@@ -1,5 +1,6 @@
 package kr.flint.api.domain.auth.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 import jakarta.validation.constraints.NotBlank;
@@ -24,7 +25,8 @@ public record SignupReq(
         String nickname,
 
         @Schema(description = "S3에 업로드된 프로필 이미지 키", example = "user/profile/01J5K3...", requiredMode = RequiredMode.NOT_REQUIRED)
-        String profileImage,
+        @JsonAlias("profileImage") // 구버전 클라이언트(profileImage) 호환
+        String profileImageUrl,
 
         @Schema(description = "선호 콘텐츠 ID 목록 (온보딩에서 선택)", example = "[\"1\", \"2\", \"3\"]")
         List<@NotBlank(message = "선호 콘텐츠 ID는 비어 있을 수 없습니다.")
