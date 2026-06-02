@@ -80,7 +80,7 @@ public class AuthFacade {
         List<Long> agreedTermsIds = request.agreedTermsIdValues();
         List<Long> favoriteContentIds = request.favoriteContentIdValues();
 
-        UserAuthInfo authInfo = userService.create(request.nickname(), request.profileImage());
+        UserAuthInfo authInfo = userService.create(request.nickname(), request.profileImageUrl());
         userIdentityService.create(authInfo.userId(), payload.provider(), payload.providerUserId());
         termsService.validateAndCreateAgreements(authInfo.userId(), TermsContext.SIGNUP, agreedTermsIds);
 

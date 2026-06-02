@@ -65,8 +65,9 @@ class AdminUserManagementFacadeTest {
             UserRole.FLINER,
             UserStatus.ACTIVE,
             2,
-            LocalDateTime.of(2026, 5, 1, 10, 0),
-            LocalDateTime.of(2026, 5, 31, 23, 59),
+            // 실행일과 무관하게 업로드 제한 창이 항상 활성이도록 now 기준 상대값 사용
+            LocalDateTime.now().minusDays(1),
+            LocalDateTime.now().plusDays(1),
             null,
             null,
             null,
