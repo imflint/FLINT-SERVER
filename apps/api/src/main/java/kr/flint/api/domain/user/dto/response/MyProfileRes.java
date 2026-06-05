@@ -19,6 +19,8 @@ public record MyProfileRes(
 	String profileImageUrl,
 	@Schema(description = "플리너 여부", example = "false")
 	boolean isFliner,
+	@Schema(description = "GPT 취향 키워드 재계산 가능 여부 (마지막 재계산 이후 신규 북마크 20개 이상 누적 시 true)", example = "false")
+	boolean keywordRecalculatable,
 	@Schema(description = "약관 동의 상태")
 	TermsAgreementStatusRes termsAgreementStatus
 ) {
@@ -32,6 +34,7 @@ public record MyProfileRes(
 			user.getNickname(),
 			imageUrlResolver.apply(user.getProfileImage()),
 			user.getUserRole() == UserRole.FLINER,
+			user.isKeywordRecalculatable(),
 			TermsAgreementStatusRes.from(pendingRequiredTerms)
 		);
 	}

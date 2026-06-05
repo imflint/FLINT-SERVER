@@ -87,19 +87,21 @@ public class ContentQueryRepository {
 			));
 		}
 
+		// 사용자가 구독 중인 OTT 중, 해당 컨텐츠를 제공하는 OTT만 추린다.
+		// (단건 OTT 조회와 동일한 join 구조: OttUser → OttProvider → OttContent)
 		List<Tuple> ottRows = jpaQueryFactory
 			.selectDistinct(
 				ottContent.contentId,
 				ottProvider.name,
 				ottProvider.logoUrl
 			)
-			.from(ottContent)
-			.join(ottContent.ottProvider, ottProvider)
-			.leftJoin(ottUser).on(
+			.from(ottUser)
+			.join(ottUser.ottProvider, ottProvider)
+			.join(ottContent).on(ottContent.ottProvider.eq(ottProvider))
+			.where(
 				ottUser.userId.eq(userId),
-				ottUser.ottProvider.eq(ottProvider)
+				ottContent.contentId.in(topContentIds)
 			)
-			.where(ottContent.contentId.in(topContentIds).and(ottUser.id.isNotNull()))
 			.fetch();
 
 		for (Tuple row : ottRows) {
