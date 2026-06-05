@@ -1,5 +1,7 @@
 package kr.flint.api.domain.collection.dto.request;
 
+import java.util.List;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotBlank;
@@ -20,12 +22,12 @@ public record AddContentReq(
 	@NotBlank(message = "작품 선정 이유는 필수 입력 값입니다")
 	String reason,
 
-	@Schema(description = "작품별 커스텀 이미지 S3 key (선택)", example = "collection/content/260505/abc123.jpg")
+	@Schema(description = "작품별 커스텀 이미지 S3 key 목록 (선택)", example = "[\"collection/content/260505/abc123.jpg\"]")
 	@Nullable
-	String customImage
+	List<String> customImages
 ) {
 
 	public ContentInput toInput() {
-		return ContentInput.of(contentId, isSpoiler, reason, customImage);
+		return ContentInput.of(contentId, isSpoiler, reason, customImages);
 	}
 }

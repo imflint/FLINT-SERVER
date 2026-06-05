@@ -22,6 +22,7 @@ import static kr.flint.api.common.query.CollectionQueryConditions.*;
 import static kr.flint.bookmark.domain.QContentBookmark.*;
 import static kr.flint.collection.domain.QCollection.collection;
 import static kr.flint.collection.domain.QCollectionContent.*;
+import static kr.flint.collection.domain.QCollectionContentImage.collectionContentImage;
 import static kr.flint.collection.domain.QRecentViewedCollection.*;
 import static kr.flint.user.domain.QUser.user;
 import static kr.flint.bookmark.domain.QCollectionBookmark.collectionBookmark;
@@ -65,13 +66,17 @@ public class CollectionQueryRepository {
             .select(Projections.constructor(
                 CollectionContentInfoRow.class,
                 collectionContent.collection.id,
-                collectionContent.customImage,
+                collectionContentImage.imageKey,
                 content.poster,
                 content.title,
                 collectionContent.reason
             ))
             .from(collectionContent)
             .join(content).on(content.id.eq(collectionContent.contentId))
+            .leftJoin(collectionContentImage).on(
+                collectionContentImage.collectionContent.id.eq(collectionContent.id)
+                    .and(collectionContentImage.sortOrder.eq(0))
+            )
             .where(
                 collectionContent.collection.id.in(collectionIds),
                 collectionContent.reason.isNotNull(),
@@ -150,13 +155,13 @@ public class CollectionQueryRepository {
     }
 
     public List<GetCollectionDetailRes.Content> getContentList(Long collectionId, Long userId){
-        return jpaQueryFactory
+        List<ContentDetailRow> contentRows = jpaQueryFactory
             .select(Projections.constructor(
-                GetCollectionDetailRes.Content.class,
+                ContentDetailRow.class,
+                collectionContent.id,
                 content.id,
                 content.title,
                 content.poster,
-                collectionContent.customImage,
                 content.author,
 
                 contentBookmark.id.isNotNull(),
@@ -174,6 +179,19 @@ public class CollectionQueryRepository {
             )
             .where(collectionContent.collection.id.eq(collectionId))
             .fetch();
+
+        if (contentRows.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> collectionContentIds = contentRows.stream()
+            .map(ContentDetailRow::collectionContentId)
+            .toList();
+        Map<Long, List<String>> customImageMap = buildCustomImageMap(collectionContentIds);
+
+        return contentRows.stream()
+            .map(row -> row.toResponse(customImageMap.getOrDefault(row.collectionContentId(), List.of())))
+            .toList();
     }
 
     public List<GetCollectionDetailListRes> getCollectionDetailList(Long userId) {
@@ -225,11 +243,15 @@ public class CollectionQueryRepository {
                 .select(Projections.constructor(
                     ContentImageRow.class,
                     collectionContent.collection.id,
-                    collectionContent.customImage,
+                    collectionContentImage.imageKey,
                     content.poster
                 ))
                 .from(collectionContent)
                 .join(content).on(content.id.eq(collectionContent.contentId))
+                .leftJoin(collectionContentImage).on(
+                    collectionContentImage.collectionContent.id.eq(collectionContent.id)
+                        .and(collectionContentImage.sortOrder.eq(0))
+                )
                 .where(collectionContent.collection.id.in(collectionIds))
                 .orderBy(
                     collectionContent.collection.id.asc(),
@@ -286,6 +308,62 @@ public class CollectionQueryRepository {
             return customImage != null && !customImage.isBlank() ? customImage : poster;
         }
     }
+
+    private Map<Long, List<String>> buildCustomImageMap(List<Long> collectionContentIds) {
+        List<CollectionContentImageRow> imageRows = jpaQueryFactory
+            .select(Projections.constructor(
+                CollectionContentImageRow.class,
+                collectionContentImage.collectionContent.id,
+                collectionContentImage.imageKey
+            ))
+            .from(collectionContentImage)
+            .where(collectionContentImage.collectionContent.id.in(collectionContentIds))
+            .orderBy(
+                collectionContentImage.collectionContent.id.asc(),
+                collectionContentImage.sortOrder.asc()
+            )
+            .fetch();
+
+        Map<Long, List<String>> imageMap = new LinkedHashMap<>();
+        for (CollectionContentImageRow row : imageRows) {
+            imageMap.computeIfAbsent(row.collectionContentId(), ignored -> new ArrayList<>())
+                .add(row.imageKey());
+        }
+        return imageMap;
+    }
+
+    public record ContentDetailRow(
+        Long collectionContentId,
+        Long contentId,
+        String title,
+        String imageUrl,
+        String director,
+        boolean isBookmarked,
+        int bookmarkCount,
+        boolean isSpoiler,
+        String reason,
+        int year
+    ) {
+        public GetCollectionDetailRes.Content toResponse(List<String> customImageUrls) {
+            return new GetCollectionDetailRes.Content(
+                contentId,
+                title,
+                imageUrl,
+                customImageUrls,
+                director,
+                isBookmarked,
+                bookmarkCount,
+                isSpoiler,
+                reason,
+                year
+            );
+        }
+    }
+
+    public record CollectionContentImageRow(
+        Long collectionContentId,
+        String imageKey
+    ) {}
 
     public record GetCollectionHeader(
         Long collectionId,

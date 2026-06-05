@@ -57,7 +57,7 @@ public record AdminCollectionReportDetailRes(
         Long contentId,
         String title,
         String posterUrl,
-        String customImageUrl,
+        List<String> customImageUrls,
         String reason,
         boolean isSpoiler
     ) {

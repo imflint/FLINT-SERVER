@@ -1,5 +1,7 @@
 package kr.flint.admin.domain.collection.dto.request;
 
+import java.util.List;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotBlank;
@@ -20,11 +22,11 @@ public record AdminCollectionContentUpdateReq(
     @NotBlank(message = "콘텐츠 메모는 필수입니다.")
     String reason,
 
-    @Schema(description = "콘텐츠별 커스텀 이미지 key 또는 URL")
+    @Schema(description = "콘텐츠별 커스텀 이미지 key 또는 URL 목록")
     @Nullable
-    String customImage
+    List<String> customImages
 ) {
     public ContentInput toInput() {
-        return ContentInput.of(contentId, isSpoiler, reason, customImage);
+        return ContentInput.of(contentId, isSpoiler, reason, customImages);
     }
 }

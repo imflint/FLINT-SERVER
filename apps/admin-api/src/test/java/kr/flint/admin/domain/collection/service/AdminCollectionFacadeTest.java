@@ -86,16 +86,17 @@ class AdminCollectionFacadeTest {
             "새 컬렉션",
             "새 설명",
             true,
-            List.of(new AdminCollectionContentUpdateReq(1L, false, "좋아요", null))
+            List.of(new AdminCollectionContentUpdateReq(1L, false, "좋아요", List.of("custom.jpg")))
         );
         when(contentService.getContentById(1L)).thenReturn(content);
         when(queryRepository.findCollectionDetailRow(10L)).thenReturn(
             new CollectionDetailRow(10L, "새 컬렉션", "새 설명", "poster.jpg", true, CollectionModerationStatus.VISIBLE, 0, createdAt, 20L, "작성자", null)
         );
         when(queryRepository.findCollectionContentRows(10L)).thenReturn(List.of(
-            new CollectionContentRow(1L, "인셉션", "poster.jpg", null, false, "좋아요", 2010, MediaType.MOVIE)
+            new CollectionContentRow(1L, "인셉션", "poster.jpg", List.of("custom.jpg"), false, "좋아요", 2010, MediaType.MOVIE)
         ));
         when(cloudFrontUrlProvider.resolveUrl("poster.jpg")).thenReturn("https://cdn/poster.jpg");
+        when(cloudFrontUrlProvider.resolveUrl("custom.jpg")).thenReturn("https://cdn/custom.jpg");
 
         var result = facade.updateCollection(99L, 10L, request);
 
@@ -103,5 +104,6 @@ class AdminCollectionFacadeTest {
         verify(collectionService).updateCollectionByAdmin(eq(10L), any(CollectionUpdateCommand.class), eq("poster.jpg"));
         assertThat(result.collectionId()).isEqualTo(10L);
         assertThat(result.contents()).hasSize(1);
+        assertThat(result.contents().getFirst().customImageUrls()).containsExactly("https://cdn/custom.jpg");
     }
 }

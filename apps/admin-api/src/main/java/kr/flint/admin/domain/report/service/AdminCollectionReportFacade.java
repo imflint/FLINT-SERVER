@@ -192,7 +192,9 @@ public class AdminCollectionReportFacade {
             row.contentId(),
             row.title(),
             resolveNullableImage(row.poster()),
-            resolveNullableImage(row.customImage()),
+            row.customImages().stream()
+                .map(cloudFrontUrlProvider::resolveUrl)
+                .toList(),
             row.reason(),
             row.isSpoiler()
         );

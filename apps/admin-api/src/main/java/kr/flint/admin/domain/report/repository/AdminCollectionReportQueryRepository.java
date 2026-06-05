@@ -2,11 +2,15 @@ package kr.flint.admin.domain.report.repository;
 
 import static kr.flint.collection.domain.QCollection.collection;
 import static kr.flint.collection.domain.QCollectionContent.collectionContent;
+import static kr.flint.collection.domain.QCollectionContentImage.collectionContentImage;
 import static kr.flint.collection.domain.QCollectionReport.collectionReport;
 import static kr.flint.content.domain.QContent.content;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.stereotype.Repository;
 
@@ -106,13 +110,13 @@ public class AdminCollectionReportQueryRepository {
     }
 
     public List<ReportContentRow> findContentRows(Long collectionId) {
-        return queryFactory
+        List<ReportContentBaseRow> contentRows = queryFactory
             .select(Projections.constructor(
-                ReportContentRow.class,
+                ReportContentBaseRow.class,
+                collectionContent.id,
                 content.id,
                 content.title,
                 content.poster,
-                collectionContent.customImage,
                 collectionContent.reason,
                 collectionContent.isSpoiler
             ))
@@ -121,6 +125,42 @@ public class AdminCollectionReportQueryRepository {
             .where(collectionContent.collection.id.eq(collectionId))
             .orderBy(collectionContent.id.asc())
             .fetch();
+
+        if (contentRows.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> collectionContentIds = contentRows.stream()
+            .map(ReportContentBaseRow::collectionContentId)
+            .toList();
+        Map<Long, List<String>> customImageMap = buildCustomImageMap(collectionContentIds);
+
+        return contentRows.stream()
+            .map(row -> row.toRow(customImageMap.getOrDefault(row.collectionContentId(), List.of())))
+            .toList();
+    }
+
+    private Map<Long, List<String>> buildCustomImageMap(List<Long> collectionContentIds) {
+        List<ReportContentImageRow> imageRows = queryFactory
+            .select(Projections.constructor(
+                ReportContentImageRow.class,
+                collectionContentImage.collectionContent.id,
+                collectionContentImage.imageKey
+            ))
+            .from(collectionContentImage)
+            .where(collectionContentImage.collectionContent.id.in(collectionContentIds))
+            .orderBy(
+                collectionContentImage.collectionContent.id.asc(),
+                collectionContentImage.sortOrder.asc()
+            )
+            .fetch();
+
+        Map<Long, List<String>> imageMap = new LinkedHashMap<>();
+        for (ReportContentImageRow row : imageRows) {
+            imageMap.computeIfAbsent(row.collectionContentId(), ignored -> new ArrayList<>())
+                .add(row.imageKey());
+        }
+        return imageMap;
     }
 
     private BooleanExpression statusCondition(ReportStatus status) {
@@ -168,13 +208,32 @@ public class AdminCollectionReportQueryRepository {
     ) {
     }
 
+    public record ReportContentBaseRow(
+        Long collectionContentId,
+        Long contentId,
+        String title,
+        String poster,
+        String reason,
+        boolean isSpoiler
+    ) {
+        public ReportContentRow toRow(List<String> customImages) {
+            return new ReportContentRow(contentId, title, poster, customImages, reason, isSpoiler);
+        }
+    }
+
     public record ReportContentRow(
         Long contentId,
         String title,
         String poster,
-        String customImage,
+        List<String> customImages,
         String reason,
         boolean isSpoiler
+    ) {
+    }
+
+    public record ReportContentImageRow(
+        Long collectionContentId,
+        String imageKey
     ) {
     }
 }

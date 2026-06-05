@@ -40,16 +40,12 @@ public class CollectionContent extends Base {
 	@Column(nullable = false, columnDefinition = "TEXT")
 	private String reason;
 
-	@Column(name = "custom_image")
-	private String customImage;
-
 	public static CollectionContent create(
 		Collection collection,
 		Long contentId,
 		boolean isSpoiler,
-		String reason,
-		String customImage
+		String reason
 	) {
-		return new CollectionContent(collection, contentId, isSpoiler, reason, customImage);
+		return new CollectionContent(collection, contentId, isSpoiler, reason);
 	}
 }
