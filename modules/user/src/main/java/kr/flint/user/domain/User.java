@@ -17,6 +17,10 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User extends BaseTime {
 
+    // 취향 키워드 재계산 트리거 임계값 — 마지막 재계산 이후 신규 저장 컨텐츠가 이 수만큼 쌓이면
+    // 사용자가 수동으로 재계산을 요청할 수 있다.
+    public static final int KEYWORD_RECALC_BOOKMARK_THRESHOLD = 20;
+
 //    @Column(nullable = false)
 //    private String realName;
 
@@ -128,6 +132,11 @@ public class User extends BaseTime {
 
     public void resetBookmarksSinceKeywordCalc() {
         this.bookmarksSinceKeywordCalc = 0;
+    }
+
+    // 마지막 재계산 이후 신규 북마크가 임계값 이상 쌓여 GPT 취향 키워드 재계산이 가능한 상태인지 여부
+    public boolean isKeywordRecalculatable() {
+        return bookmarksSinceKeywordCalc >= KEYWORD_RECALC_BOOKMARK_THRESHOLD;
     }
 
     private static void validateNickname(String nickname) {
