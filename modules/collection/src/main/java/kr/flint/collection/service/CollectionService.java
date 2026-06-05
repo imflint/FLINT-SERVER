@@ -1,6 +1,7 @@
 package kr.flint.collection.service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -12,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import io.hypersistence.tsid.TSID;
 import kr.flint.collection.domain.Collection;
 import kr.flint.collection.domain.CollectionContent;
+import kr.flint.collection.domain.CollectionContentImage;
 import kr.flint.collection.domain.CollectionReport;
 import kr.flint.collection.domain.ReportReason;
 import kr.flint.collection.dto.CollectionCreateCommand;
@@ -23,6 +25,7 @@ import kr.flint.collection.event.CollectionReportedEvent;
 import kr.flint.collection.exception.CollectionErrorCode;
 import kr.flint.collection.exception.CollectionException;
 import kr.flint.collection.repository.CollectionContentRepository;
+import kr.flint.collection.repository.CollectionContentImageRepository;
 import kr.flint.collection.repository.CollectionReportRepository;
 import kr.flint.collection.repository.CollectionRepository;
 import kr.flint.collection.repository.RecentViewedCollectionRepository;
@@ -34,6 +37,7 @@ import lombok.RequiredArgsConstructor;
 public class CollectionService {
     private final CollectionRepository collectionRepository;
     private final CollectionContentRepository collectionContentRepository;
+    private final CollectionContentImageRepository collectionContentImageRepository;
     private final CollectionReportRepository collectionReportRepository;
     private final RecentViewedCollectionRepository recentViewedCollectionRepository;
     private final ApplicationEventPublisher eventPublisher;
@@ -55,12 +59,12 @@ public class CollectionService {
                 savedCollection,
                 content.contentId(),
                 content.isSpoiler(),
-                content.reason(),
-                content.customImage()
+                content.reason()
             ))
             .toList();
 
         collectionContentRepository.saveAll(collectionContentList);
+        saveContentImages(collectionContentList, command.contents());
 
         // 콘텐츠 추가 이벤트 발행 (CollectionKeyword 동기화 트리거)
         collectionContentList.forEach(content ->
@@ -113,6 +117,7 @@ public class CollectionService {
             .map(CollectionCreateCommand.ContentInput::contentId)
             .collect(java.util.stream.Collectors.toSet());
 
+        collectionContentImageRepository.deleteAllByCollectionContentCollection(collection);
         collectionContentRepository.deleteAllByCollection(collection);
         // delete를 즉시 DB에 반영해야 직후 saveAll 시 unique(collection_id, content_id) 충돌이 안 난다.
         collectionContentRepository.flush();
@@ -122,11 +127,11 @@ public class CollectionService {
                 collection,
                 c.contentId(),
                 c.isSpoiler(),
-                c.reason(),
-                c.customImage()
+                c.reason()
             ))
             .toList();
         collectionContentRepository.saveAll(rebuilt);
+        saveContentImages(rebuilt, command.contents());
 
         Set<Long> added = new HashSet<>(newContentIds);
         added.removeAll(existingContentIds);
@@ -139,6 +144,28 @@ public class CollectionService {
         removed.forEach(contentId ->
             eventPublisher.publishEvent(new CollectionContentRemovedEvent(collectionId, contentId))
         );
+    }
+
+    private void saveContentImages(
+        List<CollectionContent> collectionContents,
+        List<CollectionCreateCommand.ContentInput> contentInputs
+    ) {
+        List<CollectionContentImage> images = new ArrayList<>();
+        for (int contentIndex = 0; contentIndex < collectionContents.size(); contentIndex++) {
+            CollectionContent collectionContent = collectionContents.get(contentIndex);
+            List<String> customImages = contentInputs.get(contentIndex).customImages();
+            int sortOrder = 0;
+            for (int imageIndex = 0; imageIndex < customImages.size(); imageIndex++) {
+                String imageKey = customImages.get(imageIndex);
+                if (imageKey == null || imageKey.isBlank()) {
+                    continue;
+                }
+                images.add(CollectionContentImage.create(collectionContent, imageKey, sortOrder++));
+            }
+        }
+        if (!images.isEmpty()) {
+            collectionContentImageRepository.saveAll(images);
+        }
     }
 
     public Collection getCollectionById(final Long collectionId) {

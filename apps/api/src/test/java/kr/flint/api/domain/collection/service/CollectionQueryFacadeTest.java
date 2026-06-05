@@ -46,8 +46,8 @@ class CollectionQueryFacadeTest {
 	class GetCollectionDetail {
 
 		@Test
-		@DisplayName("customImageUrl이 null이면 resolver를 호출하지 않고 null로 유지")
-		void customImageUrlNull() {
+		@DisplayName("customImageUrls가 비어 있으면 resolver를 호출하지 않고 빈 목록으로 유지")
+		void customImageUrlsEmpty() {
 			// given
 			Long collectionId = 1L;
 			Long userId = 10L;
@@ -67,7 +67,7 @@ class CollectionQueryFacadeTest {
 				200L,
 				"콘텐츠 제목",
 				"poster.jpg",
-				null,
+				List.of(),
 				"감독",
 				false,
 				5,
@@ -94,8 +94,52 @@ class CollectionQueryFacadeTest {
 			GetCollectionDetailRes.Content resolvedContent = response.contents().getFirst();
 			assertThat(response.thumbnailUrl()).isEqualTo("resolved/collection.jpg");
 			assertThat(resolvedContent.imageUrl()).isEqualTo("resolved/poster.jpg");
-			assertThat(resolvedContent.customImageUrl()).isNull();
+			assertThat(resolvedContent.customImageUrls()).isEmpty();
 			verify(cloudFrontUrlProvider, never()).resolveUrl(isNull());
+		}
+
+		@Test
+		@DisplayName("customImageUrls는 요청 순서대로 전체 URL로 변환")
+		void resolveCustomImageUrls() {
+			// given
+			Long collectionId = 1L;
+			Long userId = 10L;
+			CollectionQueryRepository.GetCollectionHeader header = new CollectionQueryRepository.GetCollectionHeader(
+				collectionId,
+				"컬렉션 제목",
+				"컬렉션 설명",
+				"collection.jpg",
+				LocalDateTime.of(2026, 1, 1, 0, 0),
+				100L,
+				"플린트",
+				"profile.jpg",
+				"FLINER",
+				false
+			);
+			GetCollectionDetailRes.Content content = new GetCollectionDetailRes.Content(
+				200L,
+				"콘텐츠 제목",
+				"poster.jpg",
+				List.of("custom-a.jpg", "custom-b.jpg"),
+				"감독",
+				false,
+				5,
+				false,
+				"추천 이유",
+				2026
+			);
+
+			when(collectionQueryRepository.getHeader(collectionId, userId)).thenReturn(header);
+			when(collectionQueryRepository.getContentList(collectionId, userId)).thenReturn(List.of(content));
+			when(cloudFrontUrlProvider.resolveUrl(any()))
+				.thenAnswer(invocation -> "resolved/" + invocation.getArgument(0, String.class));
+
+			// when
+			GetCollectionDetailRes response = collectionQueryFacade.getCollectionDetail(collectionId, userId);
+
+			// then
+			assertThat(response.contents().getFirst().customImageUrls())
+				.containsExactly("resolved/custom-a.jpg", "resolved/custom-b.jpg");
 		}
 	}
 }

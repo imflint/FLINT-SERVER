@@ -48,8 +48,8 @@ public record GetCollectionDetailRes(
 		String title,
 		@Schema(description = "썸네일 URL", example = "https://example.com/thumb.jpg")
 		String imageUrl,
-		@Schema(description = "작품별 커스텀 이미지 URL (선택)", example = "https://example.com/custom.jpg")
-		String customImageUrl,
+		@ArraySchema(schema = @Schema(implementation = String.class, example = "https://example.com/custom.jpg"))
+		List<String> customImageUrls,
 		@Schema(description = "감독/작가", example = "아자스")
 		String director,
 		@Schema(description = "북마크 여부", example = "false")
@@ -63,12 +63,18 @@ public record GetCollectionDetailRes(
 		@Schema(description = "개봉일", example = "2026")
 		int year
 		){
+		public Content {
+			customImageUrls = customImageUrls == null ? List.of() : List.copyOf(customImageUrls);
+		}
+
 		public Content resolveImages(Function<String, String> imageUrlResolver) {
 			return new Content(
 				id,
 				title,
 				resolveNullableImage(imageUrl, imageUrlResolver),
-				resolveNullableImage(customImageUrl, imageUrlResolver),
+				customImageUrls.stream()
+					.map(imageUrlResolver)
+					.toList(),
 				director,
 				isBookmarked,
 				bookmarkCount,

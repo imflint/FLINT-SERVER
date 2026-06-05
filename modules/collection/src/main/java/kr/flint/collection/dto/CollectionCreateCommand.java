@@ -24,10 +24,14 @@ public record CollectionCreateCommand(
             Long contentId,
             boolean isSpoiler,
             String reason,
-            String customImage
+            List<String> customImages
     ) {
-        public static ContentInput of(Long contentId, boolean isSpoiler, String reason, String customImage) {
-            return new ContentInput(contentId, isSpoiler, reason, customImage);
+        public ContentInput {
+            customImages = customImages == null ? List.of() : List.copyOf(customImages);
+        }
+
+        public static ContentInput of(Long contentId, boolean isSpoiler, String reason, List<String> customImages) {
+            return new ContentInput(contentId, isSpoiler, reason, customImages);
         }
     }
 }

@@ -28,7 +28,12 @@ public interface CollectionControllerDocs {
 
 	@Operation(
 		summary = "컬렉션 생성 - 재민",
-		description = "새로운 컬렉션을 생성합니다."
+		description = """
+			새로운 컬렉션을 생성합니다.
+
+			- `contentList[].customImages`로 작품별 커스텀 이미지 key 목록을 전달할 수 있습니다.
+			- 서버는 이미지 개수 제한을 검증하지 않고 요청 순서대로 저장합니다.
+			"""
 	)
 	@ApiResponses({
 		@ApiResponse(responseCode = "201", description = "생성 성공", useReturnTypeSchema = true),
@@ -52,6 +57,7 @@ public interface CollectionControllerDocs {
 			- 작성자(userId == collection.userId)만 호출 가능 — 그 외 요청은 403.
 			- 작품 리스트는 **전체 교체** 전략 (Diff가 아닌 완전 대체). 추가된 작품에는 ContentAdded, 빠진 작품에는 ContentRemoved 이벤트가 발행됩니다.
 			- `imageUrl` 미지정 시 첫 작품의 TMDB 포스터를 대표 이미지로 사용합니다 (생성과 동일 규칙).
+			- `contentList[].customImages`는 요청 순서대로 저장되며, 기존 작품별 커스텀 이미지는 함께 교체됩니다.
 			"""
 	)
 	@ApiResponses({
@@ -145,7 +151,7 @@ public interface CollectionControllerDocs {
 
 	@Operation(
 		summary = "컬렉션 상세 조회 - 재민",
-		description = "collectionId로 컬렉션 상세 정보를 조회합니다. (조회 시 최근 본 컬렉션 저장 로직이 실행될 수 있습니다.)"
+		description = "collectionId로 컬렉션 상세 정보를 조회합니다. 포함 콘텐츠의 커스텀 이미지는 `customImageUrls` 배열로 반환됩니다. (조회 시 최근 본 컬렉션 저장 로직이 실행될 수 있습니다.)"
 	)
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "조회 성공", useReturnTypeSchema = true),
