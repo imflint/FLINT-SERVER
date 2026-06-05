@@ -16,6 +16,10 @@ import kr.flint.bookmark.domain.ContentBookmark;
 public interface ContentBookmarkRepository extends JpaRepository<ContentBookmark, Long> {
 	Optional<ContentBookmark> findByContentIdAndUserId(Long id, Long userId);
 
+	boolean existsByContentIdAndUserId(Long contentId, Long userId);
+
+	int countByUserId(Long userId);
+
 	List<ContentBookmark> findAllByUserId(Long userId);
 
 	void deleteAllByUserId(Long userId);
