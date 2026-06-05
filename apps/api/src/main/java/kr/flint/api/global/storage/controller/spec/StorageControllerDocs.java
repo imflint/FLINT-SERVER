@@ -7,6 +7,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import kr.flint.api.global.storage.dto.request.BulkPresignedUrlReq;
+import kr.flint.api.global.storage.dto.response.BulkStorageUploadUrlRes;
 import kr.flint.infra.storage.enums.StoragePathType;
 import kr.flint.shared.exception.ProblemDetail;
 import kr.flint.shared.storage.FileExtension;
@@ -36,5 +38,30 @@ public interface StorageControllerDocs {
             StoragePathType pathType,
             @Parameter(description = "파일 확장자", example = "JPG")
             FileExtension extension
+    );
+
+    @Operation(
+            summary = "파일 업로드용 Presigned URL 다건 발급",
+            description = "요청한 items 순서대로 클라이언트가 직접 S3에 업로드할 수 있는 Presigned URL을 최대 20개까지 발급합니다. 각 item은 별도의 저장 경로 타입과 확장자를 가질 수 있습니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Presigned URL 다건 발급 성공",
+                    useReturnTypeSchema = true
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "잘못된 요청 (허용되지 않는 확장자, 경로 타입 또는 발급 대상 개수)",
+                    content = @Content(schema = @Schema(implementation = ProblemDetail.class))
+            )
+    })
+    BulkStorageUploadUrlRes getUploadUrls(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "다건 Presigned URL 발급 요청",
+                    required = true,
+                    content = @Content(schema = @Schema(implementation = BulkPresignedUrlReq.class))
+            )
+            BulkPresignedUrlReq request
     );
 }

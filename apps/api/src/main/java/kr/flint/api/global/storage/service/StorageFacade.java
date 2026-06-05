@@ -1,5 +1,7 @@
 package kr.flint.api.global.storage.service;
 
+import java.util.List;
+
 import kr.flint.api.global.storage.exception.StorageErrorCode;
 import kr.flint.api.global.storage.exception.StorageException;
 import kr.flint.infra.storage.enums.StoragePathType;
@@ -17,6 +19,16 @@ public class StorageFacade {
     private final StorageUrlProvider storageUrlProvider;
 
     public StorageUploadUrl getUploadUrl(StoragePathType pathType, FileExtension fileExtension) {
+        return generateUploadUrl(pathType, fileExtension);
+    }
+
+    public List<StorageUploadUrl> getUploadUrls(List<StorageUploadTarget> targets) {
+        return targets.stream()
+                .map(target -> generateUploadUrl(target.pathType(), target.fileExtension()))
+                .toList();
+    }
+
+    private StorageUploadUrl generateUploadUrl(StoragePathType pathType, FileExtension fileExtension) {
         validateExtension(pathType, fileExtension);
 
         String key = StorageKeyGenerator.generate(pathType, fileExtension);
