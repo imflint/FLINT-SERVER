@@ -4,8 +4,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import io.hypersistence.tsid.TSID;
+import kr.flint.bookmark.exception.BookmarkErrorCode;
+import kr.flint.bookmark.exception.BookmarkException;
 import kr.flint.bookmark.repository.CollectionBookmarkRepository;
 import kr.flint.bookmark.service.BookmarkCommandService;
+import kr.flint.bookmark.service.BookmarkQueryService;
 import kr.flint.collection.repository.CollectionRepository;
 import kr.flint.collection.service.CollectionService;
 import kr.flint.content.service.ContentService;
@@ -15,7 +18,11 @@ import lombok.RequiredArgsConstructor;
 @Component
 @RequiredArgsConstructor
 public class BookmarkCommandFacade {
+	// 북마크한 작품 최소 보유 수 — 이 수 이하로 내려가는 취소(토글 OFF)는 차단한다.
+	private static final int MIN_CONTENT_BOOKMARK = 5;
+
 	private final BookmarkCommandService bookmarkCommandService;
+	private final BookmarkQueryService bookmarkQueryService;
 	private final ContentService contentService;
 	private final CollectionService collectionService;
 	private final UserService userService;
@@ -25,6 +32,13 @@ public class BookmarkCommandFacade {
 	@Transactional
 	public boolean toggleContent(final Long userId, final Long contentId) {
 		userService.getById(userId);
+
+		// 이미 북마크된 작품의 취소 요청이고, 보유 수가 최소치 이하라면 취소를 막는다.
+		if (bookmarkQueryService.isContentBookmarked(userId, contentId)
+			&& bookmarkQueryService.getContentBookmarkCount(userId) <= MIN_CONTENT_BOOKMARK) {
+			throw new BookmarkException(BookmarkErrorCode.CONTENT_BOOKMARK_MIN_LIMIT);
+		}
+
 		boolean isBookmarked = bookmarkCommandService.toggleContent(userId, contentId);
 
 		if (isBookmarked) {
