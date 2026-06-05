@@ -2,11 +2,15 @@ package kr.flint.admin.domain.collection.repository;
 
 import static kr.flint.collection.domain.QCollection.collection;
 import static kr.flint.collection.domain.QCollectionContent.collectionContent;
+import static kr.flint.collection.domain.QCollectionContentImage.collectionContentImage;
 import static kr.flint.content.domain.QContent.content;
 import static kr.flint.user.domain.QUser.user;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
@@ -125,13 +129,13 @@ public class AdminCollectionQueryRepository {
     }
 
     public List<CollectionContentRow> findCollectionContentRows(Long collectionId) {
-        return queryFactory
+        List<CollectionContentBaseRow> contentRows = queryFactory
             .select(Projections.constructor(
-                CollectionContentRow.class,
+                CollectionContentBaseRow.class,
+                collectionContent.id,
                 content.id,
                 content.title,
                 content.poster,
-                collectionContent.customImage,
                 collectionContent.isSpoiler,
                 collectionContent.reason,
                 content.year,
@@ -142,6 +146,42 @@ public class AdminCollectionQueryRepository {
             .where(collectionContent.collection.id.eq(collectionId))
             .orderBy(collectionContent.id.asc())
             .fetch();
+
+        if (contentRows.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> collectionContentIds = contentRows.stream()
+            .map(CollectionContentBaseRow::collectionContentId)
+            .toList();
+        Map<Long, List<String>> customImageMap = buildCustomImageMap(collectionContentIds);
+
+        return contentRows.stream()
+            .map(row -> row.toRow(customImageMap.getOrDefault(row.collectionContentId(), List.of())))
+            .toList();
+    }
+
+    private Map<Long, List<String>> buildCustomImageMap(List<Long> collectionContentIds) {
+        List<CollectionContentImageRow> imageRows = queryFactory
+            .select(Projections.constructor(
+                CollectionContentImageRow.class,
+                collectionContentImage.collectionContent.id,
+                collectionContentImage.imageKey
+            ))
+            .from(collectionContentImage)
+            .where(collectionContentImage.collectionContent.id.in(collectionContentIds))
+            .orderBy(
+                collectionContentImage.collectionContent.id.asc(),
+                collectionContentImage.sortOrder.asc()
+            )
+            .fetch();
+
+        Map<Long, List<String>> imageMap = new LinkedHashMap<>();
+        for (CollectionContentImageRow row : imageRows) {
+            imageMap.computeIfAbsent(row.collectionContentId(), ignored -> new ArrayList<>())
+                .add(row.imageKey());
+        }
+        return imageMap;
     }
 
     private BooleanExpression keywordCondition(String keyword) {
@@ -192,15 +232,45 @@ public class AdminCollectionQueryRepository {
     ) {
     }
 
-    public record CollectionContentRow(
+    public record CollectionContentBaseRow(
+        Long collectionContentId,
         Long contentId,
         String title,
         String poster,
-        String customImage,
         boolean isSpoiler,
         String reason,
         int year,
         MediaType mediaType
+    ) {
+        public CollectionContentRow toRow(List<String> customImages) {
+            return new CollectionContentRow(
+                contentId,
+                title,
+                poster,
+                customImages,
+                isSpoiler,
+                reason,
+                year,
+                mediaType
+            );
+        }
+    }
+
+    public record CollectionContentRow(
+        Long contentId,
+        String title,
+        String poster,
+        List<String> customImages,
+        boolean isSpoiler,
+        String reason,
+        int year,
+        MediaType mediaType
+    ) {
+    }
+
+    public record CollectionContentImageRow(
+        Long collectionContentId,
+        String imageKey
     ) {
     }
 }

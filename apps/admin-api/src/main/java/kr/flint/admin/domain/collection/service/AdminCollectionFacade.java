@@ -134,7 +134,9 @@ public class AdminCollectionFacade {
             row.contentId(),
             row.title(),
             resolveNullableImage(row.poster()),
-            resolveNullableImage(row.customImage()),
+            row.customImages().stream()
+                .map(cloudFrontUrlProvider::resolveUrl)
+                .toList(),
             row.isSpoiler(),
             row.reason(),
             row.year(),

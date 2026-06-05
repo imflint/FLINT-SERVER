@@ -31,7 +31,7 @@ public record AdminCollectionDetailRes(
         Long contentId,
         String title,
         String posterUrl,
-        String customImageUrl,
+        List<String> customImageUrls,
         boolean isSpoiler,
         String reason,
         int year,
