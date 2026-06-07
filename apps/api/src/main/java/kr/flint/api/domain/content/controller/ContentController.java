@@ -44,11 +44,14 @@ public class ContentController implements ContentControllerDocs {
 
 	@Override
 	@GetMapping("/bookmarks")
-	public ResponseEntity<SuccessResponse<GetContentListRes>> getBookmarkContent(
-		@CurrentUser Long userId
+	public ResponseEntity<SuccessResponse<PaginationResponse<GetContentDetailRes>>> getBookmarkContent(
+		@CurrentUser Long userId,
+		@RequestParam(required = false, name = "cursor") Long cursor,
+		@RequestParam(required = false, defaultValue = "10") int size
 	){
-		List<GetContentDetailRes> getContentDetailResList = contentQueryFacade.getContentDetailList(userId);
-		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, GetContentListRes.from(getContentDetailResList)));
+		PaginationResponse<GetContentDetailRes> response =
+			contentQueryFacade.getBookmarkedContentList(userId, cursor, size);
+		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, response));
 	}
 
 	@Override
