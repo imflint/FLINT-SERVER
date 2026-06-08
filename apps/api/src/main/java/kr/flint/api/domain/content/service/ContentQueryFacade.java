@@ -3,6 +3,7 @@ package kr.flint.api.domain.content.service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,11 +12,13 @@ import org.springframework.util.StringUtils;
 import kr.flint.api.domain.content.dto.ContentSearchCondition;
 import kr.flint.api.domain.content.dto.ContentSearchCursor;
 import kr.flint.api.domain.content.dto.GetContentDetailRes;
+import kr.flint.api.domain.content.dto.GetContentListRes;
 import kr.flint.api.domain.content.dto.SearchGenre;
 import kr.flint.api.domain.content.repository.ContentQueryRepository;
 import kr.flint.api.domain.content.repository.ContentQueryRepository.BookmarkedContentRow;
 import kr.flint.api.domain.content.repository.ContentQueryRepository.ContentSearchRow;
 import kr.flint.api.domain.search.dto.response.GetContentSearchRes;
+import kr.flint.bookmark.service.BookmarkQueryService;
 import kr.flint.content.domain.MediaType;
 import kr.flint.ott.dto.GetOttResponse;
 import kr.flint.ott.service.OttService;
@@ -28,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 public class ContentQueryFacade {
 	private final OttService ottService;
 	private final ContentQueryRepository contentQueryRepository;
+	private final BookmarkQueryService bookmarkQueryService;
 
 	public List<GetOttResponse> getOttList(final Long userId, final Long contentId) {
 		List<GetOttResponse> ottList = ottService.getOttList(userId, contentId);
@@ -40,6 +44,22 @@ public class ContentQueryFacade {
 			return new ArrayList<>();
 		}
 		return contentList;
+	}
+
+	public GetContentListRes getUserBookmarkedContentList(
+		final Long currentUserId,
+		final Long targetUserId
+	) {
+		List<GetContentDetailRes> contentList = getContentDetailList(targetUserId);
+		if (contentList.isEmpty()) {
+			return GetContentListRes.from(List.of(), Set.of());
+		}
+
+		List<Long> contentIds = contentList.stream()
+			.map(GetContentDetailRes::id)
+			.toList();
+		Set<Long> bookmarkedContentIds = bookmarkQueryService.getBookmarkedContentIdSet(currentUserId, contentIds);
+		return GetContentListRes.from(contentList, bookmarkedContentIds);
 	}
 
 	public PaginationResponse<GetContentDetailRes> getBookmarkedContentList(

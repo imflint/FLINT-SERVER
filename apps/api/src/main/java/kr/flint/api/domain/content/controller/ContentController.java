@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import kr.flint.api.domain.content.controller.spec.ContentControllerDocs;
 import kr.flint.api.domain.content.dto.GetContentDetailRes;
-import kr.flint.api.domain.content.dto.GetContentListRes;
 import kr.flint.api.domain.content.dto.GetOttListRes;
 import kr.flint.api.domain.content.dto.SearchGenre;
 import kr.flint.api.domain.search.dto.response.GetContentSearchRes;
@@ -67,13 +66,5 @@ public class ContentController implements ContentControllerDocs {
 			contentQueryFacade.getContentSearchList(keyword, genres, mediaType, cursor, size);
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, searchRes));
 
-	}
-
-	@GetMapping("/{userId}/bookmarked-contents")
-	public ResponseEntity<SuccessResponse<GetContentListRes>> getUserBookmarkedContents(
-		@PathVariable Long userId
-	){
-		List<GetContentDetailRes> getContentDetailResList = contentQueryFacade.getContentDetailList(userId);
-		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, GetContentListRes.from(getContentDetailResList)));
 	}
 }

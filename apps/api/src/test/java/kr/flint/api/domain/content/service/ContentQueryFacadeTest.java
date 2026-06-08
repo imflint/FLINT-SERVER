@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Set;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -21,11 +22,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import kr.flint.api.domain.content.dto.ContentSearchCondition;
 import kr.flint.api.domain.content.dto.ContentSearchCursor;
 import kr.flint.api.domain.content.dto.GetContentDetailRes;
+import kr.flint.api.domain.content.dto.GetContentListRes;
 import kr.flint.api.domain.content.dto.SearchGenre;
 import kr.flint.api.domain.content.repository.ContentQueryRepository;
 import kr.flint.api.domain.content.repository.ContentQueryRepository.BookmarkedContentRow;
 import kr.flint.api.domain.content.repository.ContentQueryRepository.ContentSearchRow;
 import kr.flint.api.domain.search.dto.response.GetContentSearchRes;
+import kr.flint.bookmark.service.BookmarkQueryService;
 import kr.flint.content.domain.MediaType;
 import kr.flint.ott.service.OttService;
 import kr.flint.shared.dto.PaginationResponse;
@@ -40,8 +43,71 @@ class ContentQueryFacadeTest {
 	@Mock
 	private ContentQueryRepository contentQueryRepository;
 
+	@Mock
+	private BookmarkQueryService bookmarkQueryService;
+
 	@InjectMocks
 	private ContentQueryFacade contentQueryFacade;
+
+	@Nested
+	@DisplayName("getUserBookmarkedContentList")
+	class GetUserBookmarkedContentList {
+
+		@Test
+		@DisplayName("로그인한 사용자의 콘텐츠 북마크 여부를 함께 반환한다")
+		void returnsCurrentUserBookmarkState() {
+			// given
+			List<GetContentDetailRes> contents = List.of(
+				content(1L, "첫 번째"),
+				content(2L, "두 번째")
+			);
+			when(contentQueryRepository.getContentDetailList(10L))
+				.thenReturn(contents);
+			when(bookmarkQueryService.getBookmarkedContentIdSet(20L, List.of(1L, 2L)))
+				.thenReturn(Set.of(2L));
+
+			// when
+			GetContentListRes response =
+				contentQueryFacade.getUserBookmarkedContentList(20L, 10L);
+
+			// then
+			assertThat(response.totalCount()).isEqualTo(2);
+			assertThat(response.contents())
+				.extracting(GetContentListRes.Content::isBookmarked)
+				.containsExactly(false, true);
+			verify(contentQueryRepository).getContentDetailList(10L);
+			verify(bookmarkQueryService).getBookmarkedContentIdSet(20L, List.of(1L, 2L));
+		}
+
+		@Test
+		@DisplayName("대상 사용자의 북마크 콘텐츠가 없으면 북마크 여부 조회를 생략한다")
+		void skipsBookmarkStateLookupWhenEmpty() {
+			// given
+			when(contentQueryRepository.getContentDetailList(10L))
+				.thenReturn(List.of());
+
+			// when
+			GetContentListRes response =
+				contentQueryFacade.getUserBookmarkedContentList(20L, 10L);
+
+			// then
+			assertThat(response.totalCount()).isZero();
+			assertThat(response.contents()).isEmpty();
+			verify(contentQueryRepository).getContentDetailList(10L);
+			verifyNoInteractions(bookmarkQueryService);
+		}
+
+		private GetContentDetailRes content(Long id, String title) {
+			return new GetContentDetailRes(
+				id,
+				title,
+				"poster.jpg",
+				2026,
+				5,
+				List.of()
+			);
+		}
+	}
 
 	@Nested
 	@DisplayName("getBookmarkedContentList")

@@ -45,4 +45,11 @@ public class BookmarkQueryService {
 		}
 		return new HashSet<>(collectionBookmarkRepository.findCollectionIdsByUserId(userId));
 	}
+
+	public Set<Long> getBookmarkedContentIdSet(final Long userId, final List<Long> contentIds) {
+		if (userId == null || contentIds == null || contentIds.isEmpty()) {
+			return Collections.emptySet();
+		}
+		return new HashSet<>(contentBookmarkRepository.findContentIdsByUserIdAndContentIdIn(userId, contentIds));
+	}
 }

@@ -170,6 +170,7 @@ public interface UserControllerDocs {
 	})
 	@GetMapping("/{userId}/bookmarked-contents")
 	ResponseEntity<SuccessResponse<GetContentListRes>> getUserBookmarkedContents(
+		@Parameter(hidden = true) Long currentUserId,
 		@Parameter(description = "다른 사용자 ID", example = "1")
 		@PathVariable Long userId
 	);
