@@ -1,6 +1,6 @@
 # Flint API 요구사항 명세서
 
-> 최종 업데이트: 2026-01-16
+> 최종 업데이트: 2026-06-07
 > 버전: MVP 1.0
 
 ---
@@ -133,27 +133,35 @@ flint-api/
 
 ---
 
-#### 3.1.2 프로필 이미지 등록
+#### 3.1.2 이미지 업로드용 Presigned URL 발급
 
-`POST /storage/presigned-url` (Presigned URL 발급)
+`GET /storage/presigned-url` (Presigned URL 단건 발급)
 
 **[입력]**
 
-- fileName (String): 업로드할 파일명
-- contentType (String): 파일 MIME 타입 (예: "image/jpeg")
+- pathType (StoragePathType): 저장 경로 타입 (예: USER_PROFILE, COLLECTION_THUMBNAIL, COLLECTION_CONTENT)
+- extension (FileExtension): 파일 확장자 (예: JPG, JPEG, PNG)
+
+`POST /storage/presigned-urls` (Presigned URL 다건 발급)
+
+**[입력]**
+
+- items (Array): 발급할 URL 대상 목록 (1~20개)
+- items[].pathType (StoragePathType): 저장 경로 타입
+- items[].extension (FileExtension): 파일 확장자
 
 **[처리 로직]**
 
-1. S3 Presigned URL 발급 (PUT 권한, 10분 유효)
-2. 클라이언트에 Presigned URL 및 파일 키 반환
+1. 요청 items 순서대로 S3 Presigned URL 발급 (PUT 권한, 10분 유효)
+2. 클라이언트에 Presigned URL 및 S3 객체 키 반환
 3. 클라이언트는 Presigned URL로 이미지 파일 직접 업로드
 4. 스토리지(S3)에 이미지 저장
 5. (CloudFront 활성화 시) CDN URL로 접근 가능
 
 **[응답]**
 
-- presignedUrl (String): S3 업로드용 Presigned URL
-- key (String): S3 객체 키
+- 단건: `{ uploadUrl, key }`
+- 다건: `{ urls: [{ uploadUrl, key }] }`
 
 ---
 
@@ -352,7 +360,36 @@ flint-api/
 
 ---
 
-#### 3.2.5 취향 키워드 재계산
+#### 3.2.5 사용자 북마크 콘텐츠 목록 조회
+
+`GET /users/{userId}/bookmarked-contents`
+
+**[입력]**
+
+- userId (Long, Path): 조회할 사용자 ID
+- Authorization Header: Bearer {accessToken}
+
+**[처리 로직]**
+
+1. userId 사용자가 북마크한 콘텐츠 목록 조회
+2. 로그인한 사용자가 각 콘텐츠를 북마크했는지 확인
+3. 콘텐츠 상세 정보와 로그인 사용자 기준 북마크 여부를 함께 반환
+
+**[응답]**
+
+- totalCount (Integer): 반환된 콘텐츠 수
+- contents: 북마크한 콘텐츠 목록
+    - id (Long): 콘텐츠 ID
+    - title (String): 콘텐츠 제목
+    - imageUrl (String): 콘텐츠 이미지 URL
+    - year (Integer): 개봉/방영 연도
+    - bookmarkCount (Integer): 북마크 수
+    - isBookmarked (Boolean): 로그인한 사용자의 콘텐츠 북마크 여부
+    - getOttSimpleList (Array): 조회 대상 사용자가 구독 중이며 해당 콘텐츠를 제공하는 OTT 목록
+
+---
+
+#### 3.2.6 취향 키워드 재계산
 
 `PATCH /users/recalculate/keyword`
 
@@ -384,22 +421,22 @@ flint-api/
 - isPublic (Boolean): 공개 여부
 - contents: 콘텐츠 목록 (1~10개)
     - contentId (Long): 콘텐츠 ID
-    - position (Integer): 순서 (1~10)
     - isSpoiler (Boolean): 스포일러 여부
-    - selectionReason (String): 선정 이유
+    - reason (String): 선정 이유
+    - customImages (String[], optional): 작품별 커스텀 이미지 key 목록. 서버는 개수 제한을 검증하지 않음
 
 **[검증 로직]**
 
 1. 콘텐츠 개수 검증 (1~10개)
-2. position 중복 검증
-3. contentId 중복 검증
-4. 각 contentId 존재 여부 검증
+2. contentId 중복 검증
+3. 각 contentId 존재 여부 검증
 
 **[처리 로직]**
 
 1. Collection 엔티티 생성
 2. CollectionContent 엔티티 생성 (각 콘텐츠별)
-3. 컬렉션 키워드 분석 및 저장 (비동기)
+3. CollectionContentImage 엔티티 생성 (작품별 커스텀 이미지, 요청 순서 유지)
+4. 컬렉션 키워드 분석 및 저장 (비동기)
 
 ---
 
@@ -572,20 +609,26 @@ flint-api/
 
 #### 3.5.2 북마크한 콘텐츠 목록 조회
 
-`GET /contents`
+`GET /contents/bookmarks`
 
 **[입력]**
 
 - Authorization Header: Bearer {accessToken}
+- cursor (Long, optional): 이전 응답의 nextCursor
+- size (Integer, default: 10): 조회 개수 (1~50)
 
 **[처리 로직]**
 
-1. 사용자가 북마크한 콘텐츠 목록 조회
-2. 콘텐츠 상세 정보 포함하여 반환
+1. 사용자가 북마크한 콘텐츠 목록을 북마크 최신순으로 조회
+2. size + 1개를 조회해 다음 페이지 존재 여부 판단
+3. 콘텐츠 상세 정보와 cursor 페이지네이션 메타 포함하여 반환
 
 **[응답]**
 
-- contents: 북마크한 콘텐츠 목록
+- data: 북마크한 콘텐츠 목록
+- meta.type: CURSOR
+- meta.returned: 현재 응답의 콘텐츠 수
+- meta.nextCursor: 다음 페이지 조회용 cursor
 
 ---
 
@@ -730,6 +773,7 @@ flint-api/
 | content | ContentGenre | content_genres | 콘텐츠-장르 매핑 |
 | collection | Collection | collections | 사용자 컬렉션 |
 | collection | CollectionContent | collection_contents | 컬렉션-콘텐츠 매핑 |
+| collection | CollectionContentImage | collection_content_images | 컬렉션 포함 콘텐츠별 커스텀 이미지 |
 | collection | RecentViewedCollection | recent_viewed_collections | 최근 조회 기록 |
 | bookmark | ContentBookmark | content_bookmarks | 콘텐츠 북마크 |
 | bookmark | CollectionBookmark | collection_bookmarks | 컬렉션 북마크 |
@@ -747,7 +791,7 @@ flint-api/
 |--------|-------------|
 | user_identities | (provider, provider_user_id) |
 | contents | (tmdb_id) |
-| collection_contents | (collection_id, position), (collection_id, content_id) |
+| collection_contents | (collection_id, content_id) |
 | recent_viewed_collections | (user_id, collection_id) |
 | content_bookmarks | (user_id, content_id) |
 | collection_bookmarks | (user_id, collection_id) |
@@ -808,6 +852,7 @@ flint-api/
 | GET | /users/{userId}/keywords | 취향 키워드 조회 | X |
 | GET | /users/{userId}/collections | 작성 컬렉션 목록 | 선택 |
 | GET | /users/{userId}/bookmarked-collections | 북마크 컬렉션 목록 | 선택 |
+| GET | /users/{userId}/bookmarked-contents | 북마크 콘텐츠 목록 | O |
 | PATCH | /users/recalculate/keyword | 키워드 재계산 | O |
 
 ### 6.3 컬렉션 관련
@@ -832,7 +877,7 @@ flint-api/
 | Method | Endpoint | 설명 | 인증 |
 |--------|----------|------|------|
 | GET | /contents/ott/{id} | OTT 목록 | O |
-| GET | /contents | 북마크 콘텐츠 | O |
+| GET | /contents/bookmarks | 북마크 콘텐츠 | O |
 | GET | /contents/search | TMDB 검색 | X |
 
 ### 6.6 검색 관련
