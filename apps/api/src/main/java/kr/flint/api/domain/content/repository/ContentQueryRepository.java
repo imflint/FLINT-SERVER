@@ -51,22 +51,28 @@ public class ContentQueryRepository {
 	}
 
 	public List<GetContentDetailRes> getContentDetailList(Long userId){
-		return getBookmarkedContentRows(userId, null, 10).stream()
+		// limit 0 → 북마크한 작품 전체 반환
+		return getBookmarkedContentRows(userId, null, 0).stream()
 			.map(BookmarkedContentRow::toResponse)
 			.toList();
 	}
 
+	// limit <= 0 이면 제한 없이 전체 조회
 	public List<BookmarkedContentRow> getBookmarkedContentRows(Long userId, Long cursor, int limit) {
-		List<Tuple> bookmarkRows = jpaQueryFactory
+		var bookmarkQuery = jpaQueryFactory
 			.select(contentBookmark.id, contentBookmark.contentId)
 			.from(contentBookmark)
 			.where(
 				contentBookmark.userId.eq(userId),
 				cursor != null ? contentBookmark.id.lt(cursor) : null
 			)
-			.orderBy(contentBookmark.id.desc())
-			.limit(limit)
-			.fetch();
+			.orderBy(contentBookmark.id.desc());
+
+		if (limit > 0) {
+			bookmarkQuery.limit(limit);
+		}
+
+		List<Tuple> bookmarkRows = bookmarkQuery.fetch();
 
 		if (bookmarkRows.isEmpty()) return List.of();
 
