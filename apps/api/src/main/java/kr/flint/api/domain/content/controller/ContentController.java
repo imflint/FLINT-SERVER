@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import kr.flint.api.domain.content.controller.spec.ContentControllerDocs;
 import kr.flint.api.domain.content.dto.GetContentDetailRes;
-import kr.flint.api.domain.content.dto.GetContentListRes;
 import kr.flint.api.domain.content.dto.GetOttListRes;
 import kr.flint.api.domain.content.dto.SearchGenre;
 import kr.flint.api.domain.search.dto.response.GetContentSearchRes;
@@ -44,11 +43,14 @@ public class ContentController implements ContentControllerDocs {
 
 	@Override
 	@GetMapping("/bookmarks")
-	public ResponseEntity<SuccessResponse<GetContentListRes>> getBookmarkContent(
-		@CurrentUser Long userId
+	public ResponseEntity<SuccessResponse<PaginationResponse<GetContentDetailRes>>> getBookmarkContent(
+		@CurrentUser Long userId,
+		@RequestParam(required = false, name = "cursor") Long cursor,
+		@RequestParam(required = false, defaultValue = "10") int size
 	){
-		List<GetContentDetailRes> getContentDetailResList = contentQueryFacade.getContentDetailList(userId);
-		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, GetContentListRes.from(getContentDetailResList)));
+		PaginationResponse<GetContentDetailRes> response =
+			contentQueryFacade.getBookmarkedContentList(userId, cursor, size);
+		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, response));
 	}
 
 	@Override
@@ -64,13 +66,5 @@ public class ContentController implements ContentControllerDocs {
 			contentQueryFacade.getContentSearchList(keyword, genres, mediaType, cursor, size);
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, searchRes));
 
-	}
-
-	@GetMapping("/{userId}/bookmarked-contents")
-	public ResponseEntity<SuccessResponse<GetContentListRes>> getUserBookmarkedContents(
-		@PathVariable Long userId
-	){
-		List<GetContentDetailRes> getContentDetailResList = contentQueryFacade.getContentDetailList(userId);
-		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, GetContentListRes.from(getContentDetailResList)));
 	}
 }

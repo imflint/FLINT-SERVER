@@ -51,33 +51,52 @@ public class ContentQueryRepository {
 	}
 
 	public List<GetContentDetailRes> getContentDetailList(Long userId){
+		return getBookmarkedContentRows(userId, null, 10).stream()
+			.map(BookmarkedContentRow::toResponse)
+			.toList();
+	}
 
-		// 1) 북마크된 contentId 10개 먼저 뽑기 (limit이 content 단위로 정확해짐)
-		List<Long> topContentIds = jpaQueryFactory
-			.select(contentBookmark.contentId)
+	public List<BookmarkedContentRow> getBookmarkedContentRows(Long userId, Long cursor, int limit) {
+		List<Tuple> bookmarkRows = jpaQueryFactory
+			.select(contentBookmark.id, contentBookmark.contentId)
 			.from(contentBookmark)
-			.where(contentBookmark.userId.eq(userId))
-			.orderBy(contentBookmark.createdAt.desc())
-			.limit(10)
+			.where(
+				contentBookmark.userId.eq(userId),
+				cursor != null ? contentBookmark.id.lt(cursor) : null
+			)
+			.orderBy(contentBookmark.id.desc())
+			.limit(limit)
 			.fetch();
 
-		if (topContentIds.isEmpty()) return List.of();
+		if (bookmarkRows.isEmpty()) return List.of();
+
+		Map<Long, Long> bookmarkIdMap = new LinkedHashMap<>();
+		for (Tuple row : bookmarkRows) {
+			Long contentId = row.get(contentBookmark.contentId);
+			Long bookmarkId = row.get(contentBookmark.id);
+			if (contentId != null && bookmarkId != null) {
+				bookmarkIdMap.put(contentId, bookmarkId);
+			}
+		}
+
+		List<Long> contentIds = new ArrayList<>(bookmarkIdMap.keySet());
 
 		// 2) 컨텐츠 기본 정보 (year/bookmark_count NULL 행 방어를 위해 coalesce)
 		List<Tuple> contentRows = jpaQueryFactory
 			.select(content.id, content.title, content.year.coalesce(0), content.poster, content.bookmarkCount.coalesce(0))
 			.from(content)
-			.where(content.id.in(topContentIds))
+			.where(content.id.in(contentIds))
 			.fetch();
 
-		Map<Long, GetContentDetailRes> contentMap = new LinkedHashMap<>();
+		Map<Long, BookmarkedContentRow> contentMap = new LinkedHashMap<>();
 		for (Tuple row : contentRows) {
 			Long id = row.get(content.id);
 			if (id == null) continue;
 
 			Integer year = row.get(content.year.coalesce(0));
 			Integer bookmarkCount = row.get(content.bookmarkCount.coalesce(0));
-			contentMap.put(id, new GetContentDetailRes(
+			contentMap.put(id, new BookmarkedContentRow(
+				bookmarkIdMap.get(id),
 				id,
 				row.get(content.title),
 				row.get(content.poster),
@@ -100,7 +119,7 @@ public class ContentQueryRepository {
 			.join(ottContent).on(ottContent.ottProvider.eq(ottProvider))
 			.where(
 				ottUser.userId.eq(userId),
-				ottContent.contentId.in(topContentIds)
+				ottContent.contentId.in(contentIds)
 			)
 			.fetch();
 
@@ -111,21 +130,41 @@ public class ContentQueryRepository {
 			String ottName = row.get(ottProvider.name);
 			String logoUrl = row.get(ottProvider.logoUrl);
 
-			GetContentDetailRes dto = contentMap.get(contentId);
+			BookmarkedContentRow dto = contentMap.get(contentId);
 			if (dto == null) continue;
 
 			if (ottName != null) {
-				dto.getOttSimpleList().add(new GetContentDetailRes.GetOttSimpleRes(ottName, logoUrl));
+				dto.ottSimpleList().add(new GetContentDetailRes.GetOttSimpleRes(ottName, logoUrl));
 			}
 		}
 
-		// 4) topContentIds 순서(북마크 최신순) 유지해서 반환
-		List<GetContentDetailRes> result = new ArrayList<>();
-		for (Long id : topContentIds) {
-			GetContentDetailRes dto = contentMap.get(id);
+		List<BookmarkedContentRow> result = new ArrayList<>();
+		for (Long id : contentIds) {
+			BookmarkedContentRow dto = contentMap.get(id);
 			if (dto != null) result.add(dto);
 		}
 		return result;
+	}
+
+	public record BookmarkedContentRow(
+		Long bookmarkId,
+		Long contentId,
+		String title,
+		String imageUrl,
+		int year,
+		int bookmarkCount,
+		List<GetContentDetailRes.GetOttSimpleRes> ottSimpleList
+	) {
+		public GetContentDetailRes toResponse() {
+			return new GetContentDetailRes(
+				contentId,
+				title,
+				imageUrl,
+				year,
+				bookmarkCount,
+				ottSimpleList
+			);
+		}
 	}
 
 	public List<GetSearchBookmarkContentRes> getSearchBookmarkContent(Long userId, String keyword){

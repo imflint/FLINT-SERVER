@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Set;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -20,10 +21,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import kr.flint.api.domain.content.dto.ContentSearchCondition;
 import kr.flint.api.domain.content.dto.ContentSearchCursor;
+import kr.flint.api.domain.content.dto.GetContentDetailRes;
+import kr.flint.api.domain.content.dto.GetContentListRes;
 import kr.flint.api.domain.content.dto.SearchGenre;
 import kr.flint.api.domain.content.repository.ContentQueryRepository;
+import kr.flint.api.domain.content.repository.ContentQueryRepository.BookmarkedContentRow;
 import kr.flint.api.domain.content.repository.ContentQueryRepository.ContentSearchRow;
 import kr.flint.api.domain.search.dto.response.GetContentSearchRes;
+import kr.flint.bookmark.service.BookmarkQueryService;
 import kr.flint.content.domain.MediaType;
 import kr.flint.ott.service.OttService;
 import kr.flint.shared.dto.PaginationResponse;
@@ -38,8 +43,121 @@ class ContentQueryFacadeTest {
 	@Mock
 	private ContentQueryRepository contentQueryRepository;
 
+	@Mock
+	private BookmarkQueryService bookmarkQueryService;
+
 	@InjectMocks
 	private ContentQueryFacade contentQueryFacade;
+
+	@Nested
+	@DisplayName("getUserBookmarkedContentList")
+	class GetUserBookmarkedContentList {
+
+		@Test
+		@DisplayName("로그인한 사용자의 콘텐츠 북마크 여부를 함께 반환한다")
+		void returnsCurrentUserBookmarkState() {
+			// given
+			List<GetContentDetailRes> contents = List.of(
+				content(1L, "첫 번째"),
+				content(2L, "두 번째")
+			);
+			when(contentQueryRepository.getContentDetailList(10L))
+				.thenReturn(contents);
+			when(bookmarkQueryService.getBookmarkedContentIdSet(20L, List.of(1L, 2L)))
+				.thenReturn(Set.of(2L));
+
+			// when
+			GetContentListRes response =
+				contentQueryFacade.getUserBookmarkedContentList(20L, 10L);
+
+			// then
+			assertThat(response.totalCount()).isEqualTo(2);
+			assertThat(response.contents())
+				.extracting(GetContentListRes.Content::isBookmarked)
+				.containsExactly(false, true);
+			verify(contentQueryRepository).getContentDetailList(10L);
+			verify(bookmarkQueryService).getBookmarkedContentIdSet(20L, List.of(1L, 2L));
+		}
+
+		@Test
+		@DisplayName("대상 사용자의 북마크 콘텐츠가 없으면 북마크 여부 조회를 생략한다")
+		void skipsBookmarkStateLookupWhenEmpty() {
+			// given
+			when(contentQueryRepository.getContentDetailList(10L))
+				.thenReturn(List.of());
+
+			// when
+			GetContentListRes response =
+				contentQueryFacade.getUserBookmarkedContentList(20L, 10L);
+
+			// then
+			assertThat(response.totalCount()).isZero();
+			assertThat(response.contents()).isEmpty();
+			verify(contentQueryRepository).getContentDetailList(10L);
+			verifyNoInteractions(bookmarkQueryService);
+		}
+
+		private GetContentDetailRes content(Long id, String title) {
+			return new GetContentDetailRes(
+				id,
+				title,
+				"poster.jpg",
+				2026,
+				5,
+				List.of()
+			);
+		}
+	}
+
+	@Nested
+	@DisplayName("getBookmarkedContentList")
+	class GetBookmarkedContentList {
+
+		@Test
+		@DisplayName("size 초과 결과로 다음 커서를 만든다")
+		void paginatesBookmarkedContents() {
+			// given
+			BookmarkedContentRow first = row(30L, 1L, "첫 번째");
+			BookmarkedContentRow second = row(20L, 2L, "두 번째");
+			BookmarkedContentRow third = row(10L, 3L, "세 번째");
+			when(contentQueryRepository.getBookmarkedContentRows(1L, null, 3))
+				.thenReturn(List.of(first, second, third));
+
+			// when
+			PaginationResponse<GetContentDetailRes> response =
+				contentQueryFacade.getBookmarkedContentList(1L, null, 2);
+
+			// then
+			assertThat(response.data())
+				.extracting(GetContentDetailRes::title)
+				.containsExactly("첫 번째", "두 번째");
+			assertThat(response.meta().returned()).isEqualTo(2);
+			assertThat(response.meta().nextCursor()).isEqualTo("20");
+			verify(contentQueryRepository).getBookmarkedContentRows(1L, null, 3);
+		}
+
+		@Test
+		@DisplayName("cursor와 size를 조회 조건으로 전달한다")
+		void passesCursorAndSize() {
+			// when
+			contentQueryFacade.getBookmarkedContentList(1L, 20L, 10);
+
+			// then
+			verify(contentQueryRepository).getBookmarkedContentRows(1L, 20L, 11);
+		}
+
+		private BookmarkedContentRow row(Long bookmarkId, Long contentId, String title) {
+			return new BookmarkedContentRow(
+				bookmarkId,
+				contentId,
+				title,
+				"poster.jpg",
+				2026,
+				5,
+				List.of()
+			);
+		}
+	}
 
 	@Nested
 	@DisplayName("getContentSearchList")
@@ -85,30 +203,6 @@ class ContentQueryFacadeTest {
 			assertThatThrownBy(() -> contentQueryFacade.getContentSearchList(null, null, null, "invalid", 20))
 				.isInstanceOf(GeneralException.class)
 				.hasMessageContaining("cursor 형식이 올바르지 않습니다.");
-
-			// then
-			verifyNoInteractions(contentQueryRepository);
-		}
-
-		@Test
-		@DisplayName("size가 1보다 작으면 검색하지 않고 예외를 던진다")
-		void rejectsInvalidSize() {
-			// when
-			assertThatThrownBy(() -> contentQueryFacade.getContentSearchList(null, null, null, null, 0))
-				.isInstanceOf(GeneralException.class)
-				.hasMessageContaining("size는 1 이상이어야 합니다.");
-
-			// then
-			verifyNoInteractions(contentQueryRepository);
-		}
-
-		@Test
-		@DisplayName("size가 최대값보다 크면 검색하지 않고 예외를 던진다")
-		void rejectsTooLargeSize() {
-			// when
-			assertThatThrownBy(() -> contentQueryFacade.getContentSearchList(null, null, null, null, 51))
-				.isInstanceOf(GeneralException.class)
-				.hasMessageContaining("size는 50 이하여야 합니다.");
 
 			// then
 			verifyNoInteractions(contentQueryRepository);

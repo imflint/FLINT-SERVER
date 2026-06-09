@@ -20,7 +20,16 @@ public interface ContentBookmarkRepository extends JpaRepository<ContentBookmark
 
 	int countByUserId(Long userId);
 
-	List<ContentBookmark> findAllByUserId(Long userId);
+	@Query("""
+		select cb.contentId
+		from ContentBookmark cb
+		where cb.userId = :userId
+			and cb.contentId in :contentIds
+	""")
+	List<Long> findContentIdsByUserIdAndContentIdIn(
+		@Param("userId") Long userId,
+		@Param("contentIds") List<Long> contentIds
+	);
 
 	void deleteAllByUserId(Long userId);
 

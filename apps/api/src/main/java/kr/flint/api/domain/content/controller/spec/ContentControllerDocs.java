@@ -14,10 +14,11 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Min;
-import kr.flint.api.domain.content.dto.GetContentListRes;
+import kr.flint.api.domain.content.dto.GetContentDetailRes;
 import kr.flint.api.domain.content.dto.GetOttListRes;
 import kr.flint.api.domain.content.dto.SearchGenre;
 import kr.flint.content.domain.MediaType;
+import kr.flint.shared.dto.PaginationResponse;
 import kr.flint.shared.dto.response.SuccessResponse;
 import kr.flint.shared.exception.ProblemDetail;
 
@@ -44,12 +45,25 @@ public interface ContentControllerDocs {
 
 	@Operation(
 		summary = "북마크한 콘텐츠 목록 조회 - 재민",
-		description = "현재 로그인한 사용자가 북마크한 콘텐츠 목록을 조회합니다."
+		description = "현재 로그인한 사용자가 북마크한 콘텐츠 목록을 북마크 최신순으로 cursor 페이지네이션 조회합니다."
 	)
 	@ApiResponses({
-		@ApiResponse(responseCode = "200", description = "조회 성공", useReturnTypeSchema = true)
+		@ApiResponse(responseCode = "200", description = "조회 성공", useReturnTypeSchema = true),
+		@ApiResponse(
+			responseCode = "400",
+			description = "size가 허용 범위를 벗어난 경우",
+			content = @Content(schema = @Schema(implementation = ProblemDetail.class))
+		)
 	})
-	ResponseEntity<?> getBookmarkContent(Long userId);
+	ResponseEntity<SuccessResponse<PaginationResponse<GetContentDetailRes>>> getBookmarkContent(
+		@Parameter(hidden = true)
+		Long userId,
+		@Parameter(description = "이전 응답의 nextCursor. 첫 페이지는 미입력", example = "801473411402740986")
+		Long cursor,
+		@Parameter(description = "페이지당 결과 수 (1~50, 기본 10)", example = "10")
+		@Min(value = 1, message = "size는 1 이상이어야 합니다.")
+		int size
+	);
 
 	@Operation(
 		summary = "콘텐츠 검색 - 재민",

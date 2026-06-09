@@ -1,12 +1,9 @@
 package kr.flint.api.domain.user.controller;
 
-import java.util.List;
-
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
-import kr.flint.api.domain.content.dto.GetContentDetailRes;
 import kr.flint.api.domain.content.dto.GetContentListRes;
 import kr.flint.api.domain.content.service.ContentQueryFacade;
 import kr.flint.api.domain.user.controller.spec.UserControllerDocs;
@@ -167,10 +164,12 @@ public class UserController implements UserControllerDocs {
 	@Override
 	@GetMapping("/{userId}/bookmarked-contents")
 	public ResponseEntity<SuccessResponse<GetContentListRes>> getUserBookmarkedContents(
+		@CurrentUser Long currentUserId,
 		@PathVariable Long userId
 	){
-		List<GetContentDetailRes> getContentDetailResList = contentQueryFacade.getContentDetailList(userId);
-		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, GetContentListRes.from(getContentDetailResList)));
+		GetContentListRes response =
+			contentQueryFacade.getUserBookmarkedContentList(currentUserId, userId);
+		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, response));
 	}
 
 }
