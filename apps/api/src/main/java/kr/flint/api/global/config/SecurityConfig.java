@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -28,19 +29,10 @@ public class SecurityConfig {
     private final JwtExceptionFilter jwtExceptionFilter;
     private final DailyVisitorActivityFilter dailyVisitorActivityFilter;
 
-    private static final String[] PUBLIC_ENDPOINTS = {
+    private static final String[] PUBLIC_COMMON_ENDPOINTS = {
             "/swagger-ui/**",
             "/v3/api-docs/**",
-            "/api/v1/auth/social/verify",
-            "/api/v1/auth/signup",
-            "/api/v1/auth/refresh",
-            "/api/v1/terms",
-            "/api/v1/terms/**",
-            "/api/v1/users/nickname/check",
-            "/actuator/**",
-			"/api/v1/search/**",
-			"api/v1/contents/search/**",
-			"/api/v1/**"
+            "/actuator/**"
     };
 
     @Bean
@@ -51,8 +43,28 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
-                .anyRequest().authenticated())
+                    .requestMatchers(PUBLIC_COMMON_ENDPOINTS).permitAll()
+                    .requestMatchers(HttpMethod.POST,
+                        "/api/v1/auth/social/verify",
+                        "/api/v1/auth/signup",
+                        "/api/v1/auth/refresh",
+                        "/api/v1/auth/dev/login"
+                    ).permitAll()
+                    .requestMatchers(HttpMethod.GET,
+                        "/api/v1/terms",
+                        "/api/v1/terms/**",
+                        "/api/v1/users/nickname/check",
+                        "/api/v1/users/{userId}",
+                        "/api/v1/users/{userId}/keywords",
+                        "/api/v1/users/{userId}/collections",
+                        "/api/v1/users/{userId}/bookmarked-collections",
+                        "/api/v1/collections",
+                        "/api/v1/bookmarks/{collectionId}",
+                        "/api/v1/contents/search",
+                        "/api/v1/search/contents",
+                        "/api/v1/home/popular-collections"
+                    ).permitAll()
+                    .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(dailyVisitorActivityFilter, JwtAuthenticationFilter.class)
                 .addFilterBefore(jwtExceptionFilter, JwtAuthenticationFilter.class)
