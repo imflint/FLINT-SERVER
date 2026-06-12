@@ -112,7 +112,7 @@ public class UserController implements UserControllerDocs {
     @Override
     @GetMapping("/{userId}/collections")
     public ResponseEntity<SuccessResponse<UserCollectionsRes>> getUserCollections(
-            @CurrentUser Long currentUserId,
+            @CurrentUser(required = false) Long currentUserId,
             @PathVariable Long userId
     ) {
         return ResponseEntity.ok(
@@ -123,7 +123,7 @@ public class UserController implements UserControllerDocs {
     @Override
     @GetMapping("/{userId}/bookmarked-collections")
     public ResponseEntity<SuccessResponse<UserCollectionsRes>> getUserBookmarkedCollections(
-            @CurrentUser Long currentUserId,
+            @CurrentUser(required = false) Long currentUserId,
             @PathVariable Long userId
     ) {
         return ResponseEntity.ok(

@@ -140,7 +140,7 @@ public interface UserControllerDocs {
     );
 
     @Operation(summary = "사용자 컬렉션 조회 - 호주",
-               description = "특정 사용자가 생성한 공개 컬렉션을 조회합니다. 본인의 북마크 여부가 포함")
+               description = "특정 사용자가 생성한 공개 컬렉션을 조회합니다. 로그인한 경우 본인의 북마크 여부가 포함됩니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "컬렉션 조회 성공", useReturnTypeSchema = true)
     })
@@ -151,7 +151,7 @@ public interface UserControllerDocs {
     );
 
     @Operation(summary = "사용자 북마크 컬렉션 조회 - 호주",
-               description = "특정 사용자가 북마크한 공개 컬렉션을 조회합니다. 본인의 북마크 여부가 포함")
+               description = "특정 사용자가 북마크한 공개 컬렉션을 조회합니다. 로그인한 경우 본인의 북마크 여부가 포함됩니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "북마크 컬렉션 조회 성공", useReturnTypeSchema = true)
     })
