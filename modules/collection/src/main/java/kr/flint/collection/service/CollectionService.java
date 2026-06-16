@@ -17,6 +17,7 @@ import kr.flint.collection.domain.CollectionContentImage;
 import kr.flint.collection.domain.CollectionReport;
 import kr.flint.collection.domain.ReportReason;
 import kr.flint.collection.dto.CollectionCreateCommand;
+import kr.flint.collection.dto.CollectionCreateCommand.ContentInput;
 import kr.flint.collection.dto.CollectionUpdateCommand;
 import kr.flint.collection.dto.ReportCollectionCommand;
 import kr.flint.collection.event.CollectionContentAddedEvent;
@@ -54,14 +55,7 @@ public class CollectionService {
 
         Collection savedCollection = collectionRepository.save(newCollection);
 
-        List<CollectionContent> collectionContentList = command.contents().stream()
-            .map(content -> CollectionContent.create(
-                savedCollection,
-                content.contentId(),
-                content.isSpoiler(),
-                content.reason()
-            ))
-            .toList();
+        List<CollectionContent> collectionContentList = createCollectionContents(savedCollection, command.contents());
 
         collectionContentRepository.saveAll(collectionContentList);
         saveContentImages(collectionContentList, command.contents());
@@ -81,8 +75,7 @@ public class CollectionService {
         final CollectionUpdateCommand command,
         final String coverImageUrl
     ) {
-        Collection collection = collectionRepository.findById(collectionId)
-            .orElseThrow(() -> new CollectionException(CollectionErrorCode.COLLECTION_NOT_FOUND));
+        Collection collection = getActiveCollectionById(collectionId);
 
         if (!collection.isOwnedBy(userId)) {
             throw new CollectionException(CollectionErrorCode.COLLECTION_FORBIDDEN);
@@ -97,8 +90,7 @@ public class CollectionService {
         final CollectionUpdateCommand command,
         final String coverImageUrl
     ) {
-        Collection collection = collectionRepository.findById(collectionId)
-            .orElseThrow(() -> new CollectionException(CollectionErrorCode.COLLECTION_NOT_FOUND));
+        Collection collection = getActiveCollectionById(collectionId);
 
         replaceCollection(collection, collectionId, command, coverImageUrl);
     }
@@ -114,7 +106,7 @@ public class CollectionService {
         // 작품 리스트 replace 전략 (단순/원자적). 이벤트는 실제 add/remove diff에 대해서만 발행.
         Set<Long> existingContentIds = new HashSet<>(collectionContentRepository.findContentIdsByCollectionId(collectionId));
         Set<Long> newContentIds = command.contents().stream()
-            .map(CollectionCreateCommand.ContentInput::contentId)
+            .map(ContentInput::contentId)
             .collect(java.util.stream.Collectors.toSet());
 
         collectionContentImageRepository.deleteAllByCollectionContentCollection(collection);
@@ -122,14 +114,7 @@ public class CollectionService {
         // delete를 즉시 DB에 반영해야 직후 saveAll 시 unique(collection_id, content_id) 충돌이 안 난다.
         collectionContentRepository.flush();
 
-        List<CollectionContent> rebuilt = command.contents().stream()
-            .map(c -> CollectionContent.create(
-                collection,
-                c.contentId(),
-                c.isSpoiler(),
-                c.reason()
-            ))
-            .toList();
+        List<CollectionContent> rebuilt = createCollectionContents(collection, command.contents());
         collectionContentRepository.saveAll(rebuilt);
         saveContentImages(rebuilt, command.contents());
 
@@ -148,7 +133,7 @@ public class CollectionService {
 
     private void saveContentImages(
         List<CollectionContent> collectionContents,
-        List<CollectionCreateCommand.ContentInput> contentInputs
+        List<ContentInput> contentInputs
     ) {
         List<CollectionContentImage> images = new ArrayList<>();
         for (int contentIndex = 0; contentIndex < collectionContents.size(); contentIndex++) {
@@ -168,9 +153,35 @@ public class CollectionService {
         }
     }
 
+    private List<CollectionContent> createCollectionContents(
+        Collection collection,
+        List<ContentInput> contentInputs
+    ) {
+        List<CollectionContent> collectionContents = new ArrayList<>();
+        for (int sortOrder = 0; sortOrder < contentInputs.size(); sortOrder++) {
+            ContentInput content = contentInputs.get(sortOrder);
+            collectionContents.add(CollectionContent.create(
+                collection,
+                content.contentId(),
+                content.isSpoiler(),
+                content.reason(),
+                sortOrder
+            ));
+        }
+        return collectionContents;
+    }
+
     public Collection getCollectionById(final Long collectionId) {
         return collectionRepository.findById(collectionId)
             .orElseThrow(() -> new CollectionException(CollectionErrorCode.COLLECTION_NOT_FOUND));
+    }
+
+    public Collection getActiveCollectionById(final Long collectionId) {
+        Collection collection = getCollectionById(collectionId);
+        if (collection.isDeleted()) {
+            throw new CollectionException(CollectionErrorCode.COLLECTION_NOT_FOUND);
+        }
+        return collection;
     }
 
     public CollectionReport getReportById(final Long reportId) {
@@ -219,7 +230,16 @@ public class CollectionService {
 
     @Transactional
     public void deleteByAdmin(Long collectionId) {
-        getCollectionById(collectionId).deleteByAdmin();
+        getCollectionById(collectionId).delete(LocalDateTime.now());
+    }
+
+    @Transactional
+    public void deleteCollection(final Long userId, final Long collectionId) {
+        Collection collection = getCollectionById(collectionId);
+        if (!collection.isOwnedBy(userId)) {
+            throw new CollectionException(CollectionErrorCode.COLLECTION_FORBIDDEN);
+        }
+        collection.delete(LocalDateTime.now());
     }
 
     @Transactional
@@ -236,7 +256,7 @@ public class CollectionService {
 
     @Transactional
     public void saveRecentCollection(final Long userId, final Long collectionId) {
-        getCollectionById(collectionId);
+        getActiveCollectionById(collectionId);
         recentViewedCollectionRepository.upsertRecentViewedCollection(
             TSID.Factory.getTsid().toLong(),
             userId,

@@ -37,12 +37,13 @@ public class AdminCollectionController implements AdminCollectionControllerDocs 
         @RequestParam(required = false) String keyword,
         @RequestParam(required = false) AdminCollectionVisibility visibility,
         @RequestParam(required = false) CollectionModerationStatus moderationStatus,
+        @RequestParam(required = false) Boolean deleted,
         @RequestParam(required = false) Integer page,
         @RequestParam(required = false) Integer size
     ) {
         return ResponseEntity.ok(SuccessResponse.of(
             SuccessCode.SUCCESS_FETCH,
-            adminCollectionFacade.getCollections(adminId, keyword, visibility, moderationStatus, page, size)
+            adminCollectionFacade.getCollections(adminId, keyword, visibility, moderationStatus, deleted, page, size)
         ));
     }
 

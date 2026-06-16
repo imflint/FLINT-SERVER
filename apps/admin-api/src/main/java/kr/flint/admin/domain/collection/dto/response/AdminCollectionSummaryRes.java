@@ -13,6 +13,7 @@ public record AdminCollectionSummaryRes(
     String imageUrl,
     boolean isPublic,
     CollectionModerationStatus moderationStatus,
+    LocalDateTime deletedAt,
     int bookmarkCount,
     Long ownerId,
     String ownerNickname,

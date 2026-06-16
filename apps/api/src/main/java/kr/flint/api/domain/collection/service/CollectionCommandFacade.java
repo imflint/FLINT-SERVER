@@ -42,6 +42,12 @@ public class CollectionCommandFacade {
     }
 
     @Transactional
+    public void deleteCollection(final Long userId, final Long collectionId) {
+        userService.getById(userId);
+        collectionService.deleteCollection(userId, collectionId);
+    }
+
+    @Transactional
     public Long reportCollection(final Long reporterId, final Long collectionId, final ReportCollectionReq request) {
         userService.getById(reporterId);
         return collectionService.reportCollection(reporterId, collectionId, request.toCommand());

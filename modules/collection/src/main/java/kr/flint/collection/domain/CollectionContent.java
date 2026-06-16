@@ -19,6 +19,10 @@ import lombok.NoArgsConstructor;
 		@UniqueConstraint(
 			name = "uk_collection_content",
 			columnNames = {"collection_id", "content_id"}
+		),
+		@UniqueConstraint(
+			name = "uk_collection_content_sort_order",
+			columnNames = {"collection_id", "sort_order"}
 		)
 	}
 )
@@ -40,12 +44,16 @@ public class CollectionContent extends Base {
 	@Column(nullable = false, columnDefinition = "TEXT")
 	private String reason;
 
+	@Column(name = "sort_order", nullable = false)
+	private int sortOrder;
+
 	public static CollectionContent create(
 		Collection collection,
 		Long contentId,
 		boolean isSpoiler,
-		String reason
+		String reason,
+		int sortOrder
 	) {
-		return new CollectionContent(collection, contentId, isSpoiler, reason);
+		return new CollectionContent(collection, contentId, isSpoiler, reason, sortOrder);
 	}
 }

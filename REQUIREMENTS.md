@@ -139,6 +139,7 @@ flint-api/
 
 **[입력]**
 
+- Authorization Header: Bearer {accessToken}
 - pathType (StoragePathType): 저장 경로 타입 (예: USER_PROFILE, COLLECTION_THUMBNAIL, COLLECTION_CONTENT)
 - extension (FileExtension): 파일 확장자 (예: JPG, JPEG, PNG)
 
@@ -146,6 +147,7 @@ flint-api/
 
 **[입력]**
 
+- Authorization Header: Bearer {accessToken}
 - items (Array): 발급할 URL 대상 목록 (1~20개)
 - items[].pathType (StoragePathType): 저장 경로 타입
 - items[].extension (FileExtension): 파일 확장자
@@ -434,7 +436,7 @@ flint-api/
 **[처리 로직]**
 
 1. Collection 엔티티 생성
-2. CollectionContent 엔티티 생성 (각 콘텐츠별)
+2. CollectionContent 엔티티 생성 (각 콘텐츠별, 요청 배열 순서를 sortOrder로 저장)
 3. CollectionContentImage 엔티티 생성 (작품별 커스텀 이미지, 요청 순서 유지)
 4. 컬렉션 키워드 분석 및 저장 (비동기)
 
@@ -481,7 +483,7 @@ flint-api/
 
 1. 컬렉션 정보 조회
 2. 작성자 정보 조회
-3. 포함된 콘텐츠 목록 조회 (position 순)
+3. 포함된 콘텐츠 목록 조회 (sortOrder 순)
 4. 요청자의 북마크 여부 확인
 5. **최근 본 컬렉션 기록 저장** (RecentViewedCollection upsert)
 
@@ -491,10 +493,32 @@ flint-api/
 - author: 작성자 정보
 - contents: 콘텐츠 목록
 - isBookmarked (Boolean): 북마크 여부
+- isPublic (Boolean): 공개 여부
 
 ---
 
-#### 3.3.4 최근 본 컬렉션 목록 조회
+#### 3.3.4 컬렉션 삭제
+
+`DELETE /collections/{collectionId}`
+
+**[입력]**
+
+- collectionId (Long, Path): 컬렉션 ID
+- Authorization Header: Bearer {accessToken}
+
+**[처리 로직]**
+
+1. 컬렉션 존재 여부 조회
+2. 작성자 권한 확인
+3. Collection.deletedAt 기록 (soft delete)
+
+**[응답]**
+
+- 삭제 성공 시 SUCCESS_DELETE
+
+---
+
+#### 3.3.5 최근 본 컬렉션 목록 조회
 
 `GET /collections/recent`
 
@@ -632,7 +656,25 @@ flint-api/
 
 ---
 
-#### 3.5.3 콘텐츠 검색 (TMDB)
+#### 3.5.3 북마크한 콘텐츠 개수 조회
+
+`GET /contents/bookmarks/count`
+
+**[입력]**
+
+- Authorization Header: Bearer {accessToken}
+
+**[처리 로직]**
+
+1. 사용자가 북마크한 전체 콘텐츠 수 조회
+
+**[응답]**
+
+- totalCount (Integer): 사용자가 북마크한 전체 콘텐츠 수
+
+---
+
+#### 3.5.4 콘텐츠 검색 (TMDB)
 
 `GET /contents/search`
 
@@ -772,7 +814,7 @@ flint-api/
 | content | Genre | genres | 장르 마스터 |
 | content | ContentGenre | content_genres | 콘텐츠-장르 매핑 |
 | collection | Collection | collections | 사용자 컬렉션 |
-| collection | CollectionContent | collection_contents | 컬렉션-콘텐츠 매핑 |
+| collection | CollectionContent | collection_contents | 컬렉션-콘텐츠 매핑 및 작품 순서 |
 | collection | CollectionContentImage | collection_content_images | 컬렉션 포함 콘텐츠별 커스텀 이미지 |
 | collection | RecentViewedCollection | recent_viewed_collections | 최근 조회 기록 |
 | bookmark | ContentBookmark | content_bookmarks | 콘텐츠 북마크 |
@@ -791,7 +833,7 @@ flint-api/
 |--------|-------------|
 | user_identities | (provider, provider_user_id) |
 | contents | (tmdb_id) |
-| collection_contents | (collection_id, content_id) |
+| collection_contents | (collection_id, content_id), (collection_id, sort_order) |
 | recent_viewed_collections | (user_id, collection_id) |
 | content_bookmarks | (user_id, content_id) |
 | collection_bookmarks | (user_id, collection_id) |
@@ -862,6 +904,7 @@ flint-api/
 | POST | /collections | 컬렉션 생성 | O |
 | GET | /collections | 탐색 목록 | X |
 | GET | /collections/{id} | 상세 조회 | O |
+| DELETE | /collections/{id} | 컬렉션 삭제 | O |
 | GET | /collections/recent | 최근 본 목록 | O |
 
 ### 6.4 북마크 관련
@@ -878,6 +921,7 @@ flint-api/
 |--------|----------|------|------|
 | GET | /contents/ott/{id} | OTT 목록 | O |
 | GET | /contents/bookmarks | 북마크 콘텐츠 | O |
+| GET | /contents/bookmarks/count | 북마크 콘텐츠 개수 | O |
 | GET | /contents/search | TMDB 검색 | X |
 
 ### 6.6 검색 관련
@@ -893,6 +937,7 @@ flint-api/
 | Method | Endpoint | 설명 | 인증 |
 |--------|----------|------|------|
 | GET | /home/recommended-collections | 추천 컬렉션 | O |
+| GET | /home/popular-collections | 인기 컬렉션 | X |
 
 ---
 

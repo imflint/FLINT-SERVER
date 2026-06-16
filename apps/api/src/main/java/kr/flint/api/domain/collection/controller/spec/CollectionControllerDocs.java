@@ -87,6 +87,34 @@ public interface CollectionControllerDocs {
 	);
 
 	@Operation(
+		summary = "컬렉션 삭제",
+		description = """
+			작성자가 컬렉션을 삭제합니다.
+
+			- 작성자(userId == collection.userId)만 호출 가능 — 그 외 요청은 403.
+			- 컬렉션은 물리 삭제하지 않고 deletedAt을 기록하는 soft delete 방식으로 삭제합니다.
+			"""
+	)
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "삭제 성공", useReturnTypeSchema = true),
+		@ApiResponse(
+			responseCode = "403",
+			description = "삭제 권한 없음 (작성자가 아님)",
+			content = @Content(schema = @Schema(implementation = ProblemDetail.class))
+		),
+		@ApiResponse(
+			responseCode = "404",
+			description = "존재하지 않는 컬렉션",
+			content = @Content(schema = @Schema(implementation = ProblemDetail.class))
+		)
+	})
+	ResponseEntity<SuccessResponse<Void>> deleteCollection(
+		Long userId,
+		@Parameter(description = "삭제할 컬렉션 ID", example = "800388257884431200")
+		Long collectionId
+	);
+
+	@Operation(
 		summary = "컬렉션 신고 - 재민",
 		description = """
 			부적절한 컬렉션을 신고합니다. 접수 시 운영자 Discord 채널로 즉시 알림이 전송됩니다.

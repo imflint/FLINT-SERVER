@@ -141,7 +141,8 @@ public class CollectionQueryRepository {
                 user.profileImage,
                 user.userRole.stringValue(),
 
-                collectionBookmark.id.isNotNull()
+                collectionBookmark.id.isNotNull(),
+                collection.isPublic
             ))
             .from(collection)
             .join(user).on(user.id.eq(collection.userId))
@@ -178,6 +179,7 @@ public class CollectionQueryRepository {
                     .and(contentBookmark.userId.eq(userId))
             )
             .where(collectionContent.collection.id.eq(collectionId))
+            .orderBy(collectionContent.sortOrder.asc())
             .fetch();
 
         if (contentRows.isEmpty()) {
@@ -255,7 +257,7 @@ public class CollectionQueryRepository {
                 .where(collectionContent.collection.id.in(collectionIds))
                 .orderBy(
                     collectionContent.collection.id.asc(),
-                    collectionContent.id.asc()
+                    collectionContent.sortOrder.asc()
                 )
                 .fetch();
 
@@ -377,7 +379,8 @@ public class CollectionQueryRepository {
         String authorProfileUrl,
         String userRole,
 
-        boolean isBookmarked
+        boolean isBookmarked,
+        boolean isPublic
     ){
         public GetCollectionDetailRes.Author toAuthor(){
             return new GetCollectionDetailRes.Author(authorId, authorName, authorProfileUrl, userRole);

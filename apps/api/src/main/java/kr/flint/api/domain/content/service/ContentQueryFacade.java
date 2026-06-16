@@ -11,6 +11,7 @@ import org.springframework.util.StringUtils;
 
 import kr.flint.api.domain.content.dto.ContentSearchCondition;
 import kr.flint.api.domain.content.dto.ContentSearchCursor;
+import kr.flint.api.domain.content.dto.GetBookmarkedContentCountRes;
 import kr.flint.api.domain.content.dto.GetContentDetailRes;
 import kr.flint.api.domain.content.dto.GetContentListRes;
 import kr.flint.api.domain.content.dto.SearchGenre;
@@ -78,6 +79,10 @@ public class ContentQueryFacade {
 			: null;
 
 		return PaginationResponse.ofCursor(data, nextCursor);
+	}
+
+	public GetBookmarkedContentCountRes getBookmarkedContentCount(final Long userId) {
+		return GetBookmarkedContentCountRes.from(bookmarkQueryService.getContentBookmarkCount(userId));
 	}
 
 	public PaginationResponse<GetContentSearchRes> getContentSearchList(

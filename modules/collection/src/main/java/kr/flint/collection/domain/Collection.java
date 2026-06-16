@@ -1,5 +1,7 @@
 package kr.flint.collection.domain;
 
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -40,6 +42,8 @@ public class Collection extends BaseTime {
     @Column(nullable = false, length = 16)
     private CollectionModerationStatus moderationStatus;
 
+    private LocalDateTime deletedAt;
+
     public static Collection create(String title, String description, String image, boolean isPublic, Long userId) {
         return Collection.builder()
             .title(title)
@@ -67,8 +71,14 @@ public class Collection extends BaseTime {
         this.moderationStatus = CollectionModerationStatus.HIDDEN;
     }
 
-    public void deleteByAdmin() {
-        this.moderationStatus = CollectionModerationStatus.DELETED;
+    public void delete(LocalDateTime deletedAt) {
+        if (this.deletedAt == null) {
+            this.deletedAt = deletedAt;
+        }
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
     }
 
     // TODO: 동시성 이슈 및 sync 체크

@@ -47,14 +47,15 @@ public class AdminCollectionFacade {
         String keyword,
         AdminCollectionVisibility visibility,
         CollectionModerationStatus moderationStatus,
+        Boolean deleted,
         Integer page,
         Integer size
     ) {
         adminAuthorizationService.validateAdmin(adminId);
         int safePage = normalizePage(page);
         int safeSize = normalizeSize(size);
-        List<Long> pageIds = queryRepository.findCollectionIds(keyword, visibility, moderationStatus, safePage, safeSize);
-        long totalElements = queryRepository.countCollections(keyword, visibility, moderationStatus);
+        List<Long> pageIds = queryRepository.findCollectionIds(keyword, visibility, moderationStatus, deleted, safePage, safeSize);
+        long totalElements = queryRepository.countCollections(keyword, visibility, moderationStatus, deleted);
 
         Map<Long, CollectionSummaryRow> rows = queryRepository.findCollectionSummaryRows(pageIds)
             .stream()
@@ -102,6 +103,7 @@ public class AdminCollectionFacade {
             resolveNullableImage(row.image()),
             row.isPublic(),
             row.moderationStatus(),
+            row.deletedAt(),
             row.bookmarkCount(),
             row.createdAt(),
             new AdminCollectionDetailRes.OwnerInfo(
@@ -121,6 +123,7 @@ public class AdminCollectionFacade {
             resolveNullableImage(row.image()),
             row.isPublic(),
             row.moderationStatus(),
+            row.deletedAt(),
             row.bookmarkCount(),
             row.ownerId(),
             row.ownerNickname(),

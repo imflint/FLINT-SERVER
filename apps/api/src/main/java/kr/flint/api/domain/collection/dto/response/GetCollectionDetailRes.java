@@ -21,14 +21,16 @@ public record GetCollectionDetailRes(
 	LocalDate createdAt,
 	@Schema(description = "북마크 여부", example = "true")
 	boolean isBookmarked,
+	@Schema(description = "공개 여부", example = "true")
+	boolean isPublic,
 
 	@Schema(description = "작성자 정보")
 	Author author,
 
-	@ArraySchema(schema = @Schema(implementation = Content.class))
+	@ArraySchema(schema = @Schema(implementation = GetCollectionDetailRes.Content.class))
 	List<Content> contents
 ) {
-	@Schema(description = "컬렉션 작성자")
+	@Schema(name = "CollectionDetailAuthor", description = "컬렉션 작성자")
 	public record Author(
 		@Schema(description = "사용자 ID", example = "123")
 		Long id,
@@ -40,7 +42,7 @@ public record GetCollectionDetailRes(
 		String userRole
 	){}
 
-	@Schema(description = "컬렉션 내 콘텐츠")
+	@Schema(name = "CollectionDetailContent", description = "컬렉션 내 콘텐츠")
 	public record Content(
 		@Schema(description = "콘텐츠 ID", example = "456")
 		Long id,

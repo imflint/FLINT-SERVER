@@ -57,19 +57,20 @@ class AdminCollectionFacadeTest {
     @DisplayName("컬렉션 목록은 offset 페이지와 필터를 적용해 조회")
     void getCollections() {
         LocalDateTime createdAt = LocalDateTime.now();
-        when(queryRepository.findCollectionIds("추천", AdminCollectionVisibility.PUBLIC, CollectionModerationStatus.VISIBLE, 1, 20))
+        when(queryRepository.findCollectionIds("추천", AdminCollectionVisibility.PUBLIC, CollectionModerationStatus.VISIBLE, false, 1, 20))
             .thenReturn(List.of(2L, 1L));
-        when(queryRepository.countCollections("추천", AdminCollectionVisibility.PUBLIC, CollectionModerationStatus.VISIBLE)).thenReturn(2L);
+        when(queryRepository.countCollections("추천", AdminCollectionVisibility.PUBLIC, CollectionModerationStatus.VISIBLE, false)).thenReturn(2L);
         when(queryRepository.findCollectionSummaryRows(List.of(2L, 1L))).thenReturn(List.of(
-            new CollectionSummaryRow(2L, "추천 컬렉션", "설명", "image.jpg", true, CollectionModerationStatus.VISIBLE, 3, 10L, "운영자", 2L, createdAt),
-            new CollectionSummaryRow(1L, "지난 컬렉션", "설명", null, true, CollectionModerationStatus.VISIBLE, 1, 11L, "작성자", 1L, createdAt)
+            new CollectionSummaryRow(2L, "추천 컬렉션", "설명", "image.jpg", true, CollectionModerationStatus.VISIBLE, null, 3, 10L, "운영자", 2L, createdAt),
+            new CollectionSummaryRow(1L, "지난 컬렉션", "설명", null, true, CollectionModerationStatus.VISIBLE, null, 1, 11L, "작성자", 1L, createdAt)
         ));
         when(cloudFrontUrlProvider.resolveUrl("image.jpg")).thenReturn("https://cdn/image.jpg");
 
-        var result = facade.getCollections(99L, "추천", AdminCollectionVisibility.PUBLIC, CollectionModerationStatus.VISIBLE, null, null);
+        var result = facade.getCollections(99L, "추천", AdminCollectionVisibility.PUBLIC, CollectionModerationStatus.VISIBLE, false, null, null);
 
         assertThat(result.data()).hasSize(2);
         assertThat(result.data().getFirst().collectionId()).isEqualTo(2L);
+        assertThat(result.data().getFirst().deletedAt()).isNull();
         assertThat(result.data().getFirst().contentCount()).isEqualTo(2);
         assertThat(result.meta().page()).isEqualTo(1);
         assertThat(result.meta().size()).isEqualTo(20);
@@ -90,7 +91,7 @@ class AdminCollectionFacadeTest {
         );
         when(contentService.getContentById(1L)).thenReturn(content);
         when(queryRepository.findCollectionDetailRow(10L)).thenReturn(
-            new CollectionDetailRow(10L, "새 컬렉션", "새 설명", "poster.jpg", true, CollectionModerationStatus.VISIBLE, 0, createdAt, 20L, "작성자", null)
+            new CollectionDetailRow(10L, "새 컬렉션", "새 설명", "poster.jpg", true, CollectionModerationStatus.VISIBLE, null, 0, createdAt, 20L, "작성자", null)
         );
         when(queryRepository.findCollectionContentRows(10L)).thenReturn(List.of(
             new CollectionContentRow(1L, "인셉션", "poster.jpg", List.of("custom.jpg"), false, "좋아요", 2010, MediaType.MOVIE)

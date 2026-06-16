@@ -15,6 +15,7 @@ public record AdminCollectionDetailRes(
     String imageUrl,
     boolean isPublic,
     CollectionModerationStatus moderationStatus,
+    LocalDateTime deletedAt,
     int bookmarkCount,
     LocalDateTime createdAt,
     OwnerInfo owner,

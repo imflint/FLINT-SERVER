@@ -42,7 +42,10 @@ public class UserCollectionRepositoryCustomImpl implements UserCollectionReposit
             ))
             .from(collection)
             .join(user).on(collection.userId.eq(user.id))
-            .where(collection.userId.eq(userId))
+	            .where(
+	                collection.userId.eq(userId),
+	                isVisibleCollection()
+	            )
             .orderBy(collection.id.desc())
             .fetch();
     }
@@ -93,7 +96,10 @@ public class UserCollectionRepositoryCustomImpl implements UserCollectionReposit
             ))
             .from(collection)
             .join(user).on(collection.userId.eq(user.id))
-            .where(collection.id.in(collectionIds))
+	            .where(
+	                collection.id.in(collectionIds),
+	                isVisibleCollection()
+	            )
             .orderBy(collection.id.desc())
             .fetch();
     }
@@ -144,7 +150,10 @@ public class UserCollectionRepositoryCustomImpl implements UserCollectionReposit
                     .and(collectionContentImage.sortOrder.eq(0))
             )
             .where(collectionContent.collection.id.in(collectionIds))
-            .orderBy(collectionContent.id.asc())
+            .orderBy(
+                collectionContent.collection.id.asc(),
+                collectionContent.sortOrder.asc()
+            )
             .fetch();
     }
 }

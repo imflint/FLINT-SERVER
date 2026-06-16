@@ -92,6 +92,7 @@ public class AdminCollectionReportQueryRepository {
                 collection.image,
                 collection.isPublic,
                 collection.moderationStatus,
+                collection.deletedAt,
                 collection.bookmarkCount,
                 collection.createdAt,
                 reporter.id,
@@ -123,7 +124,7 @@ public class AdminCollectionReportQueryRepository {
             .from(collectionContent)
             .join(content).on(content.id.eq(collectionContent.contentId))
             .where(collectionContent.collection.id.eq(collectionId))
-            .orderBy(collectionContent.id.asc())
+            .orderBy(collectionContent.sortOrder.asc())
             .fetch();
 
         if (contentRows.isEmpty()) {
@@ -197,6 +198,7 @@ public class AdminCollectionReportQueryRepository {
         String collectionImage,
         boolean isPublic,
         CollectionModerationStatus moderationStatus,
+        LocalDateTime deletedAt,
         int bookmarkCount,
         LocalDateTime collectionCreatedAt,
         Long reporterId,
