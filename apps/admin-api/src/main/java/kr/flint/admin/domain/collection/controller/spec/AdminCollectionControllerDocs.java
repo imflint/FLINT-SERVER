@@ -32,6 +32,8 @@ public interface AdminCollectionControllerDocs {
         String keyword,
         AdminCollectionVisibility visibility,
         CollectionModerationStatus moderationStatus,
+        @Parameter(description = "삭제 여부 필터. true면 삭제된 컬렉션, false면 삭제되지 않은 컬렉션만 조회합니다.")
+        Boolean deleted,
         Integer page,
         Integer size
     );

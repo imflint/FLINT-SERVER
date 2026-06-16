@@ -34,6 +34,7 @@ public class AdminCollectionQueryRepository {
         String keyword,
         AdminCollectionVisibility visibility,
         CollectionModerationStatus moderationStatus,
+        Boolean deleted,
         int page,
         int size
     ) {
@@ -43,7 +44,8 @@ public class AdminCollectionQueryRepository {
             .where(
                 keywordCondition(keyword),
                 visibilityCondition(visibility),
-                moderationStatusCondition(moderationStatus)
+                moderationStatusCondition(moderationStatus),
+                deletedCondition(deleted)
             )
             .orderBy(collection.id.desc())
             .offset((long) (page - 1) * size)
@@ -54,7 +56,8 @@ public class AdminCollectionQueryRepository {
     public long countCollections(
         String keyword,
         AdminCollectionVisibility visibility,
-        CollectionModerationStatus moderationStatus
+        CollectionModerationStatus moderationStatus,
+        Boolean deleted
     ) {
         Long count = queryFactory
             .select(collection.id.count())
@@ -62,7 +65,8 @@ public class AdminCollectionQueryRepository {
             .where(
                 keywordCondition(keyword),
                 visibilityCondition(visibility),
-                moderationStatusCondition(moderationStatus)
+                moderationStatusCondition(moderationStatus),
+                deletedCondition(deleted)
             )
             .fetchOne();
         return count != null ? count : 0L;
@@ -81,6 +85,7 @@ public class AdminCollectionQueryRepository {
                 collection.image,
                 collection.isPublic,
                 collection.moderationStatus,
+                collection.deletedAt,
                 collection.bookmarkCount,
                 user.id,
                 user.nickname,
@@ -98,6 +103,7 @@ public class AdminCollectionQueryRepository {
                 collection.image,
                 collection.isPublic,
                 collection.moderationStatus,
+                collection.deletedAt,
                 collection.bookmarkCount,
                 user.id,
                 user.nickname,
@@ -116,6 +122,7 @@ public class AdminCollectionQueryRepository {
                 collection.image,
                 collection.isPublic,
                 collection.moderationStatus,
+                collection.deletedAt,
                 collection.bookmarkCount,
                 collection.createdAt,
                 user.id,
@@ -202,6 +209,13 @@ public class AdminCollectionQueryRepository {
         return moderationStatus == null ? null : collection.moderationStatus.eq(moderationStatus);
     }
 
+    private BooleanExpression deletedCondition(Boolean deleted) {
+        if (deleted == null) {
+            return null;
+        }
+        return deleted ? collection.deletedAt.isNotNull() : collection.deletedAt.isNull();
+    }
+
     public record CollectionSummaryRow(
         Long collectionId,
         String title,
@@ -209,6 +223,7 @@ public class AdminCollectionQueryRepository {
         String image,
         boolean isPublic,
         CollectionModerationStatus moderationStatus,
+        LocalDateTime deletedAt,
         int bookmarkCount,
         Long ownerId,
         String ownerNickname,
@@ -224,6 +239,7 @@ public class AdminCollectionQueryRepository {
         String image,
         boolean isPublic,
         CollectionModerationStatus moderationStatus,
+        LocalDateTime deletedAt,
         int bookmarkCount,
         LocalDateTime createdAt,
         Long ownerId,

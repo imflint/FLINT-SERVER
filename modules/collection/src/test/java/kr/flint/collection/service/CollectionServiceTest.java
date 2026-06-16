@@ -151,7 +151,7 @@ class CollectionServiceTest {
         }
 
         @Test
-        @DisplayName("DELETE 조치는 컬렉션을 삭제 상태로 변경")
+        @DisplayName("DELETE 조치는 컬렉션 삭제 시각을 기록")
         void deleteCollection() {
             Collection collection = Collection.create("제목", "설명", "image.jpg", true, 1L);
             ReflectionTestUtils.setField(collection, "id", 10L);
@@ -159,7 +159,8 @@ class CollectionServiceTest {
 
             collectionService.deleteByAdmin(10L);
 
-            assertThat(collection.getModerationStatus()).isEqualTo(CollectionModerationStatus.DELETED);
+            assertThat(collection.getDeletedAt()).isNotNull();
+            assertThat(collection.getModerationStatus()).isEqualTo(CollectionModerationStatus.VISIBLE);
         }
 
         @Test
@@ -191,6 +192,51 @@ class CollectionServiceTest {
                 .containsExactly(tuple(2L, 0));
         }
     }
+
+        @Nested
+        @DisplayName("deleteCollection")
+        class DeleteCollection {
+
+            @Test
+            @DisplayName("작성자는 컬렉션을 soft delete 할 수 있음")
+            void ownerDeletesCollection() {
+                Collection collection = Collection.create("제목", "설명", "image.jpg", true, 1L);
+                ReflectionTestUtils.setField(collection, "id", 10L);
+                when(collectionRepository.findById(10L)).thenReturn(Optional.of(collection));
+
+                collectionService.deleteCollection(1L, 10L);
+
+                assertThat(collection.getDeletedAt()).isNotNull();
+            }
+
+            @Test
+            @DisplayName("작성자가 아니면 컬렉션을 삭제할 수 없음")
+            void forbidden() {
+                Collection collection = Collection.create("제목", "설명", "image.jpg", true, 1L);
+                ReflectionTestUtils.setField(collection, "id", 10L);
+                when(collectionRepository.findById(10L)).thenReturn(Optional.of(collection));
+
+                assertThatThrownBy(() -> collectionService.deleteCollection(2L, 10L))
+                    .isInstanceOf(CollectionException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(CollectionErrorCode.COLLECTION_FORBIDDEN);
+                assertThat(collection.getDeletedAt()).isNull();
+            }
+
+            @Test
+            @DisplayName("이미 삭제된 컬렉션은 기존 삭제 시각을 유지")
+            void preserveDeletedAt() {
+                LocalDateTime deletedAt = LocalDateTime.of(2026, 1, 1, 0, 0);
+                Collection collection = Collection.create("제목", "설명", "image.jpg", true, 1L);
+                ReflectionTestUtils.setField(collection, "id", 10L);
+                ReflectionTestUtils.setField(collection, "deletedAt", deletedAt);
+                when(collectionRepository.findById(10L)).thenReturn(Optional.of(collection));
+
+                collectionService.deleteCollection(1L, 10L);
+
+                assertThat(collection.getDeletedAt()).isEqualTo(deletedAt);
+            }
+        }
 
     @Nested
     @DisplayName("saveRecentCollection")

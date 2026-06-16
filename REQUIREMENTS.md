@@ -497,7 +497,28 @@ flint-api/
 
 ---
 
-#### 3.3.4 최근 본 컬렉션 목록 조회
+#### 3.3.4 컬렉션 삭제
+
+`DELETE /collections/{collectionId}`
+
+**[입력]**
+
+- collectionId (Long, Path): 컬렉션 ID
+- Authorization Header: Bearer {accessToken}
+
+**[처리 로직]**
+
+1. 컬렉션 존재 여부 조회
+2. 작성자 권한 확인
+3. Collection.deletedAt 기록 (soft delete)
+
+**[응답]**
+
+- 삭제 성공 시 SUCCESS_DELETE
+
+---
+
+#### 3.3.5 최근 본 컬렉션 목록 조회
 
 `GET /collections/recent`
 
@@ -883,6 +904,7 @@ flint-api/
 | POST | /collections | 컬렉션 생성 | O |
 | GET | /collections | 탐색 목록 | X |
 | GET | /collections/{id} | 상세 조회 | O |
+| DELETE | /collections/{id} | 컬렉션 삭제 | O |
 | GET | /collections/recent | 최근 본 목록 | O |
 
 ### 6.4 북마크 관련

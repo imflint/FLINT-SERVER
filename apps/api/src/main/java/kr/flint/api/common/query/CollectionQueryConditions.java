@@ -28,8 +28,9 @@ public class CollectionQueryConditions {
     }
 
     public static BooleanExpression isVisibleCollection() {
-        return collection.moderationStatus.isNull()
-            .or(collection.moderationStatus.eq(CollectionModerationStatus.VISIBLE));
+        return collection.deletedAt.isNull()
+            .and(collection.moderationStatus.isNull()
+                .or(collection.moderationStatus.eq(CollectionModerationStatus.VISIBLE)));
     }
 
     // 작품의 추천 이유가 10자 이상

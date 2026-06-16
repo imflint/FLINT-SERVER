@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.sql.SQLIntegrityConstraintViolationException;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
@@ -23,6 +24,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import jakarta.persistence.EntityManager;
 import kr.flint.api.domain.collection.dto.response.GetCollectionDetailRes;
+import kr.flint.api.domain.collection.dto.response.GetCollectionSimpleRes;
 import kr.flint.bookmark.domain.ContentBookmark;
 import kr.flint.collection.domain.Collection;
 import kr.flint.collection.domain.CollectionContent;
@@ -115,8 +117,30 @@ class CollectionQueryRepositoryTest {
 			.hasRootCauseInstanceOf(SQLIntegrityConstraintViolationException.class);
 	}
 
+	@Test
+	@DisplayName("삭제된 컬렉션은 탐색 목록에서 제외")
+	void deletedCollectionExcludedFromSimpleList() {
+		// given
+		Collection collection = persistCollection("충분한 설명입니다");
+		collection.delete(LocalDateTime.of(2026, 1, 1, 0, 0));
+		Content content = persistContent(3001L, "삭제된 컬렉션 작품");
+		persistCollectionContent(collection, content, "충분한 추천 이유입니다", 0);
+		entityManager.flush();
+		entityManager.clear();
+
+		// when
+		List<GetCollectionSimpleRes> results = collectionQueryRepository.getCollectionSimpleList(null, 10);
+
+		// then
+		assertThat(results).isEmpty();
+	}
+
 	private Collection persistCollection() {
-		Collection collection = Collection.create("컬렉션", "설명", "image.jpg", true, 1L);
+		return persistCollection("설명");
+	}
+
+	private Collection persistCollection(String description) {
+		Collection collection = Collection.create("컬렉션", description, "image.jpg", true, 1L);
 		entityManager.persist(collection);
 		return collection;
 	}

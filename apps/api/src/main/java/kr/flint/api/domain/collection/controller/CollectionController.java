@@ -66,6 +66,16 @@ public class CollectionController implements CollectionControllerDocs {
 	}
 
 	@Override
+	@DeleteMapping("/{collectionId}")
+	public ResponseEntity<SuccessResponse<Void>> deleteCollection(
+		@CurrentUser Long userId,
+		@PathVariable Long collectionId
+	){
+		collectionCommandFacade.deleteCollection(userId, collectionId);
+		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_DELETE));
+	}
+
+	@Override
 	@PostMapping("/{collectionId}/reports")
 	public ResponseEntity<SuccessResponse<Void>> reportCollection(
 		@CurrentUser Long userId,

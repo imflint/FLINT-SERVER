@@ -75,8 +75,7 @@ public class CollectionService {
         final CollectionUpdateCommand command,
         final String coverImageUrl
     ) {
-        Collection collection = collectionRepository.findById(collectionId)
-            .orElseThrow(() -> new CollectionException(CollectionErrorCode.COLLECTION_NOT_FOUND));
+        Collection collection = getActiveCollectionById(collectionId);
 
         if (!collection.isOwnedBy(userId)) {
             throw new CollectionException(CollectionErrorCode.COLLECTION_FORBIDDEN);
@@ -91,8 +90,7 @@ public class CollectionService {
         final CollectionUpdateCommand command,
         final String coverImageUrl
     ) {
-        Collection collection = collectionRepository.findById(collectionId)
-            .orElseThrow(() -> new CollectionException(CollectionErrorCode.COLLECTION_NOT_FOUND));
+        Collection collection = getActiveCollectionById(collectionId);
 
         replaceCollection(collection, collectionId, command, coverImageUrl);
     }
@@ -178,6 +176,14 @@ public class CollectionService {
             .orElseThrow(() -> new CollectionException(CollectionErrorCode.COLLECTION_NOT_FOUND));
     }
 
+    public Collection getActiveCollectionById(final Long collectionId) {
+        Collection collection = getCollectionById(collectionId);
+        if (collection.isDeleted()) {
+            throw new CollectionException(CollectionErrorCode.COLLECTION_NOT_FOUND);
+        }
+        return collection;
+    }
+
     public CollectionReport getReportById(final Long reportId) {
         return collectionReportRepository.findById(reportId)
             .orElseThrow(() -> new CollectionException(CollectionErrorCode.COLLECTION_REPORT_NOT_FOUND));
@@ -224,7 +230,16 @@ public class CollectionService {
 
     @Transactional
     public void deleteByAdmin(Long collectionId) {
-        getCollectionById(collectionId).deleteByAdmin();
+        getCollectionById(collectionId).delete(LocalDateTime.now());
+    }
+
+    @Transactional
+    public void deleteCollection(final Long userId, final Long collectionId) {
+        Collection collection = getCollectionById(collectionId);
+        if (!collection.isOwnedBy(userId)) {
+            throw new CollectionException(CollectionErrorCode.COLLECTION_FORBIDDEN);
+        }
+        collection.delete(LocalDateTime.now());
     }
 
     @Transactional
@@ -241,7 +256,7 @@ public class CollectionService {
 
     @Transactional
     public void saveRecentCollection(final Long userId, final Long collectionId) {
-        getCollectionById(collectionId);
+        getActiveCollectionById(collectionId);
         recentViewedCollectionRepository.upsertRecentViewedCollection(
             TSID.Factory.getTsid().toLong(),
             userId,

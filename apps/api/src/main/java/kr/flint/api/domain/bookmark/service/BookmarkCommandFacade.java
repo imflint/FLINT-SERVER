@@ -55,6 +55,7 @@ public class BookmarkCommandFacade {
 	@Transactional
 	public boolean toggleCollection(final Long userId, final Long collectionId) {
 		userService.getById(userId);
+		collectionService.getActiveCollectionById(collectionId);
 
 		// 북마크가 되어있는 경우 영향 받은 row 1 -> 북마크 off
 		int deleted = collectionBookmarkRepository.deleteCollectionBookmarkByUserIdAndCollectionId(userId, collectionId);

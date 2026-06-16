@@ -170,6 +170,7 @@ public class AdminCollectionReportFacade {
                 resolveNullableImage(row.collectionImage()),
                 row.isPublic(),
                 resolveModerationStatus(row.moderationStatus()),
+                row.deletedAt(),
                 row.bookmarkCount(),
                 row.collectionCreatedAt()
             ),
