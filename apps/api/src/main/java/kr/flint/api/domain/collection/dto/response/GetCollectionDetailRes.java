@@ -21,6 +21,8 @@ public record GetCollectionDetailRes(
 	LocalDate createdAt,
 	@Schema(description = "북마크 여부", example = "true")
 	boolean isBookmarked,
+	@Schema(description = "공개 여부", example = "true")
+	boolean isPublic,
 
 	@Schema(description = "작성자 정보")
 	Author author,

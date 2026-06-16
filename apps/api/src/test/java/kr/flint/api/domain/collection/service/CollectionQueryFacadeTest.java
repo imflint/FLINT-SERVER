@@ -61,7 +61,8 @@ class CollectionQueryFacadeTest {
 				"플린트",
 				"profile.jpg",
 				"FLINER",
-				false
+				false,
+				true
 			);
 			GetCollectionDetailRes.Content content = new GetCollectionDetailRes.Content(
 				200L,
@@ -93,6 +94,7 @@ class CollectionQueryFacadeTest {
 			// then
 			GetCollectionDetailRes.Content resolvedContent = response.contents().getFirst();
 			assertThat(response.thumbnailUrl()).isEqualTo("resolved/collection.jpg");
+			assertThat(response.isPublic()).isTrue();
 			assertThat(resolvedContent.imageUrl()).isEqualTo("resolved/poster.jpg");
 			assertThat(resolvedContent.customImageUrls()).isEmpty();
 			verify(cloudFrontUrlProvider, never()).resolveUrl(isNull());
@@ -114,7 +116,8 @@ class CollectionQueryFacadeTest {
 				"플린트",
 				"profile.jpg",
 				"FLINER",
-				false
+				false,
+				true
 			);
 			GetCollectionDetailRes.Content content = new GetCollectionDetailRes.Content(
 				200L,

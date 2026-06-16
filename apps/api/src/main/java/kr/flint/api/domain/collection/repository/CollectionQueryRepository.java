@@ -141,7 +141,8 @@ public class CollectionQueryRepository {
                 user.profileImage,
                 user.userRole.stringValue(),
 
-                collectionBookmark.id.isNotNull()
+                collectionBookmark.id.isNotNull(),
+                collection.isPublic
             ))
             .from(collection)
             .join(user).on(user.id.eq(collection.userId))
@@ -378,7 +379,8 @@ public class CollectionQueryRepository {
         String authorProfileUrl,
         String userRole,
 
-        boolean isBookmarked
+        boolean isBookmarked,
+        boolean isPublic
     ){
         public GetCollectionDetailRes.Author toAuthor(){
             return new GetCollectionDetailRes.Author(authorId, authorName, authorProfileUrl, userRole);

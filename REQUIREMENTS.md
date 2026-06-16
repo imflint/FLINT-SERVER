@@ -493,6 +493,7 @@ flint-api/
 - author: 작성자 정보
 - contents: 콘텐츠 목록
 - isBookmarked (Boolean): 북마크 여부
+- isPublic (Boolean): 공개 여부
 
 ---
 
@@ -634,7 +635,25 @@ flint-api/
 
 ---
 
-#### 3.5.3 콘텐츠 검색 (TMDB)
+#### 3.5.3 북마크한 콘텐츠 개수 조회
+
+`GET /contents/bookmarks/count`
+
+**[입력]**
+
+- Authorization Header: Bearer {accessToken}
+
+**[처리 로직]**
+
+1. 사용자가 북마크한 전체 콘텐츠 수 조회
+
+**[응답]**
+
+- totalCount (Integer): 사용자가 북마크한 전체 콘텐츠 수
+
+---
+
+#### 3.5.4 콘텐츠 검색 (TMDB)
 
 `GET /contents/search`
 
@@ -880,6 +899,7 @@ flint-api/
 |--------|----------|------|------|
 | GET | /contents/ott/{id} | OTT 목록 | O |
 | GET | /contents/bookmarks | 북마크 콘텐츠 | O |
+| GET | /contents/bookmarks/count | 북마크 콘텐츠 개수 | O |
 | GET | /contents/search | TMDB 검색 | X |
 
 ### 6.6 검색 관련
