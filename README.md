@@ -222,10 +222,11 @@ REST API 애플리케이션 모듈. 모든 도메인 모듈을 조합하여 API�
 - `is_public`
 
 **주요 필드 (CollectionContent):**
-- `position` (1~10)
+- `content_id`
+- `sort_order` (요청 배열 순서, 0부터 시작)
 - `is_spoiler`
-- `selection_reason`
-- **UNIQUE**: `(collection_id, position)`, `(collection_id, content_id)`
+- `reason`
+- **UNIQUE**: `(collection_id, content_id)`, `(collection_id, sort_order)`
 
 ---
 

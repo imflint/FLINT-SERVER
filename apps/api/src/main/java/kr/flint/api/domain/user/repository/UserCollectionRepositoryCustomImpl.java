@@ -144,7 +144,10 @@ public class UserCollectionRepositoryCustomImpl implements UserCollectionReposit
                     .and(collectionContentImage.sortOrder.eq(0))
             )
             .where(collectionContent.collection.id.in(collectionIds))
-            .orderBy(collectionContent.id.asc())
+            .orderBy(
+                collectionContent.collection.id.asc(),
+                collectionContent.sortOrder.asc()
+            )
             .fetch();
     }
 }

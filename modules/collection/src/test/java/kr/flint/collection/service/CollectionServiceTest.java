@@ -2,6 +2,7 @@ package kr.flint.collection.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.groups.Tuple.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -27,6 +28,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import kr.flint.collection.domain.Collection;
+import kr.flint.collection.domain.CollectionContent;
 import kr.flint.collection.domain.CollectionContentImage;
 import kr.flint.collection.domain.CollectionModerationStatus;
 import kr.flint.collection.domain.CollectionReport;
@@ -98,6 +100,38 @@ class CollectionServiceTest {
                 .extracting(CollectionContentImage::getSortOrder)
                 .containsExactly(0, 1);
         }
+
+        @Test
+        @DisplayName("컬렉션 작품을 요청 순서대로 저장")
+        @SuppressWarnings("unchecked")
+        void saveCollectionContentsInRequestOrder() {
+            Collection savedCollection = Collection.create("제목", "설명", "cover.jpg", true, 1L);
+            ReflectionTestUtils.setField(savedCollection, "id", 10L);
+            when(collectionRepository.save(any(Collection.class))).thenReturn(savedCollection);
+
+            collectionService.createCollection(1L, CollectionCreateCommand.of(
+                "제목",
+                "설명",
+                "cover.jpg",
+                true,
+                List.of(
+                    ContentInput.of(100L, false, "첫 번째", List.of()),
+                    ContentInput.of(200L, true, "두 번째", List.of()),
+                    ContentInput.of(300L, false, "세 번째", List.of())
+                )
+            ), "cover.jpg");
+
+            ArgumentCaptor<Iterable<CollectionContent>> contentCaptor = ArgumentCaptor.forClass(Iterable.class);
+            verify(collectionContentRepository).saveAll(contentCaptor.capture());
+
+            List<CollectionContent> savedContents = toList(contentCaptor.getValue());
+            assertThat(savedContents)
+                .extracting(CollectionContent::getContentId)
+                .containsExactly(100L, 200L, 300L);
+            assertThat(savedContents)
+                .extracting(CollectionContent::getSortOrder)
+                .containsExactly(0, 1, 2);
+        }
     }
 
     @Nested
@@ -130,6 +164,7 @@ class CollectionServiceTest {
 
         @Test
         @DisplayName("관리자 수정은 소유자 검증 없이 컬렉션과 포함 콘텐츠를 교체")
+        @SuppressWarnings("unchecked")
         void updateCollectionByAdmin() {
             Collection collection = Collection.create("제목", "설명", "image.jpg", true, 1L);
             ReflectionTestUtils.setField(collection, "id", 10L);
@@ -149,7 +184,11 @@ class CollectionServiceTest {
             assertThat(collection.isPublic()).isFalse();
             verify(collectionContentImageRepository).deleteAllByCollectionContentCollection(collection);
             verify(collectionContentRepository).deleteAllByCollection(collection);
-            verify(collectionContentRepository).saveAll(any());
+            ArgumentCaptor<Iterable<CollectionContent>> contentCaptor = ArgumentCaptor.forClass(Iterable.class);
+            verify(collectionContentRepository).saveAll(contentCaptor.capture());
+            assertThat(toList(contentCaptor.getValue()))
+                .extracting(CollectionContent::getContentId, CollectionContent::getSortOrder)
+                .containsExactly(tuple(2L, 0));
         }
     }
 
@@ -214,9 +253,9 @@ class CollectionServiceTest {
         }
     }
 
-    private List<CollectionContentImage> toList(Iterable<CollectionContentImage> images) {
-        List<CollectionContentImage> result = new ArrayList<>();
-        images.forEach(result::add);
+    private <T> List<T> toList(Iterable<T> values) {
+        List<T> result = new ArrayList<>();
+        values.forEach(result::add);
         return result;
     }
 }

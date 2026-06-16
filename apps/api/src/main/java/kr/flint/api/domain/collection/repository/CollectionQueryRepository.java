@@ -178,6 +178,7 @@ public class CollectionQueryRepository {
                     .and(contentBookmark.userId.eq(userId))
             )
             .where(collectionContent.collection.id.eq(collectionId))
+            .orderBy(collectionContent.sortOrder.asc())
             .fetch();
 
         if (contentRows.isEmpty()) {
@@ -255,7 +256,7 @@ public class CollectionQueryRepository {
                 .where(collectionContent.collection.id.in(collectionIds))
                 .orderBy(
                     collectionContent.collection.id.asc(),
-                    collectionContent.id.asc()
+                    collectionContent.sortOrder.asc()
                 )
                 .fetch();
 

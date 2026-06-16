@@ -123,7 +123,7 @@ public class AdminCollectionReportQueryRepository {
             .from(collectionContent)
             .join(content).on(content.id.eq(collectionContent.contentId))
             .where(collectionContent.collection.id.eq(collectionId))
-            .orderBy(collectionContent.id.asc())
+            .orderBy(collectionContent.sortOrder.asc())
             .fetch();
 
         if (contentRows.isEmpty()) {
