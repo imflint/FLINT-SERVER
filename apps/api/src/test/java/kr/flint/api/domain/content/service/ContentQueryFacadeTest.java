@@ -21,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import kr.flint.api.domain.content.dto.ContentSearchCondition;
 import kr.flint.api.domain.content.dto.ContentSearchCursor;
+import kr.flint.api.domain.content.dto.GetBookmarkedContentCountRes;
 import kr.flint.api.domain.content.dto.GetContentDetailRes;
 import kr.flint.api.domain.content.dto.GetContentListRes;
 import kr.flint.api.domain.content.dto.SearchGenre;
@@ -156,6 +157,25 @@ class ContentQueryFacadeTest {
 				5,
 				List.of()
 			);
+		}
+	}
+
+	@Nested
+	@DisplayName("getBookmarkedContentCount")
+	class GetBookmarkedContentCount {
+
+		@Test
+		@DisplayName("로그인한 사용자의 북마크 콘텐츠 전체 개수를 반환한다")
+		void returnsBookmarkedContentCount() {
+			// given
+			when(bookmarkQueryService.getContentBookmarkCount(1L)).thenReturn(12);
+
+			// when
+			GetBookmarkedContentCountRes response = contentQueryFacade.getBookmarkedContentCount(1L);
+
+			// then
+			assertThat(response.totalCount()).isEqualTo(12);
+			verify(bookmarkQueryService).getContentBookmarkCount(1L);
 		}
 	}
 

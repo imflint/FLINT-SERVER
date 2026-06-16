@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Min;
+import kr.flint.api.domain.content.dto.GetBookmarkedContentCountRes;
 import kr.flint.api.domain.content.dto.GetContentDetailRes;
 import kr.flint.api.domain.content.dto.GetOttListRes;
 import kr.flint.api.domain.content.dto.SearchGenre;
@@ -63,6 +64,18 @@ public interface ContentControllerDocs {
 		@Parameter(description = "페이지당 결과 수 (1~50, 기본 10)", example = "10")
 		@Min(value = 1, message = "size는 1 이상이어야 합니다.")
 		int size
+	);
+
+	@Operation(
+		summary = "북마크한 콘텐츠 개수 조회",
+		description = "현재 로그인한 사용자가 북마크한 콘텐츠 전체 개수를 조회합니다."
+	)
+	@ApiResponses({
+		@ApiResponse(responseCode = "200", description = "조회 성공", useReturnTypeSchema = true)
+	})
+	ResponseEntity<SuccessResponse<GetBookmarkedContentCountRes>> getBookmarkedContentCount(
+		@Parameter(hidden = true)
+		Long userId
 	);
 
 	@Operation(

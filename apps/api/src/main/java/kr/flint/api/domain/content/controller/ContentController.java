@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import kr.flint.api.domain.content.controller.spec.ContentControllerDocs;
+import kr.flint.api.domain.content.dto.GetBookmarkedContentCountRes;
 import kr.flint.api.domain.content.dto.GetContentDetailRes;
 import kr.flint.api.domain.content.dto.GetOttListRes;
 import kr.flint.api.domain.content.dto.SearchGenre;
@@ -50,6 +51,15 @@ public class ContentController implements ContentControllerDocs {
 	){
 		PaginationResponse<GetContentDetailRes> response =
 			contentQueryFacade.getBookmarkedContentList(userId, cursor, size);
+		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, response));
+	}
+
+	@Override
+	@GetMapping("/bookmarks/count")
+	public ResponseEntity<SuccessResponse<GetBookmarkedContentCountRes>> getBookmarkedContentCount(
+		@CurrentUser Long userId
+	) {
+		GetBookmarkedContentCountRes response = contentQueryFacade.getBookmarkedContentCount(userId);
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, response));
 	}
 
