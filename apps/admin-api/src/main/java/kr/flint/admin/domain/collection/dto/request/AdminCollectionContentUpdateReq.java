@@ -2,6 +2,8 @@ package kr.flint.admin.domain.collection.dto.request;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotBlank;
@@ -23,6 +25,7 @@ public record AdminCollectionContentUpdateReq(
     String reason,
 
     @Schema(description = "콘텐츠별 커스텀 이미지 key 또는 URL 목록")
+    @JsonAlias("customImageUrls")
     @Nullable
     List<String> customImages
 ) {
