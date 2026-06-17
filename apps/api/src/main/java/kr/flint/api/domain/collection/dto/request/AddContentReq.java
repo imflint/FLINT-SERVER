@@ -2,6 +2,8 @@ package kr.flint.api.domain.collection.dto.request;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotBlank;
@@ -23,6 +25,7 @@ public record AddContentReq(
 	String reason,
 
 	@Schema(description = "작품별 커스텀 이미지 S3 key 목록 (선택)", example = "[\"collection/content/260505/abc123.jpg\"]")
+	@JsonAlias("customImageUrls")
 	@Nullable
 	List<String> customImages
 ) {
