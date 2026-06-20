@@ -30,20 +30,28 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import jakarta.persistence.EntityManager;
 import kr.flint.api.domain.content.dto.ContentSearchCondition;
 import kr.flint.api.domain.content.dto.ContentSearchCursor;
+import kr.flint.api.domain.content.dto.GetContentDetailRes;
+import kr.flint.api.domain.content.repository.ContentQueryRepository.BookmarkedContentRow;
 import kr.flint.api.domain.content.repository.ContentQueryRepository.ContentSearchRow;
+import kr.flint.bookmark.domain.ContentBookmark;
 import kr.flint.content.domain.Content;
 import kr.flint.content.domain.ContentGenre;
 import kr.flint.content.domain.Genre;
 import kr.flint.content.domain.MediaType;
+import kr.flint.ott.domain.OttContent;
+import kr.flint.ott.domain.OttProvider;
 import kr.flint.shared.config.QueryDslConfig;
 
 @DataJpaTest
 @Testcontainers(disabledWithoutDocker = true)
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@EntityScan(basePackageClasses = Content.class)
+@EntityScan(basePackageClasses = {Content.class, ContentBookmark.class, OttContent.class, OttProvider.class})
 @Import({ContentQueryRepository.class, QueryDslConfig.class})
 @Sql(
 	statements = {
+		"DELETE FROM content_bookmark",
+		"DELETE FROM ott_content",
+		"DELETE FROM ott_provider",
 		"DELETE FROM content_genre",
 		"DELETE FROM genre",
 		"DELETE FROM content"
@@ -319,6 +327,31 @@ class ContentQueryRepositoryTest {
 			.containsExactly("동점 첫번째".equals(firstPage.getFirst().title()) ? "동점 두번째" : "동점 첫번째", "낮은 북마크");
 	}
 
+	@Test
+	@DisplayName("북마크 콘텐츠 목록은 구독 여부와 관계없이 작품 제공 OTT를 포함")
+	void bookmarkedContentRowsIncludeContentOttProviders() {
+		// given
+		Long userId = 1L;
+		Long providerId = 9001L;
+		Content content = persistContent(8001L, "OTT 포함 콘텐츠", 1);
+		entityManager.flush();
+
+		entityManager.persist(ContentBookmark.create(userId, content.getId()));
+		persistOttProvider(providerId, "Netflix", "netflix.svg");
+		persistOttContent(providerId, content.getId());
+		entityManager.flush();
+		entityManager.clear();
+
+		// when
+		List<BookmarkedContentRow> rows = contentQueryRepository.getBookmarkedContentRows(userId, null, 10);
+
+		// then
+		assertThat(rows).hasSize(1);
+		assertThat(rows.getFirst().ottSimpleList())
+			.extracting(GetContentDetailRes.GetOttSimpleRes::ottName)
+			.containsExactly("Netflix");
+	}
+
 	private Genre persistGenre(String name) {
 		Genre genre = Genre.create(name);
 		entityManager.persist(genre);
@@ -348,6 +381,30 @@ class ContentQueryRepositoryTest {
 		for (Genre genre : genres) {
 			entityManager.persist(ContentGenre.create(content, genre));
 		}
+	}
+
+	private void persistOttProvider(Long id, String name, String logoUrl) {
+		entityManager.createNativeQuery("""
+				INSERT INTO ott_provider (id, name, logo_url, url)
+				VALUES (:id, :name, :logoUrl, :url)
+			""")
+			.setParameter("id", id)
+			.setParameter("name", name)
+			.setParameter("logoUrl", logoUrl)
+			.setParameter("url", "https://example.com")
+			.executeUpdate();
+	}
+
+	private void persistOttContent(Long providerId, Long contentId) {
+		entityManager.createNativeQuery("""
+				INSERT INTO ott_content (id, ott_provider_id, content_id, content_url)
+				VALUES (:id, :providerId, :contentId, :contentUrl)
+			""")
+			.setParameter("id", providerId + contentId)
+			.setParameter("providerId", providerId)
+			.setParameter("contentId", contentId)
+			.setParameter("contentUrl", "https://example.com/watch")
+			.executeUpdate();
 	}
 
 	private void commitFullTextFixtures() {

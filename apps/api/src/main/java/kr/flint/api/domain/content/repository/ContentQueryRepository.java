@@ -6,7 +6,6 @@ import static kr.flint.content.domain.QContentGenre.*;
 import static kr.flint.content.domain.QGenre.*;
 import static kr.flint.ott.domain.QOttContent.*;
 import static kr.flint.ott.domain.QOttProvider.*;
-import static kr.flint.ott.domain.QOttUser.*;
 import static kr.flint.shared.util.QueryDslUtil.*;
 
 import java.util.ArrayList;
@@ -112,19 +111,15 @@ public class ContentQueryRepository {
 			));
 		}
 
-		// 사용자가 구독 중인 OTT 중, 해당 컨텐츠를 제공하는 OTT만 추린다.
-		// (단건 OTT 조회와 동일한 join 구조: OttUser → OttProvider → OttContent)
 		List<Tuple> ottRows = jpaQueryFactory
 			.selectDistinct(
 				ottContent.contentId,
 				ottProvider.name,
 				ottProvider.logoUrl
 			)
-			.from(ottUser)
-			.join(ottUser.ottProvider, ottProvider)
-			.join(ottContent).on(ottContent.ottProvider.eq(ottProvider))
+			.from(ottContent)
+			.join(ottContent.ottProvider, ottProvider)
 			.where(
-				ottUser.userId.eq(userId),
 				ottContent.contentId.in(contentIds)
 			)
 			.fetch();

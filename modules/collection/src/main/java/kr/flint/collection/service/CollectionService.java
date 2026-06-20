@@ -268,7 +268,10 @@ public class CollectionService {
     @Transactional
     public void deleteCollectionByUser(final Long userId){
         List<Collection> collectionList = collectionRepository.findAllByUserId(userId);
-        collectionList.forEach(collectionContentRepository::deleteAllByCollection);
+        collectionList.forEach(collection -> {
+            collectionContentImageRepository.deleteAllByCollectionContentCollection(collection);
+            collectionContentRepository.deleteAllByCollection(collection);
+        });
         recentViewedCollectionRepository.deleteAllByUserId(userId);
         collectionRepository.deleteAllByUserId(userId);
     }
