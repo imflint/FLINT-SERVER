@@ -6,6 +6,7 @@ import static org.assertj.core.groups.Tuple.tuple;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -237,6 +239,27 @@ class CollectionServiceTest {
                 assertThat(collection.getDeletedAt()).isEqualTo(deletedAt);
             }
         }
+
+    @Nested
+    @DisplayName("deleteCollectionByUser")
+    class DeleteCollectionByUser {
+
+        @Test
+        @DisplayName("회원탈퇴 시 컬렉션 콘텐츠 이미지 삭제 후 컬렉션 콘텐츠를 삭제")
+        void deleteContentImagesBeforeContents() {
+            Collection collection = Collection.create("제목", "설명", "image.jpg", true, 1L);
+            ReflectionTestUtils.setField(collection, "id", 10L);
+            when(collectionRepository.findAllByUserId(1L)).thenReturn(List.of(collection));
+
+            collectionService.deleteCollectionByUser(1L);
+
+            InOrder inOrder = inOrder(collectionContentImageRepository, collectionContentRepository);
+            inOrder.verify(collectionContentImageRepository).deleteAllByCollectionContentCollection(collection);
+            inOrder.verify(collectionContentRepository).deleteAllByCollection(collection);
+            verify(recentViewedCollectionRepository).deleteAllByUserId(1L);
+            verify(collectionRepository).deleteAllByUserId(1L);
+        }
+    }
 
     @Nested
     @DisplayName("saveRecentCollection")
