@@ -55,11 +55,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             "/api/v1/home/popular-collections"
     };
 
-    private static final String[] OPTIONAL_AUTH_GET_PATHS = {
-            "/api/v1/users/{userId:\\d+}/collections",
-            "/api/v1/users/{userId:\\d+}/bookmarked-collections"
-    };
-
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
     private final JwtProvider jwtProvider;
@@ -92,17 +87,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-        boolean optionalAuthRequest = matchesMethod(request, HttpMethod.GET, OPTIONAL_AUTH_GET_PATHS);
-
-        try {
-            authenticate(request);
-        } catch (AuthException e) {
-            if (!optionalAuthRequest) {
-                throw e;
-            }
-            SecurityContextHolder.clearContext();
-        }
-
+        authenticate(request);
         filterChain.doFilter(request, response);
     }
 
