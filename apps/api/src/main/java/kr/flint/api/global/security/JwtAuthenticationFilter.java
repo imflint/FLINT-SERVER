@@ -13,6 +13,7 @@ import kr.flint.auth.jwt.JwtProvider;
 import kr.flint.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -28,15 +29,35 @@ import java.util.List;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final String[] EXCLUDED_PATHS = {
+    private static final String[] COMMON_EXCLUDED_PATHS = {
             "/swagger-ui/**",
             "/v3/api-docs/**",
+            "/actuator/**"
+    };
+
+    private static final String[] POST_EXCLUDED_PATHS = {
             "/api/v1/auth/social/verify",
             "/api/v1/auth/signup",
             "/api/v1/auth/refresh",
-            "/api/v1/auth/dev/login",
+            "/api/v1/auth/dev/login"
+    };
+
+    private static final String[] GET_EXCLUDED_PATHS = {
+            "/api/v1/terms",
+            "/api/v1/terms/**",
             "/api/v1/users/nickname/check",
-            "/actuator/**"
+            "/api/v1/users/{userId:\\d+}",
+            "/api/v1/users/{userId:\\d+}/keywords",
+            "/api/v1/collections",
+            "/api/v1/bookmarks/{collectionId:\\d+}",
+            "/api/v1/contents/search",
+            "/api/v1/search/contents",
+            "/api/v1/home/popular-collections"
+    };
+
+    private static final String[] OPTIONAL_AUTH_GET_PATHS = {
+            "/api/v1/users/{userId:\\d+}/collections",
+            "/api/v1/users/{userId:\\d+}/bookmarked-collections"
     };
 
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
@@ -47,8 +68,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getRequestURI();
-        for (String pattern : EXCLUDED_PATHS) {
+        return matchesAny(request.getRequestURI(), COMMON_EXCLUDED_PATHS)
+            || matchesMethod(request, HttpMethod.POST, POST_EXCLUDED_PATHS)
+            || matchesMethod(request, HttpMethod.GET, GET_EXCLUDED_PATHS);
+    }
+
+    private boolean matchesMethod(HttpServletRequest request, HttpMethod method, String[] patterns) {
+        return method.name().equalsIgnoreCase(request.getMethod()) && matchesAny(request.getRequestURI(), patterns);
+    }
+
+    private boolean matchesAny(String path, String[] patterns) {
+        for (String pattern : patterns) {
             if (pathMatcher.match(pattern, path)) {
                 return true;
             }
@@ -62,6 +92,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
+        boolean optionalAuthRequest = matchesMethod(request, HttpMethod.GET, OPTIONAL_AUTH_GET_PATHS);
+
+        try {
+            authenticate(request);
+        } catch (AuthException e) {
+            if (!optionalAuthRequest) {
+                throw e;
+            }
+            SecurityContextHolder.clearContext();
+        }
+
+        filterChain.doFilter(request, response);
+    }
+
+    private void authenticate(HttpServletRequest request) {
         String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
         String token = jwtProvider.extractToken(authHeader);
 
@@ -90,7 +135,5 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         }
-
-        filterChain.doFilter(request, response);
     }
 }
