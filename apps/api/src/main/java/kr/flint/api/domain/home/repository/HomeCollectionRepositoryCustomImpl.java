@@ -1,14 +1,12 @@
 package kr.flint.api.domain.home.repository;
 
 import static kr.flint.api.common.query.CollectionQueryConditions.*;
-import static kr.flint.bookmark.domain.QCollectionBookmark.*;
 import static kr.flint.collection.domain.QCollection.*;
 import static kr.flint.collection.domain.QCollectionContent.*;
 import static kr.flint.collection.domain.QCollectionContentImage.collectionContentImage;
 import static kr.flint.content.domain.QContent.*;
 import static kr.flint.user.domain.QUser.*;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.util.CollectionUtils;
@@ -128,31 +126,6 @@ public class HomeCollectionRepositoryCustomImpl implements HomeCollectionReposit
                 hasContentWithValidReason()
             )
             .orderBy(collection.bookmarkCount.desc(), collection.createdAt.desc())
-            .limit(limit)
-            .fetch();
-    }
-
-    @Override
-    public List<Long> findWeeklyPopularPublicCollectionIds(LocalDateTime since, int limit) {
-        // 최근 since 이후 추가된 북마크만 LEFT JOIN — count 0 이면 총 북마크 수로 자연스럽게 fallback.
-        return queryFactory
-            .select(collection.id)
-            .from(collection)
-            .leftJoin(collectionBookmark).on(
-                collectionBookmark.collectionId.eq(collection.id),
-                collectionBookmark.createdAt.goe(since)
-            )
-            .where(
-                isVisiblePublicCollection(),
-                hasValidDescription(),
-                hasContentWithValidReason()
-            )
-            .groupBy(collection.id)
-            .orderBy(
-                collectionBookmark.id.count().desc(),
-                collection.bookmarkCount.desc(),
-                collection.createdAt.desc()
-            )
             .limit(limit)
             .fetch();
     }
