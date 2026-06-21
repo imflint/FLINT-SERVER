@@ -1,5 +1,6 @@
 package kr.flint.api.domain.home;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +33,7 @@ public class HomeQueryFacade {
 
     private static final int MAX_RECOMMENDED_COLLECTIONS = 5;
     private static final int MAX_POPULAR_COLLECTIONS = 10;
+    private static final int POPULAR_WINDOW_DAYS = 7;
 
     private final CollectionRecommendationPort recommendationPort;
     private final HomeCollectionRepository homeCollectionRepository;
@@ -69,23 +71,29 @@ public class HomeQueryFacade {
         return RecommendedCollectionsRes.from(orderedCards);
     }
 
-    // 인기 컬렉션 조회
+    // 인기 컬렉션 조회 (최근 7일 북마크 증가량 우선, 동률/0건은 총 북마크 수로 fallback)
     public PopularCollectionsRes getPopularCollections() {
-        List<Long> collectionIds = homeCollectionRepository.findPopularPublicCollectionIds(MAX_POPULAR_COLLECTIONS);
-        log.debug("인기 컬렉션 조회. count={}", collectionIds.size());
+        LocalDateTime since = LocalDateTime.now().minusDays(POPULAR_WINDOW_DAYS);
+        List<Long> collectionIds = homeCollectionRepository.findWeeklyPopularPublicCollectionIds(since, MAX_POPULAR_COLLECTIONS);
+        log.debug("인기 컬렉션 조회. since={}, count={}", since, collectionIds.size());
 
         if (collectionIds.isEmpty()) {
             return PopularCollectionsRes.from(List.of());
         }
 
         List<CollectionCardDto> cards = homeCollectionRepository.findCollectionCardsWithUser(collectionIds);
+        Map<Long, List<String>> contentImagesMap = buildContentImagesMap(collectionIds);
         Map<Long, CollectionCardDto> cardMap = cards.stream()
             .collect(Collectors.toMap(CollectionCardDto::id, Function.identity()));
 
         List<PopularCollectionCardRes> ordered = collectionIds.stream()
             .map(cardMap::get)
             .filter(java.util.Objects::nonNull)
-            .map(dto -> PopularCollectionCardRes.from(dto, cloudFrontUrlProvider::resolveUrl))
+            .map(dto -> PopularCollectionCardRes.from(
+                dto,
+                contentImagesMap.getOrDefault(dto.id(), List.of()),
+                cloudFrontUrlProvider::resolveUrl
+            ))
             .toList();
 
         return PopularCollectionsRes.from(ordered);

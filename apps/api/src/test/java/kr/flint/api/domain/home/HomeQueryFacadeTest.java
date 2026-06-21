@@ -1,12 +1,15 @@
 package kr.flint.api.domain.home;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 
@@ -20,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import kr.flint.api.domain.home.dto.projection.CollectionCardDto;
 import kr.flint.api.domain.home.dto.projection.CollectionContentImageDto;
+import kr.flint.api.domain.home.dto.response.PopularCollectionsRes;
 import kr.flint.api.domain.home.dto.response.RecommendedCollectionsRes;
 import kr.flint.api.domain.home.port.CollectionRecommendationPort;
 import kr.flint.api.domain.home.repository.HomeCollectionRepository;
@@ -86,6 +90,53 @@ class HomeQueryFacadeTest {
 
             // then
             assertThat(response.collections().getFirst().imageList()).containsExactly("resolved/poster.jpg");
+            verify(cloudFrontUrlProvider, never()).resolveUrl(isNull());
+        }
+    }
+
+    @Nested
+    @DisplayName("getPopularCollections")
+    class GetPopularCollections {
+
+        @Test
+        @DisplayName("인기 컬렉션에 콘텐츠 이미지 최대 2개를 포함")
+        void includeContentImagesUpToTwo() {
+            // given
+            Long collectionId = 10L;
+            when(homeCollectionRepository.findWeeklyPopularPublicCollectionIds(any(LocalDateTime.class), eq(10)))
+                .thenReturn(List.of(collectionId));
+            when(homeCollectionRepository.findCollectionCardsWithUser(List.of(collectionId)))
+                .thenReturn(List.of(new CollectionCardDto(
+                    collectionId,
+                    "컬렉션 제목",
+                    "컬렉션 설명",
+                    "collection.jpg",
+                    3,
+                    100L,
+                    "profile.jpg",
+                    "플린트"
+                )));
+            when(homeCollectionRepository.findContentImagesByCollectionIds(List.of(collectionId)))
+                .thenReturn(List.of(
+                    new CollectionContentImageDto(collectionId, "custom-1.jpg", "poster-1.jpg"),
+                    new CollectionContentImageDto(collectionId, null, "poster-2.jpg"),
+                    new CollectionContentImageDto(collectionId, null, "poster-3.jpg")
+                ));
+            when(cloudFrontUrlProvider.resolveUrl(nullable(String.class)))
+                .thenAnswer(invocation -> {
+                    String imageUrl = invocation.getArgument(0, String.class);
+                    if (imageUrl == null || imageUrl.isBlank()) {
+                        throw new NullPointerException("image key must not be blank");
+                    }
+                    return "resolved/" + imageUrl;
+                });
+
+            // when
+            PopularCollectionsRes response = homeQueryFacade.getPopularCollections();
+
+            // then
+            assertThat(response.collections().getFirst().imageList())
+                .containsExactly("resolved/custom-1.jpg", "resolved/poster-2.jpg");
             verify(cloudFrontUrlProvider, never()).resolveUrl(isNull());
         }
     }
