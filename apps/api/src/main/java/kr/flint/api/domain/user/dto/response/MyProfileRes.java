@@ -15,6 +15,8 @@ public record MyProfileRes(
 	String id,
 	@Schema(description = "닉네임", example = "홍길동")
 	String nickname,
+	@Schema(description = "이메일 (미보유 시 null)", example = "user@example.com", nullable = true)
+	String email,
 	@Schema(description = "프로필 이미지 URL")
 	String profileImageUrl,
 	@Schema(description = "플리너 여부", example = "false")
@@ -32,6 +34,7 @@ public record MyProfileRes(
 		return new MyProfileRes(
 			String.valueOf(user.getId()),
 			user.getNickname(),
+			null, // email: 현재 저장하지 않으므로 항상 null
 			imageUrlResolver.apply(user.getProfileImage()),
 			user.getUserRole() == UserRole.FLINER,
 			user.isKeywordRecalculatable(),
