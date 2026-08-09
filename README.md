@@ -218,7 +218,7 @@ REST API 애플리케이션 모듈. 모든 도메인 모듈을 조합하여 API�
 **주요 필드 (Collection):**
 - `collection_id` (TSID, PK)
 - `author_user_id`
-- `title`, `description`, `collection_image`
+- `title`, `description`, `collection_image` (nullable, 요청 미지정 시 포스터 fallback 없음)
 - `is_public`
 
 **주요 필드 (CollectionContent):**

@@ -135,6 +135,23 @@ class CollectionQueryRepositoryTest {
 		assertThat(results).isEmpty();
 	}
 
+	@Test
+	@DisplayName("컬렉션 대표 이미지는 null로 저장 가능")
+	void collectionImageCanBeNull() {
+		// given
+		Collection collection = Collection.create("컬렉션", "설명", null, true, 1L);
+		entityManager.persist(collection);
+		entityManager.flush();
+		Long collectionId = collection.getId();
+		entityManager.clear();
+
+		// when
+		Collection persistedCollection = entityManager.find(Collection.class, collectionId);
+
+		// then
+		assertThat(persistedCollection.getImage()).isNull();
+	}
+
 	private Collection persistCollection() {
 		return persistCollection("설명");
 	}
