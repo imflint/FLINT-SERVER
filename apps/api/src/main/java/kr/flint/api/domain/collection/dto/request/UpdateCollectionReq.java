@@ -15,7 +15,7 @@ import kr.flint.collection.dto.CollectionUpdateCommand;
 
 @Schema(description = "컬렉션 수정 요청 (전체 교체 — 작품 리스트도 통째로 대체)")
 public record UpdateCollectionReq(
-	@Schema(description = "컬렉션 대표 이미지 URL (선택, 미지정 시 첫 작품의 TMDB 포스터 사용)", example = "collection/image/abc123.jpg")
+	@Schema(description = "컬렉션 대표 이미지 S3 key 또는 URL (선택, 미지정 시 null)", example = "collection/thumbnail/abc123.jpg")
 	@Nullable
 	String imageUrl,
 

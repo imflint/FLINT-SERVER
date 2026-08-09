@@ -8,7 +8,6 @@ import kr.flint.api.domain.collection.dto.request.CreateCollectionReq;
 import kr.flint.api.domain.collection.dto.request.ReportCollectionReq;
 import kr.flint.api.domain.collection.dto.request.UpdateCollectionReq;
 import kr.flint.collection.service.CollectionService;
-import kr.flint.content.domain.Content;
 import kr.flint.content.service.ContentService;
 import kr.flint.user.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -24,9 +23,10 @@ public class CollectionCommandFacade {
     public Long createCollection(final Long userId, final CreateCollectionReq request) {
         userService.getById(userId);
         userService.validateCanUpload(userId);
-        Long contentId = request.contentList().getFirst().contentId();
-        Content content = contentService.getContentById(contentId);
-        String imageUrl = StringUtils.hasText(request.imageUrl()) ? request.imageUrl() : content.getPoster();
+        contentService.validateContentIdsExist(request.contentList().stream()
+            .map(content -> content.contentId())
+            .toList());
+        String imageUrl = normalizeImageUrl(request.imageUrl());
         Long collectionId = collectionService.createCollection(userId, request.toCommand(), imageUrl);
         return collectionId;
     }
@@ -35,9 +35,10 @@ public class CollectionCommandFacade {
     public void updateCollection(final Long userId, final Long collectionId, final UpdateCollectionReq request) {
         userService.getById(userId);
         userService.validateCanUpload(userId);
-        Long firstContentId = request.contentList().getFirst().contentId();
-        Content firstContent = contentService.getContentById(firstContentId);
-        String imageUrl = StringUtils.hasText(request.imageUrl()) ? request.imageUrl() : firstContent.getPoster();
+        contentService.validateContentIdsExist(request.contentList().stream()
+            .map(content -> content.contentId())
+            .toList());
+        String imageUrl = normalizeImageUrl(request.imageUrl());
         collectionService.updateCollection(userId, collectionId, request.toCommand(), imageUrl);
     }
 
@@ -51,5 +52,9 @@ public class CollectionCommandFacade {
     public Long reportCollection(final Long reporterId, final Long collectionId, final ReportCollectionReq request) {
         userService.getById(reporterId);
         return collectionService.reportCollection(reporterId, collectionId, request.toCommand());
+    }
+
+    private String normalizeImageUrl(String imageUrl) {
+        return StringUtils.hasText(imageUrl) ? imageUrl : null;
     }
 }

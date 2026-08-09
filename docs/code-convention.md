@@ -283,7 +283,7 @@ public class Collection extends BaseTime {
     @Column(nullable = false)
     private String description;
 
-    @Column(name = "collection_image", nullable = false)
+    @Column(name = "collection_image", nullable = true)
     private String image;
 
     @Column(nullable = false)
