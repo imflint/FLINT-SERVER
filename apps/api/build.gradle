@@ -32,6 +32,7 @@ dependencies {
     implementation project(':modules:search')
     implementation project(':modules:ott')
     implementation project(':modules:terms')
+    implementation project(':modules:exploration')
 
     implementation project(':infra:redis')
     implementation project(':infra:storage')

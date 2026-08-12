@@ -160,8 +160,13 @@ public interface CollectionControllerDocs {
 	);
 
 	@Operation(
-		summary = "컬렉션 목록 조회 (커서 페이지네이션) - 재민",
-		description = "cursor와 size를 기반으로 컬렉션 목록을 조회합니다. cursor가 없으면 첫 페이지를 조회합니다."
+		summary = "[Deprecated] 컬렉션 목록 조회 (커서 페이지네이션) - 재민",
+		description = """
+			**Deprecated — 탐색 페이지는 `GET /exploration`으로 대체되었습니다. 신규 연동은 `/exploration`을 사용하세요.**
+
+			cursor와 size를 기반으로 컬렉션 목록을 조회합니다. cursor가 없으면 첫 페이지를 조회합니다.
+			""",
+		deprecated = true
 	)
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "조회 성공", useReturnTypeSchema = true),
@@ -171,6 +176,7 @@ public interface CollectionControllerDocs {
 			content = @Content(schema = @Schema(implementation = ProblemDetail.class))
 		)
 	})
+	@Deprecated
 	ResponseEntity<SuccessResponse<PaginationResponse<GetCollectionSimpleRes>>> discoverCollectionList(
 		@Parameter(description = "커서(마지막 아이템 기준)", example = "", required = false)
 		Long cursor,
