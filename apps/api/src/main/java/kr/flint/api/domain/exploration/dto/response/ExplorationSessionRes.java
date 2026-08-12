@@ -6,22 +6,19 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "탐색 세션 응답")
 public record ExplorationSessionRes(
-	@Schema(description = "탐색 세션 작품 목록 (정확히 30개, 다음 세션이 준비되지 않았으면 빈 배열)")
+	@Schema(description = "현재 세션 작품 목록 (IN_PROGRESS/END이면 30개, EMPTY이면 빈 배열)")
 	List<ExploreContentRes> items,
-	@Schema(
-		description = "다음 세션 요청용 커서. 다음 세션(30개)이 아직 확보되지 않았으면 -1(End)",
-		example = "801473411402740986"
-	)
-	long nextCursor
+	@Schema(description = "세션 상태")
+	ExplorationState state,
+	@Schema(description = "다음 세션(30개)이 준비되었는지 여부. END이면서 true이면 '다음 라운드 이용 가능'", example = "false")
+	boolean hasNext
 ) {
-	private static final long END_CURSOR = -1L;
-
-	public static ExplorationSessionRes of(List<ExploreContentRes> items, long nextCursor) {
-		return new ExplorationSessionRes(items, nextCursor);
+	public static ExplorationSessionRes of(List<ExploreContentRes> items, ExplorationState state, boolean hasNext) {
+		return new ExplorationSessionRes(items, state, hasNext);
 	}
 
-	// 다음 세션을 구성할 30개가 아직 없을 때 (End / 초기 빈 상태)
-	public static ExplorationSessionRes end() {
-		return new ExplorationSessionRes(List.of(), END_CURSOR);
+	// 아직 완전한 세션(30개)이 없을 때
+	public static ExplorationSessionRes empty() {
+		return new ExplorationSessionRes(List.of(), ExplorationState.EMPTY, false);
 	}
 }

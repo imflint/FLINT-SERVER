@@ -89,6 +89,7 @@ public class CollectionController implements CollectionControllerDocs {
 	}
 
 	@Override
+	@Deprecated
 	@GetMapping
 	public ResponseEntity<SuccessResponse<PaginationResponse<GetCollectionSimpleRes>>> discoverCollectionList(
 		@RequestParam(required = false, defaultValue = "") Long cursor,
