@@ -59,6 +59,7 @@ public class SecurityConfig {
                         "/api/v1/users/{userId}/collections",
                         "/api/v1/users/{userId}/bookmarked-collections",
                         "/api/v1/collections",
+                        "/api/v1/exploration",
                         "/api/v1/bookmarks/{collectionId}",
                         "/api/v1/contents/search",
                         "/api/v1/search/contents",
