@@ -11,6 +11,7 @@ import kr.flint.api.domain.exploration.dto.response.ExplorationSessionRes;
 import kr.flint.api.domain.exploration.dto.response.ExplorationState;
 import kr.flint.api.domain.exploration.repository.ExplorationQueryRepository;
 import kr.flint.api.domain.exploration.repository.ExplorationQueryRepository.ExploreContentRow;
+import kr.flint.api.domain.exploration.repository.ExplorationQueryRepository.RepresentativeCollectionRow;
 import kr.flint.exploration.domain.UserExplorationProgress;
 import kr.flint.exploration.service.ExplorationProgressService;
 import kr.flint.infra.storage.cloudfront.CloudFrontUrlProvider;
@@ -62,19 +63,23 @@ public class ExplorationQueryFacade {
 			return ExplorationSessionRes.empty();
 		}
 
-		// 작품별 대표 컬렉션 id (자세히 보기 이동용)
+		// 작품별 대표 컬렉션과 사용자가 작성한 선정 이유
 		List<Long> contentIds = rows.stream().map(ExploreContentRow::contentId).toList();
-		Map<Long, Long> collectionIdMap = explorationQueryRepository.findRepresentativeCollectionIds(contentIds);
+		Map<Long, RepresentativeCollectionRow> representativeMap =
+			explorationQueryRepository.findRepresentativeCollections(contentIds);
 
 		List<ExploreContentRes> items = rows.stream()
-			.map(row -> new ExploreContentRes(
-				row.contentId(),
-				row.title(),
-				row.description(),
-				cloudFrontUrlProvider.resolveUrl(row.poster()),
-				row.year(),
-				collectionIdMap.get(row.contentId())
-			))
+			.map(row -> {
+				RepresentativeCollectionRow representative = representativeMap.get(row.contentId());
+				return new ExploreContentRes(
+					row.contentId(),
+					row.title(),
+					representative.reason(),
+					cloudFrontUrlProvider.resolveUrl(row.poster()),
+					row.year(),
+					representative.collectionId()
+				);
+			})
 			.toList();
 
 		Long lastContentId = rows.getLast().contentId();
