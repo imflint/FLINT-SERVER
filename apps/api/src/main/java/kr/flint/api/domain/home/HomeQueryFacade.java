@@ -106,7 +106,7 @@ public class HomeQueryFacade {
             .collect(Collectors.groupingBy(
                 CollectionContentImageDto::collectionId,
                 Collectors.mapping(
-                    CollectionContentImageDto::image,
+                    CollectionContentImageDto::poster,
                     Collectors.filtering(StringUtils::hasText, Collectors.toCollection(ArrayList::new))
                 )
             ));
