@@ -200,7 +200,7 @@ public class ContentService {
     }
 
     public List<Content> getPopularContents(final int limit) {
-        return contentRepository.findAllByOrderByBookmarkCountDescIdAsc(PageRequest.of(0, limit));
+        return contentRepository.findAllByOrderByBookmarkCountDescIdDesc(PageRequest.of(0, limit));
     }
 
     // 콘텐츠 ID 목록으로 콘텐츠 + 장르 정보 조회
