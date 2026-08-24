@@ -13,10 +13,10 @@ import static kr.flint.shared.storage.FileExtension.*;
 @Schema(
     description = """
         S3 저장 경로 타입
-        - USER_PROFILE: 사용자 프로필 이미지 (허용: JPG, JPEG, PNG)
-        - LOGO_IMAGE: 키워드 로고 이미지 (허용: JPG, JPEG, PNG, SVG)
-        - COLLECTION_THUMBNAIL: 컬렉션 대표 이미지 (허용: JPG, JPEG, PNG)
-        - COLLECTION_CONTENT: 컬렉션 작품별 커스텀 이미지 (허용: JPG, JPEG, PNG)
+        - USER_PROFILE: 사용자 프로필 이미지 (허용: JPG, JPEG, PNG, WEBP)
+        - LOGO_IMAGE: 키워드 로고 이미지 (허용: JPG, JPEG, PNG, WEBP, SVG)
+        - COLLECTION_THUMBNAIL: 컬렉션 대표 이미지 (허용: JPG, JPEG, PNG, WEBP)
+        - COLLECTION_CONTENT: 컬렉션 작품별 커스텀 이미지 (허용: JPG, JPEG, PNG, WEBP)
         """,
     enumAsRef = true
 )
@@ -33,7 +33,7 @@ public enum StoragePathType implements StoragePath {
     private final Set<FileExtension> allowedExtensions;
 
     private static class Extensions {
-        static final Set<FileExtension> IMAGE = Set.of(JPG, JPEG, PNG);
-        static final Set<FileExtension> LOGO = Set.of(JPG, JPEG, PNG, SVG);
+        static final Set<FileExtension> IMAGE = Set.of(JPG, JPEG, PNG, WEBP);
+        static final Set<FileExtension> LOGO = Set.of(JPG, JPEG, PNG, WEBP, SVG);
     }
 }
