@@ -18,6 +18,8 @@ public record PopularCollectionCardRes(
     String title,
     @ArraySchema(schema = @Schema(implementation = String.class, example = "https://cdn.flint.kr/content/poster/123.jpg"))
     List<String> imageList,
+    @Schema(description = "북마크 수", example = "15")
+    Integer bookmarkCount,
     @Schema(description = "컬렉션 작성자 닉네임", example = "플린트")
     String nickname,
     @Schema(description = "컬렉션 작성자 프로필 사진", example = "https://cdn.flint.kr/user/profile/123.jpg")
@@ -35,6 +37,7 @@ public record PopularCollectionCardRes(
             imageUrlResolver.apply(dto.image()),
             dto.title(),
             resolvedImages,
+            dto.bookmarkCount(),
             dto.nickname(),
             imageUrlResolver.apply(dto.profileImage())
         );

@@ -245,15 +245,10 @@ public class CollectionQueryRepository {
                 .select(Projections.constructor(
                     ContentImageRow.class,
                     collectionContent.collection.id,
-                    collectionContentImage.imageKey,
                     content.poster
                 ))
                 .from(collectionContent)
                 .join(content).on(content.id.eq(collectionContent.contentId))
-                .leftJoin(collectionContentImage).on(
-                    collectionContentImage.collectionContent.id.eq(collectionContent.id)
-                        .and(collectionContentImage.sortOrder.eq(0))
-                )
                 .where(collectionContent.collection.id.in(collectionIds))
                 .orderBy(
                     collectionContent.collection.id.asc(),
@@ -263,7 +258,7 @@ public class CollectionQueryRepository {
 
         Map<Long, List<String>> imageMap = new LinkedHashMap<>();
         for (ContentImageRow row : imageRows) {
-            String image = row.image();
+            String image = row.poster();
             if (image == null) continue;
 
             List<String> list = imageMap.computeIfAbsent(row.collectionId(), k -> new ArrayList<>());
@@ -303,13 +298,8 @@ public class CollectionQueryRepository {
 
     public record ContentImageRow(
         Long collectionId,
-        String customImage,
         String poster
-    ) {
-        public String image() {
-            return customImage != null && !customImage.isBlank() ? customImage : poster;
-        }
-    }
+    ) {}
 
     private Map<Long, List<String>> buildCustomImageMap(List<Long> collectionContentIds) {
         List<CollectionContentImageRow> imageRows = jpaQueryFactory

@@ -33,7 +33,6 @@ public class ExplorationQueryRepository {
 				ExploreContentRow.class,
 				content.id,
 				content.title,
-				content.description,
 				content.poster,
 				content.year
 			))
@@ -63,14 +62,13 @@ public class ExplorationQueryRepository {
 		return found != null;
 	}
 
-	// 작품별 대표 컬렉션 id를 조회한다. (작품이 여러 공개 컬렉션에 속하면 가장 최근 = collection.id 최댓값을 대표로 사용)
-	// 반환: contentId -> collectionId
-	public Map<Long, Long> findRepresentativeCollectionIds(List<Long> contentIds) {
+	// 작품별 대표 컬렉션과 사용자가 작성한 선정 이유를 조회한다.
+	public Map<Long, RepresentativeCollectionRow> findRepresentativeCollections(List<Long> contentIds) {
 		if (contentIds.isEmpty()) {
 			return Map.of();
 		}
 
-		List<Tuple> rows = jpaQueryFactory
+		Map<Long, Long> representativeIds = jpaQueryFactory
 			.select(collectionContent.contentId, collection.id.max())
 			.from(collectionContent)
 			.join(collectionContent.collection, collection)
@@ -79,12 +77,37 @@ public class ExplorationQueryRepository {
 				isVisiblePublicCollection()
 			)
 			.groupBy(collectionContent.contentId)
-			.fetch();
-
-		return rows.stream()
+			.fetch()
+			.stream()
 			.collect(Collectors.toMap(
 				tuple -> tuple.get(collectionContent.contentId),
 				tuple -> tuple.get(collection.id.max())
+			));
+		if (representativeIds.isEmpty()) {
+			return Map.of();
+		}
+
+		List<Tuple> rows = jpaQueryFactory
+			.select(collectionContent.contentId, collection.id, collectionContent.reason)
+			.from(collectionContent)
+			.join(collectionContent.collection, collection)
+			.where(
+				collectionContent.contentId.in(contentIds),
+				collection.id.in(representativeIds.values()),
+				isVisiblePublicCollection()
+			)
+			.fetch();
+
+		return rows.stream()
+			.filter(tuple -> tuple.get(collection.id).equals(
+				representativeIds.get(tuple.get(collectionContent.contentId))
+			))
+			.collect(Collectors.toMap(
+				tuple -> tuple.get(collectionContent.contentId),
+				tuple -> new RepresentativeCollectionRow(
+					tuple.get(collection.id),
+					tuple.get(collectionContent.reason)
+				)
 			));
 	}
 
@@ -102,8 +125,12 @@ public class ExplorationQueryRepository {
 	public record ExploreContentRow(
 		Long contentId,
 		String title,
-		String description,
 		String poster,
 		int year
+	) {}
+
+	public record RepresentativeCollectionRow(
+		Long collectionId,
+		String reason
 	) {}
 }

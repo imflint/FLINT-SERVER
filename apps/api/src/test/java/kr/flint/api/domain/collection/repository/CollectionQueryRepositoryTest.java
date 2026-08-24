@@ -28,6 +28,8 @@ import kr.flint.api.domain.collection.dto.response.GetCollectionSimpleRes;
 import kr.flint.bookmark.domain.ContentBookmark;
 import kr.flint.collection.domain.Collection;
 import kr.flint.collection.domain.CollectionContent;
+import kr.flint.collection.domain.CollectionContentImage;
+import kr.flint.collection.domain.RecentViewedCollection;
 import kr.flint.content.domain.Content;
 import kr.flint.content.domain.MediaType;
 import kr.flint.shared.config.QueryDslConfig;
@@ -39,6 +41,7 @@ import kr.flint.shared.config.QueryDslConfig;
 @Import({CollectionQueryRepository.class, QueryDslConfig.class})
 @Sql(
 	statements = {
+		"DELETE FROM recent_viewed_collection",
 		"DELETE FROM collection_content_images",
 		"DELETE FROM collection_content",
 		"DELETE FROM content_bookmark",
@@ -152,6 +155,30 @@ class CollectionQueryRepositoryTest {
 		assertThat(persistedCollection.getImage()).isNull();
 	}
 
+	@Test
+	@DisplayName("최근 본 컬렉션 미리보기에는 사용자 업로드 이미지 대신 공식 포스터를 사용")
+	void recentCollectionPreviewUsesOfficialPoster() {
+		Long userId = 1L;
+		Collection collection = persistCollection();
+		Content content = persistContent(4001L, "포스터 작품");
+		CollectionContent collectionContent = persistCollectionContent(
+			collection,
+			content,
+			"충분한 추천 이유입니다",
+			0
+		);
+		entityManager.persist(CollectionContentImage.create(collectionContent, "collection/content/custom.webp", 0));
+		entityManager.persist(RecentViewedCollection.create(userId, collection));
+		entityManager.flush();
+		entityManager.clear();
+
+		List<kr.flint.api.domain.collection.dto.response.GetCollectionDetailListRes> result =
+			collectionQueryRepository.getCollectionDetailList(userId);
+
+		assertThat(result).hasSize(1);
+		assertThat(result.getFirst().imageList()).containsExactly("poster.jpg");
+	}
+
 	private Collection persistCollection() {
 		return persistCollection("설명");
 	}
@@ -176,7 +203,20 @@ class CollectionQueryRepositoryTest {
 		return content;
 	}
 
-	private void persistCollectionContent(Collection collection, Content content, String reason, int sortOrder) {
-		entityManager.persist(CollectionContent.create(collection, content.getId(), false, reason, sortOrder));
+	private CollectionContent persistCollectionContent(
+		Collection collection,
+		Content content,
+		String reason,
+		int sortOrder
+	) {
+		CollectionContent collectionContent = CollectionContent.create(
+			collection,
+			content.getId(),
+			false,
+			reason,
+			sortOrder
+		);
+		entityManager.persist(collectionContent);
+		return collectionContent;
 	}
 }

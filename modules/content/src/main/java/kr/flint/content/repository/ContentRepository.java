@@ -32,7 +32,7 @@ public interface ContentRepository extends JpaRepository<Content, Long> {
 
 	List<Content> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
-	List<Content> findAllByOrderByBookmarkCountDescIdAsc(Pageable pageable);
+	List<Content> findAllByOrderByBookmarkCountDescIdDesc(Pageable pageable);
 
 	@Modifying
 	@Query(value = """

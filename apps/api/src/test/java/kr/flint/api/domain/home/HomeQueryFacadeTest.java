@@ -72,8 +72,8 @@ class HomeQueryFacadeTest {
                 )));
             when(homeCollectionRepository.findContentImagesByCollectionIds(List.of(collectionId)))
                 .thenReturn(List.of(
-                    new CollectionContentImageDto(collectionId, null, null),
-                    new CollectionContentImageDto(collectionId, null, "poster.jpg")
+                    new CollectionContentImageDto(collectionId, null),
+                    new CollectionContentImageDto(collectionId, "poster.jpg")
                 ));
             when(bookmarkQueryService.getBookmarkedCollectionIdSet(userId)).thenReturn(Set.of());
             when(cloudFrontUrlProvider.resolveUrl(nullable(String.class)))
@@ -118,9 +118,9 @@ class HomeQueryFacadeTest {
                 )));
             when(homeCollectionRepository.findContentImagesByCollectionIds(List.of(collectionId)))
                 .thenReturn(List.of(
-                    new CollectionContentImageDto(collectionId, "custom-1.jpg", "poster-1.jpg"),
-                    new CollectionContentImageDto(collectionId, null, "poster-2.jpg"),
-                    new CollectionContentImageDto(collectionId, null, "poster-3.jpg")
+                    new CollectionContentImageDto(collectionId, "poster-1.jpg"),
+                    new CollectionContentImageDto(collectionId, "poster-2.jpg"),
+                    new CollectionContentImageDto(collectionId, "poster-3.jpg")
                 ));
             when(cloudFrontUrlProvider.resolveUrl(nullable(String.class)))
                 .thenAnswer(invocation -> {
@@ -136,7 +136,8 @@ class HomeQueryFacadeTest {
 
             // then
             assertThat(response.collections().getFirst().imageList())
-                .containsExactly("resolved/custom-1.jpg", "resolved/poster-2.jpg");
+                .containsExactly("resolved/poster-1.jpg", "resolved/poster-2.jpg");
+            assertThat(response.collections().getFirst().bookmarkCount()).isEqualTo(3);
             verify(cloudFrontUrlProvider, never()).resolveUrl(isNull());
         }
     }

@@ -62,6 +62,7 @@ public interface HomeControllerDocs {
                                   "https://cdn.flint.kr/content/poster/100.jpg",
                                   "https://cdn.flint.kr/content/poster/101.jpg"
                                 ],
+                                "bookmarkCount": 15,
                                 "nickname": "플린트",
                                 "profileImageUrl": "https://cdn.flint.kr/user/profile/123.jpg"
                               },
@@ -73,6 +74,7 @@ public interface HomeControllerDocs {
                                   "https://cdn.flint.kr/content/poster/102.jpg",
                                   "https://cdn.flint.kr/content/poster/103.jpg"
                                 ],
+                                "bookmarkCount": 12,
                                 "nickname": "수채한",
                                 "profileImageUrl": "https://cdn.flint.kr/user/profile/124.jpg"
                               }

@@ -4,7 +4,6 @@ import static kr.flint.api.common.query.CollectionQueryConditions.*;
 import static kr.flint.bookmark.domain.QCollectionBookmark.*;
 import static kr.flint.collection.domain.QCollection.*;
 import static kr.flint.collection.domain.QCollectionContent.*;
-import static kr.flint.collection.domain.QCollectionContentImage.collectionContentImage;
 import static kr.flint.content.domain.QContent.*;
 import static kr.flint.user.domain.QUser.*;
 
@@ -64,15 +63,10 @@ public class HomeCollectionRepositoryCustomImpl implements HomeCollectionReposit
         return queryFactory
             .select(Projections.constructor(CollectionContentImageDto.class,
                 collectionContent.collection.id,
-                collectionContentImage.imageKey,
                 content.poster
             ))
             .from(collectionContent)
             .join(content).on(collectionContent.contentId.eq(content.id))
-            .leftJoin(collectionContentImage).on(
-                collectionContentImage.collectionContent.id.eq(collectionContent.id)
-                    .and(collectionContentImage.sortOrder.eq(0))
-            )
             .where(collectionContent.collection.id.in(collectionIds))
             .orderBy(
                 collectionContent.collection.id.asc(),

@@ -18,7 +18,7 @@ public interface SearchControllerDocs {
 
 	@Operation(
 		summary = "콘텐츠 검색 - 재민",
-		description = "키워드로 콘텐츠를 검색합니다."
+		description = "키워드로 콘텐츠를 검색합니다. 검색어가 없으면 인기 콘텐츠를 최대 30개 반환합니다."
 	)
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "검색 성공", useReturnTypeSchema = true)

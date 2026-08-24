@@ -26,12 +26,15 @@ import kr.flint.api.domain.user.dto.response.CollectionContentImageDto;
 import kr.flint.api.domain.user.dto.response.CollectionWithUserDto;
 import kr.flint.api.domain.user.dto.response.MyProfileRes;
 import kr.flint.api.domain.user.dto.response.UserCollectionsRes;
+import kr.flint.api.domain.user.dto.response.UserKeywordsRes;
 import kr.flint.api.domain.user.dto.response.UserProfileRes;
 import kr.flint.api.domain.user.repository.UserCollectionRepository;
 import kr.flint.bookmark.service.BookmarkQueryService;
 import kr.flint.infra.gpt.service.ChatService;
 import kr.flint.infra.storage.cloudfront.CloudFrontUrlProvider;
 import kr.flint.taste.service.TasteService;
+import kr.flint.taste.domain.KeywordLevel;
+import kr.flint.taste.dto.response.UserKeywordProjection;
 import kr.flint.terms.domain.Terms;
 import kr.flint.terms.domain.TermsContext;
 import kr.flint.terms.domain.TermsType;
@@ -141,6 +144,28 @@ class UserQueryFacadeTest {
 				.isInstanceOf(UserException.class);
 			verifyNoInteractions(tasteService, userCommandFacade);
 		}
+
+		@Test
+		@DisplayName("저장된 순위가 동점이어도 응답은 코어 3개와 서브 3개로 구분 가능한 순위를 반환")
+		void normalizeDuplicateRanksInResponse() {
+			Long userId = 1L;
+			when(userService.getById(userId)).thenReturn(createUser(userId, "플린트"));
+			when(tasteService.hasUserKeywords(userId)).thenReturn(true);
+			when(tasteService.getUserKeywords(userId)).thenReturn(List.of(
+				keywordProjection(1, "드라마"),
+				keywordProjection(2, "모험"),
+				keywordProjection(2, "범죄"),
+				keywordProjection(3, "액션"),
+				keywordProjection(4, "로맨스"),
+				keywordProjection(5, "코미디")
+			));
+
+			UserKeywordsRes response = userQueryFacade.getUserKeywords(userId);
+
+			assertThat(response.keywords())
+				.extracting(UserKeywordsRes.KeywordItem::rank)
+				.containsExactly(1, 2, 3, 4, 5, 6);
+		}
 	}
 
     @Nested
@@ -166,8 +191,8 @@ class UserQueryFacadeTest {
                 )));
             when(userCollectionRepository.findContentImagesByCollectionIds(List.of(collectionId)))
                 .thenReturn(List.of(
-                    new CollectionContentImageDto(collectionId, null, null),
-                    new CollectionContentImageDto(collectionId, null, "poster.jpg")
+                    new CollectionContentImageDto(collectionId, null),
+                    new CollectionContentImageDto(collectionId, "poster.jpg")
                 ));
             when(bookmarkQueryService.getBookmarkedCollectionIdSet(userId)).thenReturn(Set.of());
             when(cloudFrontUrlProvider.resolveUrl(nullable(String.class)))
@@ -203,5 +228,34 @@ class UserQueryFacadeTest {
 			java.time.LocalDateTime.now().minusDays(1));
 		ReflectionTestUtils.setField(terms, "id", id);
 		return terms;
+	}
+
+	private UserKeywordProjection keywordProjection(int rank, String name) {
+		return new UserKeywordProjection() {
+			@Override
+			public int getRanking() {
+				return rank;
+			}
+
+			@Override
+			public String getImageUrl() {
+				return null;
+			}
+
+			@Override
+			public KeywordLevel getLevel() {
+				return KeywordLevel.LV1;
+			}
+
+			@Override
+			public String getName() {
+				return name;
+			}
+
+			@Override
+			public Integer getPercentage() {
+				return 50;
+			}
+		};
 	}
 }

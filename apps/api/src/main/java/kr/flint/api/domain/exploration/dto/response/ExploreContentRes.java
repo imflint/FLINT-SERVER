@@ -8,7 +8,7 @@ public record ExploreContentRes(
 	Long contentId,
 	@Schema(description = "제목", example = "인터스텔라")
 	String title,
-	@Schema(description = "작품 설명", example = "우주 저편, 인류의 미래를 건 여정...")
+	@Schema(description = "대표 컬렉션 작성자가 작성한 작품 선정 이유", example = "우주 저편의 감정을 섬세하게 풀어낸 작품이에요.")
 	String description,
 	@Schema(description = "포스터 이미지 URL")
 	String imageUrl,

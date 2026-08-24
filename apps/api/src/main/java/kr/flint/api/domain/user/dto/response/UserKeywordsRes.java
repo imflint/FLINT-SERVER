@@ -2,6 +2,7 @@ package kr.flint.api.domain.user.dto.response;
 
 import java.util.List;
 import java.util.function.Function;
+import java.util.stream.IntStream;
 
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -13,8 +14,8 @@ public record UserKeywordsRes(
     List<KeywordItem> keywords
 ) {
     public static UserKeywordsRes from(List<UserKeywordProjection> projections, Function<String, String> imageUrlResolver) {
-        List<KeywordItem> items = projections.stream()
-            .map(p -> KeywordItem.from(p, imageUrlResolver))
+        List<KeywordItem> items = IntStream.range(0, Math.min(projections.size(), 6))
+            .mapToObj(index -> KeywordItem.from(projections.get(index), index + 1, imageUrlResolver))
             .toList();
         return new UserKeywordsRes(items);
     }
@@ -32,10 +33,14 @@ public record UserKeywordsRes(
 		@Schema(description = "이미지 url", example = "https.xxx.example.jpg")
 		String imageUrl
     ) {
-        public static KeywordItem from(UserKeywordProjection projection, Function<String, String> imageUrlResolver) {
+        public static KeywordItem from(
+			UserKeywordProjection projection,
+			int normalizedRank,
+			Function<String, String> imageUrlResolver
+		) {
             return new KeywordItem(
 				projection.getLevel().getColor().toString(),
-				projection.getRanking(),
+				normalizedRank,
                 projection.getName(),
                 projection.getPercentage(),
 				imageUrlResolver.apply(projection.getImageUrl())
