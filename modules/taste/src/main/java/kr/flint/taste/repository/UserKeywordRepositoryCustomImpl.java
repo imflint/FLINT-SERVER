@@ -19,7 +19,9 @@ public class UserKeywordRepositoryCustomImpl implements UserKeywordRepositoryCus
     private final JdbcTemplate jdbcTemplate;
 
     @Override
-    public void bulkUpsert(Long userId, List<UserKeyword> userKeywords) {
+    public void replaceAll(Long userId, List<UserKeyword> userKeywords) {
+        jdbcTemplate.update("DELETE FROM user_keywords WHERE user_id = ?", userId);
+
         if (userKeywords.isEmpty()) {
             return;
         }

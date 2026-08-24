@@ -6,5 +6,5 @@ import kr.flint.taste.domain.UserKeyword;
 
 public interface UserKeywordRepositoryCustom {
 
-    void bulkUpsert(Long userId, List<UserKeyword> userKeywords);
+    void replaceAll(Long userId, List<UserKeyword> userKeywords);
 }

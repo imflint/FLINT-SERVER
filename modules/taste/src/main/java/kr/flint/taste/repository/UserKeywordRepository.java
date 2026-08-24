@@ -28,7 +28,7 @@ public interface UserKeywordRepository extends JpaRepository<UserKeyword, Long>,
     FROM UserKeyword uk
     JOIN Keyword k ON uk.keywordId = k.id
     WHERE uk.userId = :userId
-    ORDER BY uk.ranking ASC
+    ORDER BY uk.ranking ASC, uk.percentage DESC, k.name ASC
     LIMIT 6
 """)
     List<UserKeywordProjection> findUserKeywordsWithDetails(@Param("userId") Long userId);
