@@ -16,6 +16,8 @@ public record PopularCollectionCardRes(
     String thumbnailUrl,
     @Schema(description = "컬렉션 제목", example = "주말에 보기 좋은 한국 영화")
     String title,
+    @Schema(description = "컬렉션 설명", example = "편하게 볼 수 있는 영화들")
+    String description,
     @ArraySchema(schema = @Schema(implementation = String.class, example = "https://cdn.flint.kr/content/poster/123.jpg"))
     List<String> imageList,
     @Schema(description = "북마크 수", example = "15")
@@ -36,6 +38,7 @@ public record PopularCollectionCardRes(
             dto.id(),
             imageUrlResolver.apply(dto.image()),
             dto.title(),
+            dto.description(),
             resolvedImages,
             dto.bookmarkCount(),
             dto.nickname(),
