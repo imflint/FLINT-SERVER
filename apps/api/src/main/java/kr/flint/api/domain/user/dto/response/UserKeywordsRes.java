@@ -7,15 +7,20 @@ import java.util.stream.IntStream;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 import kr.flint.taste.dto.response.UserKeywordProjection;
+import kr.flint.taste.domain.KeywordColor;
 
 @Schema(description = "사용자 취향 키워드 응답")
 public record UserKeywordsRes(
     @ArraySchema(schema = @Schema(implementation = KeywordItem.class))
     List<KeywordItem> keywords
 ) {
-    public static UserKeywordsRes from(List<UserKeywordProjection> projections, Function<String, String> imageUrlResolver) {
+    public static UserKeywordsRes from(
+        List<UserKeywordProjection> projections,
+        List<KeywordColor> colors,
+        Function<String, String> imageUrlResolver
+    ) {
         List<KeywordItem> items = IntStream.range(0, Math.min(projections.size(), 6))
-            .mapToObj(index -> KeywordItem.from(projections.get(index), index + 1, imageUrlResolver))
+            .mapToObj(index -> KeywordItem.from(projections.get(index), colors.get(index), index + 1, imageUrlResolver))
             .toList();
         return new UserKeywordsRes(items);
     }
@@ -35,11 +40,12 @@ public record UserKeywordsRes(
     ) {
         public static KeywordItem from(
 			UserKeywordProjection projection,
+			KeywordColor color,
 			int normalizedRank,
 			Function<String, String> imageUrlResolver
 		) {
             return new KeywordItem(
-				projection.getLevel().getColor().toString(),
+				color.toString(),
 				normalizedRank,
                 projection.getName(),
                 projection.getPercentage(),

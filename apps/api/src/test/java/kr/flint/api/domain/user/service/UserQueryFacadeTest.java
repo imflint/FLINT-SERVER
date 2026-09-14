@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -73,6 +74,9 @@ class UserQueryFacadeTest {
 
 	@Mock
 	private TermsService termsService;
+
+	@Spy
+	private KeywordColorAllocationService keywordColorAllocationService = new KeywordColorAllocationService();
 
     @InjectMocks
     private UserQueryFacade userQueryFacade;
@@ -165,6 +169,25 @@ class UserQueryFacadeTest {
 			assertThat(response.keywords())
 				.extracting(UserKeywordsRes.KeywordItem::rank)
 				.containsExactly(1, 2, 3, 4, 5, 6);
+		}
+
+		@Test
+		@DisplayName("상위 3개 키워드의 레벨 색상이 같으면 서로 다른 색상을 배정")
+		void allocatesUniqueColorsToTopThreeKeywords() {
+			Long userId = 1L;
+			when(userService.getById(userId)).thenReturn(createUser(userId, "플린트"));
+			when(tasteService.hasUserKeywords(userId)).thenReturn(true);
+			when(tasteService.getUserKeywords(userId)).thenReturn(List.of(
+				keywordProjection(1, "드라마"),
+				keywordProjection(2, "액션"),
+				keywordProjection(3, "로맨스")
+			));
+
+			UserKeywordsRes response = userQueryFacade.getUserKeywords(userId);
+
+			assertThat(response.keywords())
+				.extracting(UserKeywordsRes.KeywordItem::color)
+				.containsExactly("PINK", "GREEN", "ORANGE");
 		}
 	}
 
