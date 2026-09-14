@@ -82,48 +82,6 @@ variable "api_domain_name" {
   default     = "flint.r-e.kr"
 }
 
-variable "admin_application_name" {
-  description = "관리자 API 애플리케이션 이름입니다. 리소스 태그와 user-data 설명에 사용합니다."
-  type        = string
-  default     = "flint-admin-api"
-}
-
-variable "admin_ec2_instance_type" {
-  description = "관리자 API 서버 인스턴스 타입입니다. Spring Boot Admin API와 Batch 메모리 여유를 위해 t4g.small을 기본값으로 사용합니다."
-  type        = string
-  default     = "t4g.small"
-}
-
-variable "admin_ec2_disable_api_termination" {
-  description = "관리자 API 서버 EC2 인스턴스 종료 보호를 활성화할지 여부입니다. 운영 환경에서는 true를 권장합니다."
-  type        = bool
-  default     = false
-}
-
-variable "admin_create_eip" {
-  description = "관리자 API 서버에 고정 Elastic IP를 생성하고 연결할지 여부입니다."
-  type        = bool
-  default     = true
-}
-
-variable "admin_api_domain_name" {
-  description = "관리자 API 서버 HTTPS 인증서와 Nginx server_name에 사용할 도메인입니다."
-  type        = string
-  default     = "admin-api.flint.r-e.kr"
-}
-
-variable "admin_ec2_volume_size" {
-  description = "관리자 API 서버 루트 EBS 볼륨 크기입니다. 단위는 GB입니다."
-  type        = number
-  default     = 20
-}
-
-variable "admin_ingress_cidrs" {
-  description = "관리자 API 서버의 HTTP/HTTPS 접근을 허용할 CIDR 목록입니다. 실제 운영에서는 사무실/VPN IP로 좁히는 것을 권장합니다."
-  type        = list(string)
-  default     = ["0.0.0.0/0"]
-}
-
 variable "create_admin_auth_ssm_parameters" {
   description = "관리자 로그인 API가 사용할 Parameter Store 값을 Terraform으로 생성할지 여부입니다. 비밀번호 원문은 저장하지 않고 BCrypt 해시만 저장합니다."
   type        = bool
@@ -240,12 +198,6 @@ variable "ecr_repository_name" {
   default     = null
 }
 
-variable "admin_ecr_repository_name" {
-  description = "선택적으로 지정할 관리자 API Docker 이미지 ECR 저장소 이름입니다. 비워두면 프로젝트와 환경 이름으로 생성합니다."
-  type        = string
-  default     = null
-}
-
 variable "ecr_keep_tagged_images" {
   description = "ECR에 유지할 sha 태그 배포 이미지 개수입니다."
   type        = number
@@ -319,12 +271,6 @@ variable "admin_frontend_cloudfront_certificate_arn" {
 
 variable "admin_frontend_route53_zone_id" {
   description = "관리자 웹 프론트엔드 A/AAAA alias record를 생성할 Route53 hosted zone ID입니다. 비워두면 DNS record를 만들지 않습니다."
-  type        = string
-  default     = null
-}
-
-variable "admin_api_route53_zone_id" {
-  description = "관리자 API A record를 생성할 Route53 hosted zone ID입니다. 비워두면 DNS record를 만들지 않습니다."
   type        = string
   default     = null
 }

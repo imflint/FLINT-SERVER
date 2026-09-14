@@ -254,13 +254,3 @@ resource "aws_route53_record" "admin_frontend_aaaa" {
     evaluate_target_health = false
   }
 }
-
-resource "aws_route53_record" "admin_api_a" {
-  count = local.admin_api_route53_zone_id != "" && local.admin_api_dns_name != "" ? 1 : 0
-
-  zone_id = var.admin_api_route53_zone_id
-  name    = var.admin_api_domain_name
-  type    = "A"
-  ttl     = 300
-  records = [var.admin_create_eip ? aws_eip.admin[0].public_ip : aws_instance.admin.public_ip]
-}

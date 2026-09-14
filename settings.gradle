@@ -1,7 +1,6 @@
 rootProject.name = 'flint-api'
 
 include 'apps:api'
-include 'apps:admin-api'
 include 'apps:batch'
 
 include 'modules:shared'

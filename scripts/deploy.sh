@@ -353,17 +353,21 @@ kill_app_on_port() {
         container_name=$(container_name_for_port "$port")
         if docker ps -a --format '{{.Names}}' | grep -qx "$container_name"; then
             log "Stopping container $container_name"
-            docker stop -t 30 "$container_name" >/dev/null 2>&1 || true
+            docker stop -t 330 "$container_name" >/dev/null 2>&1 || true
             docker rm "$container_name" >/dev/null 2>&1 || true
         fi
     fi
 
     pid=$(lsof -ti:"$port" 2>/dev/null || true)
     if [ -n "$pid" ]; then
-        log "Stopping application on port $port (PID: $pid)"
-        kill -TERM "$pid" 2>/dev/null || true
-        # 그레이스풀 셧다운 대기 (Spring Boot 기본 30초)
-        sleep 10
+		log "Stopping application on port $port (PID: $pid)"
+		kill -TERM "$pid" 2>/dev/null || true
+		# TMDB chunk checkpoint 저장과 최대 5분 Job 중단을 기다리되, 종료되면 즉시 진행한다.
+		local waited=0
+		while lsof -ti:"$port" > /dev/null 2>&1 && [ "$waited" -lt 330 ]; do
+			sleep 2
+			waited=$((waited + 2))
+		done
         # 강제 종료
         if lsof -ti:"$port" > /dev/null 2>&1; then
             log "Force killing application on port $port"
@@ -664,5 +668,5 @@ deploy() {
     log "New active port: $inactive_port"
 }
 
-# 실행 — api blue-green 배포만 담당. admin은 별도 EC2에서 scripts/deploy-admin.sh로 배포.
+# 실행 - 플랫폼 API와 통합된 관리자 API를 함께 blue-green 배포한다.
 deploy
