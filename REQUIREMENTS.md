@@ -1,7 +1,7 @@
 # Flint API 요구사항 명세서
 
-> 최종 업데이트: 2026-06-07
-> 버전: MVP 1.0
+> 최종 업데이트: 2026-09-13
+> 버전: MVP 1.1
 
 ---
 
@@ -39,7 +39,8 @@
 ```
 flint-api/
 ├── apps/
-│   └── api                    # REST API 애플리케이션
+│   ├── api                    # 사용자 및 관리자 REST API 애플리케이션
+│   └── batch                  # API JVM에 조립되는 TMDB Spring Batch 구성
 ├── modules/
 │   ├── shared                 # 공통 컴포넌트 (Base, Exception, DTO)
 │   ├── user                   # 사용자 관리
@@ -49,7 +50,9 @@ flint-api/
 │   ├── bookmark               # 북마크 관리
 │   ├── taste                  # 취향 키워드 관리
 │   ├── ott                    # OTT 플랫폼 관리
-│   └── search                 # 검색
+│   ├── search                 # 검색
+│   ├── admin                  # 관리자 계정
+│   └── moderation             # 신고/제재
 └── infra/
     ├── redis                  # Redis 캐시
     ├── storage                # S3, CloudFront
@@ -59,7 +62,8 @@ flint-api/
 
 ### 2.2 의존성 규칙
 
-- `apps:*` → `modules:*`, `infra:*` 의존 가능
+- `apps:api` → `apps:batch`, `modules:*`, `infra:*` 의존 가능
+- `apps:batch` → TMDB 배치에 필요한 `modules:*`, `infra:tmdb` 의존 가능
 - `modules:*` → `modules:shared`만 의존 (다른 도메인 모듈 의존 금지)
 - `infra:*` → 외부 라이브러리만 의존
 - 엔티티는 단일 모듈 소유, 다른 모듈은 ID 참조
@@ -312,6 +316,8 @@ flint-api/
 2. 최대 6개를 반환하고 응답 순위를 1~6으로 정규화
 3. 1~3위는 코어 키워드, 4~6위는 서브 키워드로 사용
 4. 재계산 결과는 기존 키워드 전체를 교체하며 GPT가 동점 순위를 반환해도 고유 순위를 저장
+5. 1~3위는 기존 레벨 색상을 우선 사용하되 중복 시 `PINK → GREEN → ORANGE → YELLOW → BLUE` 순으로 미사용 색상을 배정
+6. 4~6위는 기존 레벨 색상을 유지
 
 **[응답]**
 
@@ -628,16 +634,18 @@ flint-api/
 
 **[처리 로직]**
 
-1. 해당 콘텐츠를 시청 가능한 OTT 목록 조회
-2. 사용자가 구독 중인 OTT 목록 조회
-3. 각 OTT별 구독 여부 표시
+1. 해당 콘텐츠의 `KR.flatrate`로 동기화된 활성 OTT 전체 조회
+2. 사용자 구독 여부와 무관하게 `displayPriority`, provider ID 순으로 반환
+3. 비활성 provider는 제외
 
 **[응답]**
 
 - otts: OTT 목록
+    - ottId (Long): 내부 OTT provider ID
     - name (String): OTT 이름
     - logoUrl (String): 로고 URL
-    - isSubscribed (Boolean): 사용자 구독 여부
+
+> TMDB Watch Provider 데이터는 JustWatch 제공 데이터이므로 이를 사용하는 클라이언트 화면에 JustWatch 출처를 표시한다.
 
 ---
 
@@ -684,27 +692,32 @@ flint-api/
 
 ---
 
-#### 3.5.4 콘텐츠 검색 (TMDB)
+#### 3.5.4 콘텐츠 검색 (DB)
 
 `GET /contents/search`
 
 **[입력]**
 
-- keyword (String): 검색어
-- cursor (Integer, default: 1): 페이지 번호
+- keyword (String, optional): 한글 또는 영문 검색어
+- genre (List, optional): 장르 목록. 여러 값은 OR
+- mediaType (MOVIE/TV, optional): 미디어 타입
+- cursor (String, optional): 이전 응답의 opaque cursor
 - size (Integer, default: 20): 조회 개수
 
 **[처리 로직]**
 
-1. TMDB API에 검색 요청
-2. 검색 결과를 내부 DTO로 변환
-3. 페이지네이션 정보 포함하여 반환
+1. 검색어의 공백·특수문자·이모지와 대소문자를 정규화
+2. `title_ko`, `title_en`, 정규화 제목을 합친 `search_title` ngram FULLTEXT 검색
+3. 검색어가 있으면 정규화 완전 일치, FULLTEXT 관련도, 콘텐츠 ID 내림차순으로 정렬하며 인기순은 적용하지 않음
+4. 검색어가 없으면 북마크 수, 콘텐츠 ID 내림차순으로 정렬
+5. 장르 목록 내부는 OR, 검색어·장르 그룹·미디어 타입 사이는 AND
+6. 정렬 모드·완전 일치 등급·관련도·ID 또는 북마크 수·ID를 담은 버전형 cursor로 페이지 이동
 
 **[응답]**
 
-- items: 검색 결과 목록
-- nextCursor (Integer): 다음 페이지 번호
-- hasNext (Boolean): 다음 페이지 존재 여부
+- data: 검색 결과 목록
+- meta.type: CURSOR
+- meta.nextCursor: 다음 페이지용 opaque cursor
 
 ---
 
@@ -712,7 +725,7 @@ flint-api/
 
 ---
 
-#### 3.6.1 콘텐츠 검색 (DB)
+#### 3.6.1 콘텐츠 검색 (레거시)
 
 `GET /search/contents`
 
@@ -736,6 +749,8 @@ flint-api/
 - 콘텐츠 원산지/제작 국가 필드가 없어 국내 작품 비율을 서버에서 보장할 수 없음. 고정 비율이 필요하면 국가 메타데이터 또는 온보딩 큐레이션 테이블이 필요함
 - 이 호환 API는 정확 일치/유사도 점수 정렬과 오타 보정을 제공하지 않음. 관련도 정렬은 FULLTEXT 점수와 그 점수를 포함하는 커서 계약을 별도로 설계해야 함
 - 검색어 삭제 즉시 기본 목록 복원, 요청 타임아웃, 오류 팝업은 클라이언트 상태 및 네트워크 처리 영역
+
+> 신규 화면은 `GET /contents/search`를 사용한다. `GET /search/contents`는 호환을 위한 deprecated API다.
 
 ---
 
@@ -830,6 +845,57 @@ flint-api/
 
 ---
 
+### 3.8 관리자 및 TMDB 카탈로그 운영
+
+#### 3.8.1 플랫폼 관리자 API
+
+- 모든 관리자 API는 플랫폼 애플리케이션의 `/api/v1/admin/**`에서 제공한다.
+- 기존 관리자 URL·요청·응답 형식은 유지하고 API 호스트만 `https://flint.r-e.kr`로 통합한다.
+- 관리자 인증은 일반 사용자 인증과 분리된 `ADMIN` audience JWT와 `AdminPrincipal`을 사용한다.
+- `/api/v1/admin/**`는 우선순위 1 SecurityFilterChain, 일반 API는 우선순위 2 SecurityFilterChain으로 처리한다.
+- 관리자 로그인·refresh 외 요청은 ADMIN 토큰만 허용하고, 일반 API는 USER 토큰만 허용한다.
+- `admin.token_valid_after` 이전에 발급된 ADMIN Access/Refresh Token은 거부해 전환 시 전원 재로그인한다.
+- `apps/admin-api`, 관리자 전용 배포 workflow/script 및 EC2/EIP/SG/ECR/IAM/DNS는 폐기하고 관리자 프론트 S3·CloudFront는 유지한다.
+
+#### 3.8.2 TMDB 실행 조정
+
+- 일간 업무 키는 `DAILY:yyyy-MM-dd`, 월간 업무 키는 `MONTHLY:yyyy-MM`, 분류 전용 키는 `CLASSIFY_ONLY:yyyy-MM`이다.
+- DB lease를 획득한 단일 인스턴스만 실행한다. 같은 업무 키는 기존 실행을 반환하고 다른 업무가 실행 중이면 409를 반환한다.
+- 일간 동기화는 05:00 KST, 월간 조정은 매월 1일 02:00 KST에 시작한다. 자동 스케줄은 dev에서만 활성화하고 prod는 검증 전까지 비활성화한다.
+- TMDB 상세 요청은 동시성 3, 전역 5req/s, chunk 50으로 제한한다.
+- changes reader는 페이지와 항목 위치를 ExecutionContext에 저장하고 요청 날짜 범위는 최대 14일이다.
+- 종료 시 실행 중 Job에 STOP을 요청하고 최대 5분간 chunk checkpoint 완료를 기다린다. 새 인스턴스는 같은 JobInstance를 checkpoint부터 재개한다.
+- 상세 조회는 `translations,credits,watch/providers`를 한 번에 받고 콘텐츠·장르·`KR.flatrate` OTT 관계를 같은 chunk에서 멱등 upsert/reconciliation한다.
+- Movie/TV provider master는 `watch_region=KR` 결과의 합집합으로 동기화하며 누락 provider는 삭제하지 않고 비활성화한다.
+- 기존 6개 provider는 명시적 이름 alias로 TMDB provider ID를 연결해 사용자 구독 FK를 보존한다.
+- 월간 export는 유효 ID registry를 갱신하되 신규·PENDING·RETRY·갱신기한 경과 ID만 상세 조회한다.
+- 일간 작업은 `next_refresh_at` 만료 대상을 나눠 처리해 최초 동기화 후 약 30일 주기로 제목과 OTT를 갱신한다.
+
+#### 3.8.3 제목 분류와 데이터 정리
+
+- 제목 선택 우선순위는 `ko-KR → 기타 ko → en-US → en-GB → 기타 en`이며 원어가 ko/en이면 유효한 원제도 후보로 인정한다.
+- 성공한 TMDB 상세 응답에 한글·영문 제목이 모두 없으면 `INELIGIBLE_LANGUAGE`로 분류한다.
+- 404는 `NOT_FOUND`, 429·5xx·timeout 등 일시 오류는 `RETRY`로 기록하며 기존 콘텐츠를 삭제하지 않는다.
+- `CLASSIFY_ONLY` 실행은 registry만 변경하고 콘텐츠·장르·OTT 관계는 변경하지 않는다.
+- 분류 중 확인한 한글·영문 제목과 정규화 검색 문자열은 registry에 staging하고, cleanup 완료 시 남은 콘텐츠에 일괄 반영한다.
+- cleanup preview는 현재 콘텐츠의 PENDING/RETRY/미등록 상태가 0일 때만 후보 ID·건수·SHA-256 해시를 고정한다.
+- cleanup execute는 preview manifest와 해시가 일치하고 운영자가 RDS 수동 스냅샷 생성을 확인한 경우에만 실행한다.
+- cleanup execute는 `PREVIEW` 또는 중단된 `EXECUTING` manifest를 동일 해시로 재개할 수 있다.
+- 500건 트랜잭션으로 `collection_content_images → collection_content → content_bookmark → ott_content → content_keywords → content_genre → content` 순서로 삭제한다.
+- 삭제 후 작품 순서를 재정렬하고 빈 컬렉션은 soft-delete하며 컬렉션 키워드와 추천 Redis 캐시를 갱신한다.
+- `collection/content/` S3 key만 대기열에 기록하고 30일 뒤 별도 정리 스케줄에서 삭제한다.
+- 수동 DDL과 운영 점검 SQL은 `docs/tmdb-catalog-platform-consolidation.sql`을 기준으로 한다.
+
+**[완료 조건]**
+
+- 언어 부적격 콘텐츠 0건
+- 모든 콘텐츠에 `title_ko` 또는 `title_en` 중 하나 이상 존재
+- 콘텐츠 연결 테이블 orphan 0건
+- 활성 빈 컬렉션 0건
+- 동일 업무 키 중복 실행 0건
+
+---
+
 ## 4. 데이터 모델
 
 ### 4.1 엔티티 목록
@@ -854,13 +920,20 @@ flint-api/
 | ott | OttProvider | ott_providers | OTT 플랫폼 마스터 |
 | ott | OttContent | ott_contents | 콘텐츠-OTT 매핑 |
 | ott | OttUser | ott_users | 사용자-OTT 구독 정보 |
+| batch | TmdbCatalogEntry | tmdb_catalog_entry | TMDB ID 분류 및 갱신 registry |
+| batch | TmdbSyncRun | tmdb_sync_run | 안정적 업무 키별 실행 상태와 진행률 |
+| batch | TmdbSyncLock | tmdb_sync_lock | 블루·그린 단일 실행 lease |
+| batch | TmdbPruneManifest | tmdb_content_prune_manifest | 언어 정리 후보 고정 manifest |
+| batch | TmdbS3DeleteQueue | tmdb_s3_delete_queue | 30일 지연 S3 삭제 대기열 |
 
 ### 4.2 주요 제약조건
 
 | 테이블 | UNIQUE 제약 |
 |--------|-------------|
 | user_identities | (provider, provider_user_id) |
-| contents | (tmdb_id) |
+| contents | (tmdb_id, media_type) |
+| tmdb_catalog_entry | (media_type, tmdb_id) |
+| tmdb_sync_run | (run_key) |
 | collection_contents | (collection_id, content_id), (collection_id, sort_order) |
 | recent_viewed_collections | (user_id, collection_id) |
 | content_bookmarks | (user_id, content_id) |
@@ -950,7 +1023,7 @@ flint-api/
 | GET | /contents/ott/{id} | OTT 목록 | O |
 | GET | /contents/bookmarks | 북마크 콘텐츠 | O |
 | GET | /contents/bookmarks/count | 북마크 콘텐츠 개수 | O |
-| GET | /contents/search | TMDB 검색 | X |
+| GET | /contents/search | localized DB 검색 | X |
 
 ### 6.6 검색 관련
 
@@ -966,6 +1039,20 @@ flint-api/
 |--------|----------|------|------|
 | GET | /home/recommended-collections | 추천 컬렉션 | O |
 | GET | /home/popular-collections | 인기 컬렉션 | X |
+
+### 6.8 관리자 및 배치 관련
+
+| Method | Endpoint | 설명 | 인증 |
+|--------|----------|------|------|
+| POST | /admin/auth/login | 관리자 로그인 | X |
+| POST | /admin/auth/refresh | 관리자 토큰 갱신 | X |
+| POST | /admin/batch/daily-sync | 일간 동기화 요청 | ADMIN |
+| POST | /admin/batch/monthly-reconcile | 월간 조정 요청 | ADMIN |
+| POST | /admin/batch/language-cleanup/classify | 전체 언어 분류 요청 | ADMIN |
+| GET | /admin/batch/runs | 배치 실행 목록 | ADMIN |
+| GET | /admin/batch/runs/{runId} | 배치 실행 상세 | ADMIN |
+| POST | /admin/batch/language-cleanup/preview | 언어 정리 후보 고정 | ADMIN |
+| POST | /admin/batch/language-cleanup/execute | 스냅샷 확인 후 언어 정리 | ADMIN |
 
 ---
 
@@ -1004,3 +1091,5 @@ flint-api/
 | JWT Access 만료 | 14d | 14d | 1h |
 | JWT Refresh 만료 | 30d | 30d | 14d |
 | P6Spy 로깅 | enabled | enabled | disabled |
+| TMDB 자동 스케줄 | disabled | enabled | disabled |
+| localized title 검색 | flag | flag | flag |
