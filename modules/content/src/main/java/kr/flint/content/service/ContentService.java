@@ -84,8 +84,9 @@ public class ContentService {
     public Content upsertWithGenres(final ContentUpsertCommand command) {
         Content content = contentRepository.findByTmdbIdAndMediaType(command.tmdbId(), command.mediaType())
             .map(existing -> {
-                existing.updateMetadata(
-                    command.title(),
+                existing.updateLocalizedMetadata(
+					command.titleKo(),
+					command.titleEn(),
                     command.year(),
                     command.author(),
                     command.description(),
@@ -93,10 +94,11 @@ public class ContentService {
                 );
                 return existing;
             })
-            .orElseGet(() -> contentRepository.save(Content.create(
+			.orElseGet(() -> contentRepository.save(Content.createLocalized(
                 command.tmdbId(),
                 command.mediaType(),
-                command.title(),
+				command.titleKo(),
+				command.titleEn(),
                 command.year(),
                 command.author(),
                 command.description(),

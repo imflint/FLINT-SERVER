@@ -95,6 +95,9 @@ public class ContentQueryFacade {
 		String normalizedKeyword = normalizeKeyword(keyword);
 		List<String> genreNames = toGenreNames(genres);
 		ContentSearchCursor decodedCursor = ContentSearchCursor.decodeNullable(cursor);
+		if (decodedCursor != null) {
+			decodedCursor.validateSortMode(StringUtils.hasText(normalizedKeyword));
+		}
 		ContentSearchCondition condition = ContentSearchCondition.of(
 			normalizedKeyword,
 			genreNames,
@@ -109,13 +112,15 @@ public class ContentQueryFacade {
 		List<GetContentSearchRes> data = rows.stream()
 			.map(ContentSearchRow::toResponse)
 			.toList();
-		String nextCursor = hasNext ? createNextCursor(rows) : null;
+		String nextCursor = hasNext ? createNextCursor(rows, StringUtils.hasText(normalizedKeyword)) : null;
 		return PaginationResponse.ofCursor(data, nextCursor);
 	}
 
-	private String createNextCursor(List<ContentSearchRow> rows) {
+	private String createNextCursor(List<ContentSearchRow> rows, boolean keywordSearch) {
 		ContentSearchRow last = rows.get(rows.size() - 1);
-		return ContentSearchCursor.of(last.bookmarkCount(), last.id()).encode();
+		return keywordSearch
+			? ContentSearchCursor.keyword(last.exactMatchRank(), last.relevanceScore(), last.id()).encode()
+			: ContentSearchCursor.popular(last.bookmarkCount(), last.id()).encode();
 	}
 
 	private String normalizeKeyword(String keyword) {

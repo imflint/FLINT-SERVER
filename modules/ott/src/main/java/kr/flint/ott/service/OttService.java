@@ -23,7 +23,7 @@ public class OttService {
 	private final OttUserRepository ottUserRepository;
 
 	public List<GetOttResponse> getOttList(final Long userId, final Long contentId) {
-		return ottUserRepository.getSubscribeOttList(userId, contentId);
+		return ottContentRepository.findAllActiveProvidersByContentId(contentId);
 	}
 
 	@Transactional

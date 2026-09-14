@@ -15,26 +15,40 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 import org.springframework.stereotype.Repository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.StringUtils;
 
 import com.querydsl.core.Tuple;
+import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.CaseBuilder;
+import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.core.types.dsl.Expressions;
+import com.querydsl.core.types.dsl.NumberExpression;
+import com.querydsl.core.types.dsl.StringExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
 import kr.flint.api.domain.content.dto.ContentSearchCondition;
 import kr.flint.api.domain.content.dto.GetContentDetailRes;
 import kr.flint.api.domain.search.dto.response.GetContentSearchRes;
 import kr.flint.api.domain.search.dto.response.GetSearchBookmarkContentRes;
-import lombok.RequiredArgsConstructor;
+import kr.flint.content.domain.ContentTitleNormalizer;
 
 @Repository
-@RequiredArgsConstructor
 public class ContentQueryRepository {
 	private static final Pattern FULLTEXT_BOOLEAN_OPERATOR_PATTERN = Pattern.compile("[+\\-<>()~*\"@]");
 
 	private final JPAQueryFactory jpaQueryFactory;
+	private final boolean localizedSearchEnabled;
+
+	public ContentQueryRepository(
+		JPAQueryFactory jpaQueryFactory,
+		@Value("${flint.content.localized-search-enabled:false}") boolean localizedSearchEnabled
+	) {
+		this.jpaQueryFactory = jpaQueryFactory;
+		this.localizedSearchEnabled = localizedSearchEnabled;
+	}
 
 	public record ContentSearchRow(
 		Long id,
@@ -42,8 +56,21 @@ public class ContentQueryRepository {
 		String author,
 		String posterUrl,
 		int year,
-		int bookmarkCount
+		int bookmarkCount,
+		int exactMatchRank,
+		double relevanceScore
 	) {
+		public ContentSearchRow(
+			Long id,
+			String title,
+			String author,
+			String posterUrl,
+			int year,
+			int bookmarkCount
+		) {
+			this(id, title, author, posterUrl, year, bookmarkCount, 0, 0.0);
+		}
+
 		public GetContentSearchRes toResponse() {
 			return GetContentSearchRes.of(id, title, author, posterUrl, year);
 		}
@@ -115,12 +142,20 @@ public class ContentQueryRepository {
 			.selectDistinct(
 				ottContent.contentId,
 				ottProvider.name,
-				ottProvider.logoUrl
+				ottProvider.logoUrl,
+				ottProvider.displayPriority,
+				ottProvider.id
 			)
 			.from(ottContent)
 			.join(ottContent.ottProvider, ottProvider)
 			.where(
-				ottContent.contentId.in(contentIds)
+				ottContent.contentId.in(contentIds),
+				ottProvider.active.isTrue()
+			)
+			.orderBy(
+				ottContent.contentId.asc(),
+				ottProvider.displayPriority.asc(),
+				ottProvider.id.asc()
 			)
 			.fetch();
 
@@ -188,16 +223,19 @@ public class ContentQueryRepository {
 			.leftJoin(ottContent).on(
 				ottContent.contentId.eq(content.id)
 			)
-			.leftJoin(ottContent.ottProvider, ottProvider)
+			.leftJoin(ottContent.ottProvider, ottProvider).on(ottProvider.active.isTrue())
 			.where(
 				content.title.contains(keyword)
 			)
-			.orderBy(contentBookmark.createdAt.desc())
+			.orderBy(
+				contentBookmark.createdAt.desc(),
+				ottProvider.displayPriority.asc(),
+				ottProvider.id.asc()
+			)
 			.limit(10)
 			.fetch();
 
 		Map<Long, GetSearchBookmarkContentRes> contentMap = new LinkedHashMap<>();
-		Map<Long, List<GetSearchBookmarkContentRes.GetOttSimpleRes>> ottMap = new LinkedHashMap<>();
 		for (Tuple row : rows) {
 			Long contentId = row.get(content.id);
 			if (contentId == null) continue;
@@ -233,9 +271,12 @@ public class ContentQueryRepository {
 
 	public List<ContentSearchRow> searchContents(ContentSearchCondition condition) {
 		List<Long> genreIds = findGenreIds(condition.genreNames());
-		if (condition.hasGenres() && genreIds.size() != condition.genreNames().size()) {
+		if (condition.hasGenres() && genreIds.isEmpty()) {
 			return List.of();
 		}
+
+		NumberExpression<Integer> exactMatchRank = exactMatchRank(condition);
+		NumberExpression<Double> relevanceScore = relevanceScore(condition);
 
 		return jpaQueryFactory
 			.select(Projections.constructor(
@@ -245,7 +286,9 @@ public class ContentQueryRepository {
 				content.author,
 				content.poster,
 				content.year,
-				content.bookmarkCount
+				content.bookmarkCount,
+				exactMatchRank,
+				relevanceScore
 			))
 			.from(content)
 			.where(
@@ -254,7 +297,7 @@ public class ContentQueryRepository {
 				cursorCondition(condition),
 				genreCondition(genreIds)
 			)
-			.orderBy(content.bookmarkCount.desc(), content.id.desc())
+			.orderBy(orderSpecifiers(condition, exactMatchRank, relevanceScore))
 			.limit(condition.queryLimit())
 			.fetch();
 	}
@@ -277,35 +320,108 @@ public class ContentQueryRepository {
 		}
 
 		String fullTextKeyword = toFullTextKeyword(condition.keyword());
+		String normalizedKeyword = ContentTitleNormalizer.normalizeNullable(condition.keyword());
+		if (!StringUtils.hasText(normalizedKeyword)) {
+			return content.id.isNull();
+		}
+		BooleanExpression exactMatch = normalizedTitleCondition(normalizedKeyword);
 		if (condition.usesFullTextSearch() && StringUtils.hasText(fullTextKeyword)) {
-			return Expressions.booleanTemplate(
+			return exactMatch.or(Expressions.booleanTemplate(
 				"match_against_boolean({0}, {1})",
-				content.title,
+				searchableTitle(),
 				fullTextKeyword
-			);
+			));
 		}
 
-		return content.title.contains(condition.keyword());
+		return exactMatch
+			.or(localizedSearchEnabled && normalizedKeyword != null
+				? content.normalizedTitleKo.contains(normalizedKeyword)
+					.or(content.normalizedTitleEn.contains(normalizedKeyword))
+				: content.id.isNull())
+			.or(content.title.containsIgnoreCase(condition.keyword()));
 	}
 
 	private Predicate cursorCondition(ContentSearchCondition condition) {
-		return onCondition(condition.cursor(), cursor ->
-			content.bookmarkCount.lt(cursor.bookmarkCount())
-				.or(content.bookmarkCount.eq(cursor.bookmarkCount())
-					.and(content.id.lt(cursor.contentId())))
+		return onCondition(condition.cursor(), cursor -> {
+			if (!condition.hasKeyword()) {
+				return content.bookmarkCount.lt(cursor.bookmarkCount())
+					.or(content.bookmarkCount.eq(cursor.bookmarkCount())
+						.and(content.id.lt(cursor.contentId())));
+			}
+
+			NumberExpression<Integer> exactRank = exactMatchRank(condition);
+			NumberExpression<Double> score = relevanceScore(condition);
+			return exactRank.gt(cursor.exactMatchRank())
+				.or(exactRank.eq(cursor.exactMatchRank()).and(score.lt(cursor.relevanceScore())))
+				.or(exactRank.eq(cursor.exactMatchRank())
+					.and(score.eq(cursor.relevanceScore()))
+					.and(content.id.lt(cursor.contentId())));
+		});
+	}
+
+	private NumberExpression<Integer> exactMatchRank(ContentSearchCondition condition) {
+		if (!condition.hasKeyword()) {
+			return Expressions.asNumber(0);
+		}
+		String normalizedKeyword = ContentTitleNormalizer.normalizeNullable(condition.keyword());
+		return new CaseBuilder()
+			.when(normalizedTitleCondition(normalizedKeyword))
+			.then(0)
+			.otherwise(1);
+	}
+
+	private BooleanExpression normalizedTitleCondition(String normalizedKeyword) {
+		if (!StringUtils.hasText(normalizedKeyword)) {
+			return content.id.isNull();
+		}
+		if (!localizedSearchEnabled) {
+			return content.title.equalsIgnoreCase(normalizedKeyword);
+		}
+		return content.normalizedTitleKo.eq(normalizedKeyword)
+			.or(content.normalizedTitleEn.eq(normalizedKeyword));
+	}
+
+	private NumberExpression<Double> relevanceScore(ContentSearchCondition condition) {
+		if (!condition.usesFullTextSearch()) {
+			return Expressions.asNumber(0.0);
+		}
+		return Expressions.numberTemplate(
+			Double.class,
+			"match_against_score({0}, {1})",
+			searchableTitle(),
+			toFullTextKeyword(condition.keyword())
 		);
+	}
+
+	private StringExpression searchableTitle() {
+		return localizedSearchEnabled ? content.searchTitle : content.title;
+	}
+
+	private OrderSpecifier<?>[] orderSpecifiers(
+		ContentSearchCondition condition,
+		NumberExpression<Integer> exactMatchRank,
+		NumberExpression<Double> relevanceScore
+	) {
+		if (condition.hasKeyword()) {
+			return new OrderSpecifier<?>[] {
+				exactMatchRank.asc(),
+				relevanceScore.desc(),
+				content.id.desc()
+			};
+		}
+		return new OrderSpecifier<?>[] {content.bookmarkCount.desc(), content.id.desc()};
 	}
 
 	private Predicate genreCondition(List<Long> genreIds) {
 		return onNotEmpty(genreIds, ids ->
 			com.querydsl.jpa.JPAExpressions
-				.select(contentGenre.genre.id.countDistinct())
+				.selectOne()
 				.from(contentGenre)
 				.where(
 					contentGenre.content.id.eq(content.id),
 					contentGenre.genre.id.in(ids)
 				)
-				.eq((long) ids.size())
+				.exists()
 		);
 	}
 

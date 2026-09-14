@@ -90,13 +90,14 @@ class ContentQueryRepositoryTest {
 		registry.add("spring.datasource.driver-class-name", MYSQL::getDriverClassName);
 		registry.add("spring.jpa.hibernate.ddl-auto", () -> "create");
 		registry.add("spring.jpa.properties.hibernate.dialect", () -> "org.hibernate.dialect.MySQLDialect");
+		registry.add("flint.content.localized-search-enabled", () -> "true");
 	}
 
 	@BeforeEach
 	void ensureFullTextIndex() throws SQLException {
 		try (Connection connection = dataSource.getConnection();
 			 Statement statement = connection.createStatement()) {
-			statement.execute("CREATE FULLTEXT INDEX ft_content_title_ngram ON content (title) WITH PARSER ngram");
+			statement.execute("CREATE FULLTEXT INDEX ft_content_search_title_ngram ON content (search_title) WITH PARSER ngram");
 		} catch (SQLException exception) {
 			if (exception.getErrorCode() != 1061) {
 				throw exception;
@@ -105,8 +106,8 @@ class ContentQueryRepositoryTest {
 	}
 
 	@Test
-	@DisplayName("요청한 모든 장르를 가진 콘텐츠만 인기순으로 조회")
-	void searchContentsMatchesAllGenres() {
+	@DisplayName("요청한 장르 중 하나 이상을 가진 콘텐츠를 인기순으로 조회")
+	void searchContentsMatchesAnyGenre() {
 		// given
 		Genre action = persistGenre("액션");
 		Genre romance = persistGenre("로맨스");
@@ -131,7 +132,7 @@ class ContentQueryRepositoryTest {
 		// then
 		assertThat(results)
 			.extracting(ContentSearchRow::title)
-			.containsExactly("액션 로맨스", "액션 로맨스 드라마");
+			.containsExactly("액션만", "로맨스 드라마", "액션 로맨스", "액션 로맨스 드라마");
 	}
 
 	@Test
@@ -211,7 +212,23 @@ class ContentQueryRepositoryTest {
 		// then
 		assertThat(results)
 			.extracting(ContentSearchRow::title)
-			.containsExactly("눈물의 여왕", "눈부신 하루");
+			.containsExactly("눈부신 하루", "눈물의 여왕");
+	}
+
+	@Test
+	@DisplayName("keyword 검색은 인기보다 정규화 완전 일치와 관련도를 우선")
+	void keywordSearchOrdersExactMatchBeforePopularity() {
+		persistContent(3201L, "해리포터와 불의 잔", 100);
+		persistContent(3202L, "해리 포터", 0);
+		commitFullTextFixtures();
+
+		List<ContentSearchRow> results =
+			contentQueryRepository.searchContents(condition("해리포터", List.of(), null, 10));
+
+		assertThat(results)
+			.extracting(ContentSearchRow::title)
+			.startsWith("해리 포터");
+		assertThat(results.getFirst().exactMatchRank()).isZero();
 	}
 
 	@Test
@@ -234,7 +251,7 @@ class ContentQueryRepositoryTest {
 	}
 
 	@Test
-	@DisplayName("keyword, genre, mediaType 조건을 모두 AND로 검색")
+	@DisplayName("keyword, mediaType, 장르 그룹을 AND로 검색하고 장르 그룹 내부는 OR로 처리")
 	void searchContentsWithAllConditions() {
 		// given
 		Genre action = persistGenre("액션");
@@ -258,7 +275,7 @@ class ContentQueryRepositoryTest {
 		// then
 		assertThat(results)
 			.extracting(ContentSearchRow::title)
-			.containsExactly("눈물 액션 로맨스");
+			.containsExactlyInAnyOrder("눈물 액션 로맨스", "눈물 액션");
 	}
 
 	@Test
@@ -332,13 +349,16 @@ class ContentQueryRepositoryTest {
 	void bookmarkedContentRowsIncludeContentOttProviders() {
 		// given
 		Long userId = 1L;
-		Long providerId = 9001L;
 		Content content = persistContent(8001L, "OTT 포함 콘텐츠", 1);
 		entityManager.flush();
 
 		entityManager.persist(ContentBookmark.create(userId, content.getId()));
-		persistOttProvider(providerId, "Netflix", "netflix.svg");
-		persistOttContent(providerId, content.getId());
+		persistOttProvider(9001L, "Netflix", "netflix.svg", 20, true);
+		persistOttProvider(9002L, "Wavve", "wavve.svg", 10, true);
+		persistOttProvider(9003L, "Inactive", "inactive.svg", 1, false);
+		persistOttContent(9001L, content.getId());
+		persistOttContent(9002L, content.getId());
+		persistOttContent(9003L, content.getId());
 		entityManager.flush();
 		entityManager.clear();
 
@@ -349,7 +369,7 @@ class ContentQueryRepositoryTest {
 		assertThat(rows).hasSize(1);
 		assertThat(rows.getFirst().ottSimpleList())
 			.extracting(GetContentDetailRes.GetOttSimpleRes::ottName)
-			.containsExactly("Netflix");
+			.containsExactly("Wavve", "Netflix");
 	}
 
 	private Genre persistGenre(String name) {
@@ -384,14 +404,22 @@ class ContentQueryRepositoryTest {
 	}
 
 	private void persistOttProvider(Long id, String name, String logoUrl) {
+		persistOttProvider(id, name, logoUrl, 9999, true);
+	}
+
+	private void persistOttProvider(Long id, String name, String logoUrl, int displayPriority, boolean active) {
 		entityManager.createNativeQuery("""
-				INSERT INTO ott_provider (id, name, logo_url, url)
-				VALUES (:id, :name, :logoUrl, :url)
+				INSERT INTO ott_provider (
+					id, name, logo_url, url, tmdb_provider_id, display_priority, active
+				)
+				VALUES (:id, :name, :logoUrl, :url, NULL, :displayPriority, :active)
 			""")
 			.setParameter("id", id)
 			.setParameter("name", name)
 			.setParameter("logoUrl", logoUrl)
 			.setParameter("url", "https://example.com")
+			.setParameter("displayPriority", displayPriority)
+			.setParameter("active", active)
 			.executeUpdate();
 	}
 
