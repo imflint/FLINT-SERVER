@@ -26,6 +26,12 @@ spring:
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
+  batch:
+    job:
+      enabled: false
+    jdbc:
+      initialize-schema: never
+
   jpa:
     hibernate:
       ddl-auto: create

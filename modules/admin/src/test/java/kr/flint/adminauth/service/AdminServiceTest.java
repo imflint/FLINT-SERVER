@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Optional;
+import java.time.Instant;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -74,6 +75,35 @@ class AdminServiceTest {
                 .isInstanceOf(AdminException.class)
                 .extracting("errorCode")
                 .isEqualTo(AdminErrorCode.ADMIN_NOT_FOUND);
+        }
+    }
+
+    @Nested
+    @DisplayName("canUseAdminToken")
+    class CanUseAdminToken {
+
+        @Test
+        @DisplayName("tokenValidAfter 이전에 발급된 토큰은 거부")
+        void rejectTokenIssuedBeforeCutover() {
+            Admin admin = Admin.create("admin", "hash", java.time.LocalDateTime.now());
+            ReflectionTestUtils.setField(admin, "tokenValidAfter", Instant.parse("2026-09-13T00:00:00Z"));
+            when(adminUserRepository.findById(1L)).thenReturn(Optional.of(admin));
+
+            boolean result = adminUserService.canUseAdminToken(1L, Instant.parse("2026-09-12T23:59:59Z"));
+
+            assertThat(result).isFalse();
+        }
+
+        @Test
+        @DisplayName("tokenValidAfter 이후에 발급된 토큰은 허용")
+        void acceptTokenIssuedAfterCutover() {
+            Admin admin = Admin.create("admin", "hash", java.time.LocalDateTime.now());
+            ReflectionTestUtils.setField(admin, "tokenValidAfter", Instant.parse("2026-09-13T00:00:00Z"));
+            when(adminUserRepository.findById(1L)).thenReturn(Optional.of(admin));
+
+            boolean result = adminUserService.canUseAdminToken(1L, Instant.parse("2026-09-13T00:00:01Z"));
+
+            assertThat(result).isTrue();
         }
     }
 

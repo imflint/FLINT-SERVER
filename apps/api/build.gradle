@@ -14,7 +14,9 @@ bootBuildImage {
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-batch'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.batch:spring-batch-integration'
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
 
     runtimeOnly 'com.mysql:mysql-connector-j'
@@ -32,13 +34,18 @@ dependencies {
     implementation project(':modules:search')
     implementation project(':modules:ott')
     implementation project(':modules:terms')
+    implementation project(':modules:moderation')
+    implementation project(':modules:admin')
     implementation project(':modules:exploration')
 
     implementation project(':infra:redis')
     implementation project(':infra:storage')
     implementation project(':infra:aws')
+    implementation project(':infra:tmdb')
     implementation project(':infra:gpt')
     implementation project(':infra:discord')
+
+    implementation project(':apps:batch')
 
     // Test
     testImplementation 'com.tngtech.archunit:archunit-junit5:1.4.0'

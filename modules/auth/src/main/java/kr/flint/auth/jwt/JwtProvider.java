@@ -130,7 +130,8 @@ public class JwtProvider {
         return new AccessTokenInfo(
                 claims.get(CLAIM_USER_ID, Long.class),
                 claims.get(CLAIM_ROLE, String.class),
-                getAudienceOrDefault(claims)
+                getAudienceOrDefault(claims),
+                claims.getIssuedAt() == null ? null : claims.getIssuedAt().toInstant()
         );
     }
 

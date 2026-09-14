@@ -1,6 +1,7 @@
 package kr.flint.adminauth.domain;
 
 import java.time.LocalDateTime;
+import java.time.Instant;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -28,6 +29,9 @@ public class Admin extends BaseTime {
 
     private LocalDateTime passwordChangedAt;
 
+    @Column(nullable = false)
+    private Instant tokenValidAfter;
+
     public static Admin create(
         String username,
         String passwordHash,
@@ -37,6 +41,7 @@ public class Admin extends BaseTime {
             .username(username)
             .passwordHash(passwordHash)
             .passwordChangedAt(now)
+            .tokenValidAfter(Instant.now())
             .build();
     }
 
@@ -47,6 +52,13 @@ public class Admin extends BaseTime {
     public void changePassword(String passwordHash, LocalDateTime now) {
         this.passwordHash = passwordHash;
         this.passwordChangedAt = now;
+        this.tokenValidAfter = Instant.now();
+    }
+
+    public boolean acceptsTokenIssuedAt(Instant issuedAt) {
+        return issuedAt != null
+            && tokenValidAfter != null
+            && !issuedAt.isBefore(tokenValidAfter.truncatedTo(java.time.temporal.ChronoUnit.SECONDS));
     }
 
     // todo: 컬렉션 수정 api

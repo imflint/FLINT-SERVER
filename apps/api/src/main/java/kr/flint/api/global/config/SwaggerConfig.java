@@ -107,6 +107,8 @@ public class SwaggerConfig {
 				Map.entry("/api/v1/auth/signup", List.of("POST")),
 				Map.entry("/api/v1/auth/refresh", List.of("POST")),
 				Map.entry("/api/v1/auth/dev/login", List.of("POST")),
+				Map.entry("/api/v1/admin/auth/login", List.of("POST")),
+				Map.entry("/api/v1/admin/auth/refresh", List.of("POST")),
 				Map.entry("/api/v1/bookmarks/{collectionId}", List.of("GET")),
 				Map.entry("/api/v1/contents/search", List.of("GET")),
 				Map.entry("/api/v1/home/popular-collections", List.of("GET")),
@@ -152,8 +154,8 @@ public class SwaggerConfig {
 
         return new OpenAPI()
                 .info(new Info()
-                        .title("Flint API")
-                        .description("Flint API 명세")
+                        .title("Flint Platform API")
+                        .description("Flint 플랫폼 및 관리자 API 명세")
                         .version("v1"))
                 .servers(List.of(
                         new Server().url("/").description("Current Server")
@@ -163,12 +165,25 @@ public class SwaggerConfig {
                 .addSecurityItem(securityRequirement);
     }
 
-    private GroupedOpenApi buildGroupedOpenApi(String group, String basePackage) {
-        return GroupedOpenApi.builder()
-                .group(group)
-                .pathsToMatch("/api/v1/**")
-				.addOpenApiCustomizer(authPublicEndpointsCustomizer())
-				.packagesToScan(basePackage)
-                .build();
-    }
+	@Bean
+	public GroupedOpenApi platformApi() {
+		return GroupedOpenApi.builder()
+			.group("platform")
+			.pathsToMatch("/api/v1/**")
+			.pathsToExclude("/api/v1/admin/**")
+			.addOpenApiCustomizer(authPublicEndpointsCustomizer())
+			.packagesToScan("kr.flint.api")
+			.build();
+	}
+
+	@Bean
+	public GroupedOpenApi adminApi() {
+		return GroupedOpenApi.builder()
+			.group("admin")
+			.pathsToMatch("/api/v1/admin/**")
+			.addOpenApiCustomizer(authPublicEndpointsCustomizer())
+			.packagesToScan("kr.flint.api.admin")
+			.build();
+	}
+
 }
