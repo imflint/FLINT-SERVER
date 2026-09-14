@@ -9,7 +9,7 @@ import org.springframework.core.task.TaskExecutor;
 public class TmdbBatchAsyncConfig {
 
 	public static final String TMDB_TASK_EXECUTOR = "tmdbTaskExecutor";
-	private static final int DEFAULT_CONCURRENCY_LIMIT = 50;
+	private static final int DEFAULT_CONCURRENCY_LIMIT = 3;
 	private static final long TASK_TERMINATION_TIMEOUT_MS = 60_000;
 
 	private final BatchProperties batchProperties;

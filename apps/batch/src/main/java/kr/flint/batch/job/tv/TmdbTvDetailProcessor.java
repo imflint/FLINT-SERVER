@@ -6,36 +6,38 @@ import org.springframework.batch.item.ItemProcessor;
 
 import feign.FeignException;
 import kr.flint.batch.job.TmdbIdLine;
+import kr.flint.batch.job.ContentSyncDraft;
+import kr.flint.batch.job.ott.TmdbOttSnapshot;
 import kr.flint.content.domain.MediaType;
 import kr.flint.content.dto.ContentUpsertCommand;
+import kr.flint.content.dto.ContentCatalogStatus;
 import kr.flint.infra.tmdb.client.TmdbClient;
 import kr.flint.infra.tmdb.dto.TmdbTvDetailRes;
 import kr.flint.infra.tmdb.dto.TmdbTvFullDetailRes;
+import kr.flint.batch.service.TmdbLocalizedTitleService;
+import kr.flint.batch.service.TmdbLocalizedTitleService.LocalizedTitles;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @RequiredArgsConstructor
 @Slf4j
-public class TmdbTvDetailProcessor implements ItemProcessor<TmdbIdLine, ContentUpsertCommand> {
+public class TmdbTvDetailProcessor implements ItemProcessor<TmdbIdLine, ContentSyncDraft> {
 
 	private static final String TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
 	private static final String LANG = "ko-KR";
+	private static final String APPEND_TO_RESPONSE = "translations,credits,watch/providers";
 
 	private final TmdbClient tmdbClient;
+	private final TmdbLocalizedTitleService localizedTitleService;
 
 	@Override
-	public ContentUpsertCommand process(TmdbIdLine line) {
+	public ContentSyncDraft process(TmdbIdLine line) {
 		if (line == null || line.id() == null) {
 			return null;
 		}
 		try {
-			TmdbTvFullDetailRes detail = tmdbClient.getTvFullDetail(line.id(), LANG);
+			TmdbTvFullDetailRes detail = tmdbClient.getTvFullDetail(line.id(), LANG, APPEND_TO_RESPONSE);
 			String poster = resolvePoster(detail.posterPath());
-			if (poster == null) {
-				log.debug("tv {} has no poster, skip", line.id());
-				return null;
-			}
-
 			List<String> genres = detail.genres() == null ? List.of() :
 				detail.genres().stream().map(TmdbTvDetailRes.TmdbGenre::name).toList();
 
@@ -45,21 +47,39 @@ public class TmdbTvDetailProcessor implements ItemProcessor<TmdbIdLine, ContentU
 				.orElse("Unknown");
 
 			int year = parseYear(detail.firstAirDate());
-			String title = detail.name() != null ? detail.name() : line.originalTitle();
+			LocalizedTitles titles = localizedTitleService.select(
+				detail.originalLanguage(),
+				detail.originalName(),
+				detail.translations()
+			);
+			if (!titles.eligible()) {
+				log.debug("tv {} has no Korean or English title, skip", line.id());
+				return ContentSyncDraft.classified(ContentUpsertCommand.classified(
+					line.id(), MediaType.TV, ContentCatalogStatus.INELIGIBLE_LANGUAGE, null
+				));
+			}
 
-			return ContentUpsertCommand.of(
+			ContentUpsertCommand command = ContentUpsertCommand.localized(
 				line.id(),
 				MediaType.TV,
-				title,
+				titles.titleKo(),
+				titles.titleEn(),
 				year,
 				creator,
 				detail.overview(),
 				poster,
 				genres
 			);
+			return ContentSyncDraft.synchronizedContent(command, TmdbOttSnapshot.from(detail.watchProviders()));
 		} catch (FeignException.NotFound nf) {
 			log.debug("tv {} not found, skip", line.id());
-			return null;
+			return ContentSyncDraft.classified(ContentUpsertCommand.classified(
+				line.id(), MediaType.TV, ContentCatalogStatus.NOT_FOUND, nf.getMessage()
+			));
+		} catch (FeignException exception) {
+			return ContentSyncDraft.classified(ContentUpsertCommand.classified(
+				line.id(), MediaType.TV, ContentCatalogStatus.RETRY, exception.getMessage()
+			));
 		}
 	}
 

@@ -19,6 +19,7 @@ import org.springframework.util.CollectionUtils;
 
 import io.hypersistence.tsid.TSID;
 import kr.flint.content.domain.MediaType;
+import kr.flint.content.domain.ContentTitleNormalizer;
 import kr.flint.content.dto.ContentUpsertCommand;
 import lombok.RequiredArgsConstructor;
 
@@ -34,11 +35,26 @@ public class ContentBatchJdbcRepository {
 			return;
 		}
 
+		upsertCatalogEntries(commands);
+		upsertClassified(commands);
+	}
+
+	public void classifyAll(List<ContentUpsertCommand> commands) {
+		if (!CollectionUtils.isEmpty(commands)) {
+			upsertCatalogEntries(commands);
+		}
+	}
+
+	public void upsertClassified(List<ContentUpsertCommand> commands) {
+		if (CollectionUtils.isEmpty(commands)) {
+			return;
+		}
+
 		Map<ContentKey, ContentUpsertCommand> latestByKey = new LinkedHashMap<>();
 		Map<ContentKey, LinkedHashSet<String>> genreNamesByKey = new LinkedHashMap<>();
 
 		for (ContentUpsertCommand command : commands) {
-			if (command == null) {
+			if (command == null || !command.syncable()) {
 				continue;
 			}
 			ContentKey key = contentKey(command);
@@ -54,22 +70,87 @@ public class ContentBatchJdbcRepository {
 		upsertContents(new ArrayList<>(latestByKey.values()));
 
 		Map<ContentKey, Long> contentIds = findContentIds(latestByKey.keySet());
+		deleteExistingContentGenres(contentIds.values());
 		Set<String> genreNames = collectGenreNames(genreNamesByKey);
 		insertMissingGenres(genreNames);
 		Map<String, Long> genreIds = findGenreIds(genreNames);
 		insertContentGenres(genreNamesByKey, contentIds, genreIds);
 	}
 
+	public Map<ContentIdentity, Long> findContentIdsFor(List<ContentUpsertCommand> commands) {
+		Set<ContentKey> keys = commands.stream()
+			.filter(Objects::nonNull)
+			.filter(ContentUpsertCommand::syncable)
+			.map(this::contentKey)
+			.collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+		Map<ContentKey, Long> found = findContentIds(keys);
+		Map<ContentIdentity, Long> result = new LinkedHashMap<>();
+		found.forEach((key, id) -> result.put(new ContentIdentity(key.tmdbId(), key.mediaType()), id));
+		return result;
+	}
+
+	private void upsertCatalogEntries(List<ContentUpsertCommand> commands) {
+		List<ContentUpsertCommand> classified = commands.stream()
+			.filter(Objects::nonNull)
+			.toList();
+		if (classified.isEmpty()) {
+			return;
+		}
+
+		String sql = """
+			INSERT INTO tmdb_catalog_entry (
+				id, media_type, tmdb_id, status,
+				title_ko, title_en, normalized_title_ko, normalized_title_en, search_title,
+				last_synced_at, next_refresh_at,
+				error_message, created_at, updated_at
+			) VALUES (
+				?, ?, ?, ?, ?, ?, ?, ?, ?,
+				IF(? = 'SYNCED', UTC_TIMESTAMP(), NULL),
+				IF(? = 'SYNCED', DATE_ADD(UTC_TIMESTAMP(), INTERVAL 30 DAY), NULL),
+				?, UTC_TIMESTAMP(), UTC_TIMESTAMP()
+			)
+			ON DUPLICATE KEY UPDATE
+				status = VALUES(status),
+				title_ko = IF(VALUES(status) = 'RETRY', title_ko, VALUES(title_ko)),
+				title_en = IF(VALUES(status) = 'RETRY', title_en, VALUES(title_en)),
+				normalized_title_ko = IF(VALUES(status) = 'RETRY', normalized_title_ko, VALUES(normalized_title_ko)),
+				normalized_title_en = IF(VALUES(status) = 'RETRY', normalized_title_en, VALUES(normalized_title_en)),
+				search_title = IF(VALUES(status) = 'RETRY', search_title, VALUES(search_title)),
+				last_synced_at = IF(VALUES(status) = 'SYNCED', VALUES(last_synced_at), last_synced_at),
+				next_refresh_at = IF(VALUES(status) = 'SYNCED', VALUES(next_refresh_at), next_refresh_at),
+				error_message = VALUES(error_message),
+				updated_at = UTC_TIMESTAMP()
+			""";
+		jdbcTemplate.batchUpdate(sql, classified, classified.size(), (ps, command) -> {
+			ps.setLong(1, TSID.Factory.getTsid().toLong());
+			ps.setString(2, command.mediaType().name());
+			ps.setLong(3, command.tmdbId());
+			ps.setString(4, command.catalogStatus().name());
+			ps.setString(5, command.titleKo());
+			ps.setString(6, command.titleEn());
+			ps.setString(7, ContentTitleNormalizer.normalizeNullable(command.titleKo()));
+			ps.setString(8, ContentTitleNormalizer.normalizeNullable(command.titleEn()));
+			ps.setString(9, ContentTitleNormalizer.buildSearchTitle(command.titleKo(), command.titleEn()));
+			ps.setString(10, command.catalogStatus().name());
+			ps.setString(11, command.catalogStatus().name());
+			ps.setString(12, command.errorMessage());
+		});
+	}
+
 	private void upsertContents(List<ContentUpsertCommand> commands) {
 		String sql = """
 			INSERT INTO content (
-				id, tmdb_id, media_type, title, `year`, author, description, poster,
+				id, tmdb_id, media_type, title, title_ko, title_en,
+				normalized_title_ko, normalized_title_en, search_title,
+				`year`, author, description, poster,
 				bookmark_count, created_at, updated_at
 			)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
 			ON DUPLICATE KEY UPDATE
 				updated_at = IF(
 					NOT (title <=> VALUES(title))
+					OR NOT (title_ko <=> VALUES(title_ko))
+					OR NOT (title_en <=> VALUES(title_en))
 					OR NOT (`year` <=> VALUES(`year`))
 					OR NOT (author <=> VALUES(author))
 					OR NOT (description <=> VALUES(description))
@@ -78,6 +159,11 @@ public class ContentBatchJdbcRepository {
 					updated_at
 				),
 				title = VALUES(title),
+				title_ko = VALUES(title_ko),
+				title_en = VALUES(title_en),
+				normalized_title_ko = VALUES(normalized_title_ko),
+				normalized_title_en = VALUES(normalized_title_en),
+				search_title = VALUES(search_title),
 				`year` = VALUES(`year`),
 				author = VALUES(author),
 				description = VALUES(description),
@@ -89,14 +175,31 @@ public class ContentBatchJdbcRepository {
 			ps.setLong(1, TSID.Factory.getTsid().toLong());
 			ps.setLong(2, command.tmdbId());
 			ps.setString(3, command.mediaType().name());
-			ps.setString(4, command.title());
-			ps.setInt(5, command.year());
-			ps.setString(6, command.author());
-			ps.setString(7, command.description());
-			ps.setString(8, command.poster());
-			ps.setTimestamp(9, timestamp);
-			ps.setTimestamp(10, timestamp);
+			ps.setString(4, ContentTitleNormalizer.displayTitle(command.titleKo(), command.titleEn()));
+			ps.setString(5, command.titleKo());
+			ps.setString(6, command.titleEn());
+			ps.setString(7, ContentTitleNormalizer.normalizeNullable(command.titleKo()));
+			ps.setString(8, ContentTitleNormalizer.normalizeNullable(command.titleEn()));
+			ps.setString(9, ContentTitleNormalizer.buildSearchTitle(command.titleKo(), command.titleEn()));
+			ps.setInt(10, command.year());
+			ps.setString(11, command.author());
+			ps.setString(12, command.description());
+			ps.setString(13, command.poster());
+			ps.setTimestamp(14, timestamp);
+			ps.setTimestamp(15, timestamp);
 		});
+	}
+
+	private void deleteExistingContentGenres(java.util.Collection<Long> contentIds) {
+		if (contentIds.isEmpty()) {
+			return;
+		}
+		MapSqlParameterSource params = new MapSqlParameterSource()
+			.addValue("contentIds", new ArrayList<>(contentIds));
+		namedParameterJdbcTemplate.update(
+			"DELETE FROM content_genre WHERE content_id IN (:contentIds)",
+			params
+		);
 	}
 
 	private Map<ContentKey, Long> findContentIds(Set<ContentKey> keys) {
@@ -227,6 +330,9 @@ public class ContentBatchJdbcRepository {
 	}
 
 	private record ContentKey(Long tmdbId, MediaType mediaType) {
+	}
+
+	public record ContentIdentity(Long tmdbId, MediaType mediaType) {
 	}
 
 	private record ContentGenreRow(Long contentId, Long genreId) {

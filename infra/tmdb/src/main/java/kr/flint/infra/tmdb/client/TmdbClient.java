@@ -15,6 +15,7 @@ import kr.flint.infra.tmdb.dto.TmdbMovieDetailRes;
 import kr.flint.infra.tmdb.dto.TmdbOttRes;
 import kr.flint.infra.tmdb.dto.TmdbTvDetailRes;
 import kr.flint.infra.tmdb.dto.TmdbTvFullDetailRes;
+import kr.flint.infra.tmdb.dto.TmdbWatchProviderListRes;
 
 @FeignClient(
 	name = "tmdbClient",
@@ -59,16 +60,30 @@ public interface TmdbClient {
 	@GetMapping("/3/tv/{id}/watch/providers")
 	TmdbOttRes getTvWatchProviders(@PathVariable("id") Long id);
 
+	@GetMapping("/3/watch/providers/movie")
+	TmdbWatchProviderListRes getMovieWatchProviderList(
+		@RequestParam(value = "language", defaultValue = "ko-KR") String language,
+		@RequestParam(value = "watch_region", defaultValue = "KR") String watchRegion
+	);
+
+	@GetMapping("/3/watch/providers/tv")
+	TmdbWatchProviderListRes getTvWatchProviderList(
+		@RequestParam(value = "language", defaultValue = "ko-KR") String language,
+		@RequestParam(value = "watch_region", defaultValue = "KR") String watchRegion
+	);
+
 	@GetMapping("/3/movie/{id}")
 	TmdbMovieDetailRes getMovieFullDetail(
 		@PathVariable("id") Long id,
-		@RequestParam(value = "language", defaultValue = "ko-KR") String language
+		@RequestParam(value = "language", defaultValue = "ko-KR") String language,
+		@RequestParam(value = "append_to_response") String appendToResponse
 	);
 
 	@GetMapping("/3/tv/{id}")
 	TmdbTvFullDetailRes getTvFullDetail(
 		@PathVariable("id") Long id,
-		@RequestParam(value = "language", defaultValue = "ko-KR") String language
+		@RequestParam(value = "language", defaultValue = "ko-KR") String language,
+		@RequestParam(value = "append_to_response") String appendToResponse
 	);
 
 	@GetMapping("/3/movie/changes")
