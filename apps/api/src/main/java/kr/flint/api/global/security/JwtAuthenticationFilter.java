@@ -51,8 +51,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             "/api/v1/collections",
             "/api/v1/bookmarks/{collectionId:\\d+}",
             "/api/v1/contents/search",
-            "/api/v1/search/contents",
-            "/api/v1/home/popular-collections"
+            "/api/v1/search/contents"
     };
 
     private final AntPathMatcher pathMatcher = new AntPathMatcher();

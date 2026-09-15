@@ -184,6 +184,23 @@ public class CollectionService {
         return collection;
     }
 
+    @Transactional
+    public Collection getActiveCollectionByIdForUpdate(final Long collectionId) {
+        Collection collection = collectionRepository.findByIdForUpdate(collectionId)
+            .orElseThrow(() -> new CollectionException(CollectionErrorCode.COLLECTION_NOT_FOUND));
+        if (collection.isDeleted()) {
+            throw new CollectionException(CollectionErrorCode.COLLECTION_NOT_FOUND);
+        }
+        return collection;
+    }
+
+    @Transactional
+    public void synchronizeBookmarkCountIfPresent(final Long collectionId, final int actualCount) {
+        collectionRepository.findByIdForUpdate(collectionId)
+            .filter(collection -> !collection.isDeleted())
+            .ifPresent(collection -> collection.synchronizeBookmarkCount(actualCount));
+    }
+
     public CollectionReport getReportById(final Long reportId) {
         return collectionReportRepository.findById(reportId)
             .orElseThrow(() -> new CollectionException(CollectionErrorCode.COLLECTION_REPORT_NOT_FOUND));

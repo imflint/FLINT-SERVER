@@ -22,6 +22,8 @@ public record PopularCollectionCardRes(
     List<String> imageList,
     @Schema(description = "북마크 수", example = "15")
     Integer bookmarkCount,
+    @Schema(description = "현재 사용자의 저장 여부. 익명 조회는 false", example = "true")
+    boolean isBookmarked,
     @Schema(description = "컬렉션 작성자 닉네임", example = "플린트")
     String nickname,
     @Schema(description = "컬렉션 작성자 프로필 사진", example = "https://cdn.flint.kr/user/profile/123.jpg")
@@ -30,6 +32,7 @@ public record PopularCollectionCardRes(
     public static PopularCollectionCardRes from(
         CollectionCardDto dto,
         List<String> contentPosters,
+        boolean isBookmarked,
         Function<String, String> imageUrlResolver
     ) {
         List<String> resolvedImages = CollectionImageProcessor.limitAndResolveImages(contentPosters, imageUrlResolver);
@@ -41,6 +44,7 @@ public record PopularCollectionCardRes(
             dto.description(),
             resolvedImages,
             dto.bookmarkCount(),
+            isBookmarked,
             dto.nickname(),
             imageUrlResolver.apply(dto.profileImage())
         );

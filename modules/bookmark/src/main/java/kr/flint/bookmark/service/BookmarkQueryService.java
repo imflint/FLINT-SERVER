@@ -46,6 +46,14 @@ public class BookmarkQueryService {
 		return new HashSet<>(collectionBookmarkRepository.findCollectionIdsByUserId(userId));
 	}
 
+	public Set<Long> getBookmarkedCollectionIdSet(final Long userId, final List<Long> collectionIds) {
+		if (userId == null || collectionIds == null || collectionIds.isEmpty()) {
+			return Collections.emptySet();
+		}
+		return new HashSet<>(collectionBookmarkRepository
+			.findCollectionIdsByUserIdAndCollectionIdIn(userId, collectionIds));
+	}
+
 	public Set<Long> getBookmarkedContentIdSet(final Long userId, final List<Long> contentIds) {
 		if (userId == null || contentIds == null || contentIds.isEmpty()) {
 			return Collections.emptySet();

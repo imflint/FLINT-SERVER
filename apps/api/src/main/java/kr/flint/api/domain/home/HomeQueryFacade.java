@@ -53,7 +53,7 @@ public class HomeQueryFacade {
 
         Map<Long, List<String>> contentImagesMap = buildContentImagesMap(collectionIds);
 
-        Set<Long> bookmarkedIds = bookmarkQueryService.getBookmarkedCollectionIdSet(userId);
+        Set<Long> bookmarkedIds = bookmarkQueryService.getBookmarkedCollectionIdSet(userId, collectionIds);
 
         Map<Long, CollectionCardDto> collectionMap = collections.stream()
             .collect(Collectors.toMap(CollectionCardDto::id, Function.identity()));
@@ -72,7 +72,7 @@ public class HomeQueryFacade {
     }
 
     // 인기 컬렉션 조회 (최근 7일 북마크 증가량 우선, 동률/0건은 총 북마크 수로 fallback)
-    public PopularCollectionsRes getPopularCollections() {
+    public PopularCollectionsRes getPopularCollections(Long userId) {
         LocalDateTime since = LocalDateTime.now().minusDays(POPULAR_WINDOW_DAYS);
         List<Long> collectionIds = homeCollectionRepository.findWeeklyPopularPublicCollectionIds(since, MAX_POPULAR_COLLECTIONS);
         log.debug("인기 컬렉션 조회. since={}, count={}", since, collectionIds.size());
@@ -83,6 +83,7 @@ public class HomeQueryFacade {
 
         List<CollectionCardDto> cards = homeCollectionRepository.findCollectionCardsWithUser(collectionIds);
         Map<Long, List<String>> contentImagesMap = buildContentImagesMap(collectionIds);
+        Set<Long> bookmarkedIds = bookmarkQueryService.getBookmarkedCollectionIdSet(userId, collectionIds);
         Map<Long, CollectionCardDto> cardMap = cards.stream()
             .collect(Collectors.toMap(CollectionCardDto::id, Function.identity()));
 
@@ -92,6 +93,7 @@ public class HomeQueryFacade {
             .map(dto -> PopularCollectionCardRes.from(
                 dto,
                 contentImagesMap.getOrDefault(dto.id(), List.of()),
+                bookmarkedIds.contains(dto.id()),
                 cloudFrontUrlProvider::resolveUrl
             ))
             .toList();

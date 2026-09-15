@@ -9,7 +9,7 @@ import kr.flint.bookmark.exception.BookmarkException;
 import kr.flint.bookmark.repository.CollectionBookmarkRepository;
 import kr.flint.bookmark.service.BookmarkCommandService;
 import kr.flint.bookmark.service.BookmarkQueryService;
-import kr.flint.collection.repository.CollectionRepository;
+import kr.flint.collection.domain.Collection;
 import kr.flint.collection.service.CollectionService;
 import kr.flint.content.service.ContentService;
 import kr.flint.user.service.UserService;
@@ -27,7 +27,6 @@ public class BookmarkCommandFacade {
 	private final CollectionService collectionService;
 	private final UserService userService;
 	private final CollectionBookmarkRepository collectionBookmarkRepository;
-	private final CollectionRepository collectionRepository;
 
 	@Transactional
 	public boolean toggleContent(final Long userId, final Long contentId) {
@@ -55,25 +54,24 @@ public class BookmarkCommandFacade {
 	@Transactional
 	public boolean toggleCollection(final Long userId, final Long collectionId) {
 		userService.getById(userId);
-		collectionService.getActiveCollectionById(collectionId);
+		Collection collection = collectionService.getActiveCollectionByIdForUpdate(collectionId);
 
 		// 북마크가 되어있는 경우 영향 받은 row 1 -> 북마크 off
 		int deleted = collectionBookmarkRepository.deleteCollectionBookmarkByUserIdAndCollectionId(userId, collectionId);
 		if(deleted == 1){
-			collectionRepository.decBookmarkCount(collectionId);
+			collection.synchronizeBookmarkCount(collectionBookmarkRepository.countByCollectionId(collectionId));
 			return false;
 		}
 
 		//북마크가 되어 있지 않은 경우 영향 받은 row 1 -> 북마크 on
 		Long id = TSID.Factory.getTsid().toLong();
 		int inserted = collectionBookmarkRepository.insertIgnore(id, userId, collectionId);
-		if(inserted == 1){
-			collectionRepository.incBookmarkCount(collectionId);
-			return true;
-		}
+		collection.synchronizeBookmarkCount(collectionBookmarkRepository.countByCollectionId(collectionId));
 
-		// 동시 요청으로 인해 이미 다른 스레드에서 북마크를 한 경우 -> 북마크 on
-		return true;
+		// INSERT IGNORE가 0이면 동일 사용자의 관계가 이미 존재하므로 최종 상태는 on이다.
+		return inserted == 1 || collectionBookmarkRepository
+			.findByCollectionIdAndUserId(collectionId, userId)
+			.isPresent();
 	}
 
 
