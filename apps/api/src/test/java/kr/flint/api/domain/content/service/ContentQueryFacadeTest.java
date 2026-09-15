@@ -76,6 +76,9 @@ class ContentQueryFacadeTest {
 			assertThat(response.contents())
 				.extracting(GetContentListRes.Content::isBookmarked)
 				.containsExactly(false, true);
+			assertThat(response.contents())
+				.extracting(GetContentListRes.Content::author)
+				.containsExactly("감독", "감독");
 			verify(contentQueryRepository).getContentDetailList(10L);
 			verify(bookmarkQueryService).getBookmarkedContentIdSet(20L, List.of(1L, 2L));
 		}
@@ -102,6 +105,7 @@ class ContentQueryFacadeTest {
 			return new GetContentDetailRes(
 				id,
 				title,
+				"감독",
 				"poster.jpg",
 				2026,
 				5,
@@ -152,6 +156,7 @@ class ContentQueryFacadeTest {
 				bookmarkId,
 				contentId,
 				title,
+				"감독",
 				"poster.jpg",
 				2026,
 				5,

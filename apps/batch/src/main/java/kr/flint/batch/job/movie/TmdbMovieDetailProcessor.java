@@ -3,6 +3,7 @@ package kr.flint.batch.job.movie;
 import java.util.List;
 
 import org.springframework.batch.item.ItemProcessor;
+import org.springframework.util.StringUtils;
 
 import feign.FeignException;
 import kr.flint.batch.job.TmdbIdLine;
@@ -45,11 +46,12 @@ public class TmdbMovieDetailProcessor implements ItemProcessor<TmdbIdLine, Conte
 			List<String> genres = detail.genres() == null ? List.of() :
 				detail.genres().stream().map(TmdbGenreListRes.TmdbGenre::name).toList();
 
-			String director = credit == null || credit.crew() == null ? "Unknown" : credit.crew().stream()
+			String director = credit == null || credit.crew() == null ? null : credit.crew().stream()
 				.filter(c -> "Director".equals(c.job()))
 				.map(TmdbMovieCreditRes.Crew::name)
+				.filter(StringUtils::hasText)
 				.findFirst()
-				.orElse("Unknown");
+				.orElse(null);
 
 			int year = parseYear(detail.releaseDate());
 			LocalizedTitles titles = localizedTitleService.select(

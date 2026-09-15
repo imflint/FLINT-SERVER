@@ -372,6 +372,49 @@ class ContentQueryRepositoryTest {
 			.containsExactly("Wavve", "Netflix");
 	}
 
+	@Test
+	@DisplayName("북마크 콘텐츠 cursor 페이지는 현재 사용자 관계만 최신순으로 중복 없이 반환")
+	void bookmarkedContentRowsAreScopedAndCursorPaginated() {
+		Long userId = 1L;
+		Content first = persistContent(8101L, "첫 번째", 1);
+		Content second = persistContent(8102L, "두 번째", 1);
+		Content third = persistContent(8103L, "세 번째", 1);
+		Content otherUser = persistContent(8104L, "타 사용자 작품", 1);
+		persistContent(8105L, "미저장 작품", 1);
+		entityManager.flush();
+		persistBookmark(300L, userId, first.getId());
+		persistBookmark(200L, userId, second.getId());
+		persistBookmark(100L, userId, third.getId());
+		persistBookmark(400L, 2L, otherUser.getId());
+		entityManager.flush();
+		entityManager.clear();
+
+		List<BookmarkedContentRow> firstPage = contentQueryRepository.getBookmarkedContentRows(userId, null, 2);
+		List<BookmarkedContentRow> secondPage = contentQueryRepository.getBookmarkedContentRows(userId, 200L, 2);
+
+		assertThat(firstPage).extracting(BookmarkedContentRow::title).containsExactly("첫 번째", "두 번째");
+		assertThat(secondPage).extracting(BookmarkedContentRow::title).containsExactly("세 번째");
+		assertThat(java.util.stream.Stream.concat(firstPage.stream(), secondPage.stream()))
+			.extracting(BookmarkedContentRow::contentId)
+			.doesNotHaveDuplicates();
+	}
+
+	@Test
+	@DisplayName("저장 작품 감독이 Unknown이면 null, 실제 이름이면 그대로 반환")
+	void bookmarkedContentRowsNormalizeAuthor() {
+		Content unknown = persistContent(8201L, "감독 없음", MediaType.MOVIE, 0, "Unknown");
+		Content director = persistContent(8202L, "감독 있음", MediaType.MOVIE, 0, "감독 이름");
+		entityManager.flush();
+		persistBookmark(200L, 1L, unknown.getId());
+		persistBookmark(100L, 1L, director.getId());
+		entityManager.flush();
+		entityManager.clear();
+
+		List<BookmarkedContentRow> rows = contentQueryRepository.getBookmarkedContentRows(1L, null, 10);
+
+		assertThat(rows).extracting(BookmarkedContentRow::author).containsExactly(null, "감독 이름");
+	}
+
 	private Genre persistGenre(String name) {
 		Genre genre = Genre.create(name);
 		entityManager.persist(genre);
@@ -383,18 +426,39 @@ class ContentQueryRepositoryTest {
 	}
 
 	private Content persistContent(Long tmdbId, String title, MediaType mediaType, int bookmarkCount) {
+		return persistContent(tmdbId, title, mediaType, bookmarkCount, "감독");
+	}
+
+	private Content persistContent(
+		Long tmdbId,
+		String title,
+		MediaType mediaType,
+		int bookmarkCount,
+		String author
+	) {
 		Content content = Content.create(
 			tmdbId,
 			mediaType,
 			title,
 			2026,
-			"감독",
+			author,
 			"설명",
 			"poster.jpg"
 		);
 		IntStream.range(0, bookmarkCount).forEach(ignored -> content.increaseBookmarkCount());
 		entityManager.persist(content);
 		return content;
+	}
+
+	private void persistBookmark(Long id, Long userId, Long contentId) {
+		entityManager.createNativeQuery("""
+			INSERT INTO content_bookmark (id, user_id, content_id)
+			VALUES (:id, :userId, :contentId)
+			""")
+			.setParameter("id", id)
+			.setParameter("userId", userId)
+			.setParameter("contentId", contentId)
+			.executeUpdate();
 	}
 
 	private void persistContentGenres(Content content, Genre... genres) {

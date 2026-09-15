@@ -46,7 +46,7 @@ public interface ContentControllerDocs {
 
 	@Operation(
 		summary = "북마크한 콘텐츠 목록 조회 - 재민",
-		description = "현재 로그인한 사용자가 북마크한 콘텐츠 목록을 북마크 최신순으로 cursor 페이지네이션 조회합니다."
+		description = "현재 로그인한 사용자가 북마크한 콘텐츠 목록을 북마크 최신순으로 cursor 페이지네이션 조회합니다. 영화 감독 또는 TV creator를 nullable author로 반환합니다."
 	)
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "조회 성공", useReturnTypeSchema = true),
