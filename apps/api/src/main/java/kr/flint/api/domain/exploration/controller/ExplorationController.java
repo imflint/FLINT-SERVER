@@ -3,16 +3,20 @@ package kr.flint.api.domain.exploration.controller;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import kr.flint.api.domain.exploration.controller.spec.ExplorationControllerDocs;
+import kr.flint.api.domain.exploration.dto.request.UpdateExplorationProgressReq;
 import kr.flint.api.domain.exploration.dto.response.ExplorationSessionRes;
 import kr.flint.api.domain.exploration.service.ExplorationQueryFacade;
 import kr.flint.api.global.security.annotation.CurrentUser;
 import kr.flint.shared.dto.response.SuccessCode;
 import kr.flint.shared.dto.response.SuccessResponse;
 import lombok.RequiredArgsConstructor;
+import jakarta.validation.Valid;
 
 @RestController
 @RequiredArgsConstructor
@@ -38,6 +42,20 @@ public class ExplorationController implements ExplorationControllerDocs {
 	) {
 		return ResponseEntity.ok(
 			SuccessResponse.of(SuccessCode.SUCCESS_FETCH, explorationQueryFacade.advance(userId))
+		);
+	}
+
+	@Override
+	@PatchMapping("/progress")
+	public ResponseEntity<SuccessResponse<ExplorationSessionRes>> updateExplorationProgress(
+		@CurrentUser Long userId,
+		@Valid @RequestBody UpdateExplorationProgressReq request
+	) {
+		return ResponseEntity.ok(
+			SuccessResponse.of(
+				SuccessCode.SUCCESS_FETCH,
+				explorationQueryFacade.updateProgress(userId, request.lastViewedPosition())
+			)
 		);
 	}
 }

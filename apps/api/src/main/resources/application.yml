@@ -77,6 +77,8 @@ tmdb:
   requests-per-second: 5
 
 flint:
+  exploration:
+    snapshot-enabled: ${FLINT_EXPLORATION_SNAPSHOT_ENABLED:false}
   content:
     localized-search-enabled: ${FLINT_LOCALIZED_SEARCH_ENABLED:false}
   batch:
