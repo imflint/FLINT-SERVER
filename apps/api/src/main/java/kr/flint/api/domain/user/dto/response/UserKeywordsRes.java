@@ -35,6 +35,8 @@ public record UserKeywordsRes(
         String name,
         @Schema(description = "비율 (%)", example = "85")
         Integer percentage,
+		@Schema(description = "상위 3개는 CORE, 4~6위는 SUB", example = "CORE")
+		KeywordGroup group,
 		@Schema(description = "이미지 url", example = "https.xxx.example.jpg")
 		String imageUrl
     ) {
@@ -49,8 +51,14 @@ public record UserKeywordsRes(
 				normalizedRank,
                 projection.getName(),
                 projection.getPercentage(),
+				normalizedRank <= 3 ? KeywordGroup.CORE : KeywordGroup.SUB,
 				imageUrlResolver.apply(projection.getImageUrl())
             );
         }
     }
+
+	public enum KeywordGroup {
+		CORE,
+		SUB
+	}
 }

@@ -52,7 +52,7 @@ public interface UserControllerDocs {
     );
 
     @Operation(summary = "내 취향 키워드 조회 - 호주",
-               description = "로그인한 사용자 본인의 취향 키워드 목록을 조회합니다.")
+               description = "로그인한 사용자 본인의 취향 키워드 목록을 조회합니다. 반환된 키워드의 비율 합계는 100이며 1~3위는 CORE, 4~6위는 SUB로 반환합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "취향 키워드 조회 성공", useReturnTypeSchema = true)
     })
@@ -98,11 +98,13 @@ public interface UserControllerDocs {
                      (컨텐츠 북마크 ON 시에만 카운트 — OFF는 카운트되지 않음)
                    - 조건 미달 시 `400 USER.KEYWORD_RECALC_NOT_READY` 반환.
                    - 성공 시 카운터는 0으로 리셋되어 다음 20개 누적까지 다시 비활성 상태로 돌아갑니다.
-                   - 응답 키워드에는 GPT가 산출한 비율(percentage)이 포함됩니다.
+                   - GPT 결과는 등록된 서로 다른 키워드 6개인지 검증하며, 실패 시 한 번 재시도합니다.
+                   - 두 번째 결과도 유효하지 않으면 기존 키워드를 유지하고 `502 TASTE.INVALID_ANALYSIS`를 반환합니다.
                    """)
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "취향 키워드 재계산 성공", useReturnTypeSchema = true),
-            @ApiResponse(responseCode = "400", description = "재계산 가능 조건 미달 (신규 저장 작품 20개 미달)")
+            @ApiResponse(responseCode = "400", description = "재계산 가능 조건 미달 (신규 저장 작품 20개 미달)"),
+            @ApiResponse(responseCode = "502", description = "GPT 키워드 분석 결과 검증 실패")
     })
     ResponseEntity<SuccessResponse<Void>> recalculateKeyword(
             @Parameter(hidden = true) Long userId
@@ -130,7 +132,10 @@ public interface UserControllerDocs {
             @PathVariable Long userId
     );
 
-    @Operation(summary = "사용자 취향 키워드 조회", description = "특정 사용자의 취향 키워드 목록을 조회합니다. - 호주")
+    @Operation(
+            summary = "사용자 취향 키워드 조회",
+            description = "특정 사용자의 취향 키워드 목록을 조회합니다. 비율 합계는 100이며 1~3위는 CORE, 4~6위는 SUB로 반환합니다. - 호주"
+    )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "취향 키워드 조회 성공", useReturnTypeSchema = true)
     })

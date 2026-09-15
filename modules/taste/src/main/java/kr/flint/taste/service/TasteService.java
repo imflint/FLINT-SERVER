@@ -1,7 +1,7 @@
 package kr.flint.taste.service;
 
 import java.util.Comparator;
-import java.util.LinkedHashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -12,19 +12,20 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import kr.flint.taste.domain.Keyword;
+import kr.flint.taste.domain.KeywordLevel;
 import kr.flint.taste.domain.UserKeyword;
 import kr.flint.taste.dto.response.KeywordSimpleRes;
 import kr.flint.taste.dto.response.UserKeywordProjection;
+import kr.flint.taste.exception.TasteErrorCode;
+import kr.flint.taste.exception.TasteExecption;
 import kr.flint.taste.repository.CollectionKeywordRepository;
 import kr.flint.taste.repository.KeywordRepository;
 import kr.flint.taste.repository.UserKeywordRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-@Slf4j
 public class TasteService {
 	private static final int MAX_USER_KEYWORD_COUNT = 6;
 
@@ -33,7 +34,19 @@ public class TasteService {
 	private final CollectionKeywordRepository collectionKeywordRepository;
 
 	public List<UserKeywordProjection> getUserKeywords(Long userId) {
-        return userKeywordRepository.findUserKeywordsWithDetails(userId);
+		List<UserKeywordProjection> projections = userKeywordRepository.findUserKeywordsWithDetails(userId).stream()
+			.limit(MAX_USER_KEYWORD_COUNT)
+			.toList();
+		List<Integer> normalizedPercentages = normalizePercentages(
+			projections.stream().map(UserKeywordProjection::getPercentage).toList()
+		);
+		return IntStream.range(0, projections.size())
+			.mapToObj(index -> (UserKeywordProjection)NormalizedUserKeywordProjection.from(
+				projections.get(index),
+				index + 1,
+				normalizedPercentages.get(index)
+			))
+			.toList();
     }
 
     public boolean hasUserKeywords(Long userId) {
@@ -55,25 +68,22 @@ public class TasteService {
 			.collect(Collectors.toMap(Keyword::getName, k -> k));
 
 
-		List<KeywordSimpleRes> validKeywords = normalizedKeywords.stream()
-				.filter(keywordRes -> {
-					boolean exists = keywordMap.containsKey(keywordRes.name());
-					if (!exists) {
-						log.warn("DB에 없는 키워드 무시: {}", keywordRes.name());
-					}
-					return exists;
-				})
-				.limit(MAX_USER_KEYWORD_COUNT)
-				.toList();
+		if (keywordMap.size() != MAX_USER_KEYWORD_COUNT) {
+			throw new TasteExecption(TasteErrorCode.INVALID_ANALYSIS);
+		}
 
-		List<UserKeyword> userKeywordList = IntStream.range(0, validKeywords.size())
+		List<Integer> normalizedPercentages = normalizePercentages(
+			normalizedKeywords.stream().map(KeywordSimpleRes::percentage).toList()
+		);
+
+		List<UserKeyword> userKeywordList = IntStream.range(0, normalizedKeywords.size())
 			.mapToObj(index -> {
-				KeywordSimpleRes keywordRes = validKeywords.get(index);
+				KeywordSimpleRes keywordRes = normalizedKeywords.get(index);
 				Keyword keyword = keywordMap.get(keywordRes.name());
 				return UserKeyword.create(
 					userId,
 					keyword.getId(),
-					keywordRes.percentage(),
+					normalizedPercentages.get(index),
 					index + 1
 				);
 			})
@@ -83,30 +93,108 @@ public class TasteService {
 	}
 
 	private List<KeywordSimpleRes> normalizeKeywords(List<KeywordSimpleRes> keywords) {
-		if (keywords == null || keywords.isEmpty()) {
-			return List.of();
+		if (keywords == null || keywords.size() != MAX_USER_KEYWORD_COUNT) {
+			throw new TasteExecption(TasteErrorCode.INVALID_ANALYSIS);
 		}
 
-		return keywords.stream()
-			.filter(keyword -> keyword != null && StringUtils.hasText(keyword.name()))
+		List<KeywordSimpleRes> normalized = keywords.stream()
 			.map(keyword -> new KeywordSimpleRes(
-				keyword.name().trim(),
+				requireKeywordName(keyword),
 				keyword.rank(),
-				keyword.percentage()
+				requireNonNegativePercentage(keyword)
 			))
 			.sorted(Comparator
 				.comparingInt(KeywordSimpleRes::rank)
 				.thenComparing(Comparator.comparingInt(KeywordSimpleRes::percentage).reversed())
 				.thenComparing(KeywordSimpleRes::name))
-			.collect(Collectors.collectingAndThen(
-				Collectors.toMap(
-					KeywordSimpleRes::name,
-					keyword -> keyword,
-					(first, ignored) -> first,
-					LinkedHashMap::new
-				),
-				map -> List.copyOf(map.values())
-			));
+			.toList();
+		if (new HashSet<>(normalized.stream().map(KeywordSimpleRes::name).toList()).size()
+			!= MAX_USER_KEYWORD_COUNT) {
+			throw new TasteExecption(TasteErrorCode.INVALID_ANALYSIS);
+		}
+		return normalized;
+	}
+
+	private String requireKeywordName(KeywordSimpleRes keyword) {
+		if (keyword == null || !StringUtils.hasText(keyword.name())) {
+			throw new TasteExecption(TasteErrorCode.INVALID_ANALYSIS);
+		}
+		return keyword.name().trim();
+	}
+
+	private int requireNonNegativePercentage(KeywordSimpleRes keyword) {
+		if (keyword.percentage() < 0) {
+			throw new TasteExecption(TasteErrorCode.INVALID_ANALYSIS);
+		}
+		return keyword.percentage();
+	}
+
+	private List<Integer> normalizePercentages(List<Integer> percentages) {
+		if (percentages.isEmpty()) {
+			return List.of();
+		}
+
+		List<Integer> weights = percentages.stream()
+			.map(value -> value == null ? 0 : Math.max(0, value))
+			.toList();
+		long total = weights.stream().mapToLong(Integer::longValue).sum();
+		if (total == 0) {
+			int base = 100 / weights.size();
+			int remainder = 100 % weights.size();
+			return IntStream.range(0, weights.size())
+				.map(index -> base + (index < remainder ? 1 : 0))
+				.boxed()
+				.toList();
+		}
+
+		int[] normalized = new int[weights.size()];
+		double[] remainders = new double[weights.size()];
+		int assigned = 0;
+		for (int index = 0; index < weights.size(); index++) {
+			double exact = weights.get(index) * 100.0 / total;
+			normalized[index] = (int)Math.floor(exact);
+			remainders[index] = exact - normalized[index];
+			assigned += normalized[index];
+		}
+
+		List<Integer> remainderOrder = IntStream.range(0, weights.size())
+			.boxed()
+			.sorted(Comparator
+				.comparingDouble((Integer index) -> remainders[index]).reversed()
+				.thenComparingInt(Integer::intValue))
+			.toList();
+		for (int index = 0; index < 100 - assigned; index++) {
+			normalized[remainderOrder.get(index)]++;
+		}
+		return IntStream.of(normalized).boxed().toList();
+	}
+
+	private record NormalizedUserKeywordProjection(
+		int ranking,
+		String imageUrl,
+		KeywordLevel level,
+		String name,
+		Integer percentage
+	) implements UserKeywordProjection {
+		private static NormalizedUserKeywordProjection from(
+			UserKeywordProjection projection,
+			int ranking,
+			int percentage
+		) {
+			return new NormalizedUserKeywordProjection(
+				ranking,
+				projection.getImageUrl(),
+				projection.getLevel(),
+				projection.getName(),
+				percentage
+			);
+		}
+
+		@Override public int getRanking() { return ranking; }
+		@Override public String getImageUrl() { return imageUrl; }
+		@Override public KeywordLevel getLevel() { return level; }
+		@Override public String getName() { return name; }
+		@Override public Integer getPercentage() { return percentage; }
 	}
 
 	@Transactional

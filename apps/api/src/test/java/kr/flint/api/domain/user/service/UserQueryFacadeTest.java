@@ -169,6 +169,9 @@ class UserQueryFacadeTest {
 			assertThat(response.keywords())
 				.extracting(UserKeywordsRes.KeywordItem::rank)
 				.containsExactly(1, 2, 3, 4, 5, 6);
+			assertThat(response.keywords())
+				.extracting(item -> item.group().name())
+				.containsExactly("CORE", "CORE", "CORE", "SUB", "SUB", "SUB");
 		}
 
 		@Test
