@@ -102,6 +102,7 @@ class ContentQueryFacadeTest {
 			return new GetContentDetailRes(
 				id,
 				title,
+				"크리스토퍼 놀란",
 				"poster.jpg",
 				2026,
 				5,
@@ -152,6 +153,7 @@ class ContentQueryFacadeTest {
 				bookmarkId,
 				contentId,
 				title,
+				"크리스토퍼 놀란",
 				"poster.jpg",
 				2026,
 				5,

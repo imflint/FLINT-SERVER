@@ -8,6 +8,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 public record GetContentDetailRes(
 	Long id,
 	String title,
+	String author,
 	String imageUrl,
 	int year,
 	int bookmarkCount,
