@@ -26,13 +26,14 @@ import kr.flint.batch.config.BatchProperties;
 import kr.flint.batch.config.TmdbBatchAsyncConfig;
 import kr.flint.batch.config.TmdbRetryPolicyFactory;
 import kr.flint.batch.job.ContentUpsertWriter;
+import kr.flint.batch.job.ContentSyncDraft;
 import kr.flint.batch.job.TmdbBatchSkipListener;
 import kr.flint.batch.job.TmdbIdLine;
 import kr.flint.batch.job.movie.TmdbMovieDetailProcessor;
 import kr.flint.batch.job.tv.TmdbTvDetailProcessor;
 import kr.flint.content.domain.MediaType;
-import kr.flint.content.dto.ContentUpsertCommand;
 import kr.flint.infra.tmdb.client.TmdbClient;
+import kr.flint.batch.service.TmdbLocalizedTitleService;
 import lombok.RequiredArgsConstructor;
 
 @Configuration
@@ -48,6 +49,7 @@ public class TmdbDailyDeltaJobConfig {
 	private final ContentUpsertWriter contentUpsertWriter;
 	private final BatchProperties batchProperties;
 	private final TmdbRetryPolicyFactory tmdbRetryPolicyFactory;
+	private final TmdbLocalizedTitleService localizedTitleService;
 
 	@Autowired
 	@Qualifier(TmdbBatchAsyncConfig.TMDB_TASK_EXECUTOR)
@@ -63,11 +65,11 @@ public class TmdbDailyDeltaJobConfig {
 	@Bean(name = STEP_NAME)
 	public Step tmdbDailyDeltaStep(
 		@Qualifier("deltaReader") ItemReader<TmdbIdLine> deltaReader,
-		@Qualifier("asyncDeltaProcessor") AsyncItemProcessor<TmdbIdLine, ContentUpsertCommand> asyncDeltaProcessor,
-		@Qualifier("asyncDeltaWriter") AsyncItemWriter<ContentUpsertCommand> asyncDeltaWriter
+		@Qualifier("asyncDeltaProcessor") AsyncItemProcessor<TmdbIdLine, ContentSyncDraft> asyncDeltaProcessor,
+		@Qualifier("asyncDeltaWriter") AsyncItemWriter<ContentSyncDraft> asyncDeltaWriter
 	) {
 		return new StepBuilder(STEP_NAME, jobRepository)
-			.<TmdbIdLine, Future<ContentUpsertCommand>>chunk(batchProperties.tmdb().chunkSize(), transactionManager)
+			.<TmdbIdLine, Future<ContentSyncDraft>>chunk(batchProperties.tmdb().chunkSize(), transactionManager)
 			.reader(deltaReader)
 			.processor(asyncDeltaProcessor)
 			.writer(asyncDeltaWriter)
@@ -103,24 +105,24 @@ public class TmdbDailyDeltaJobConfig {
 
 	@Bean
 	@StepScope
-	public AsyncItemProcessor<TmdbIdLine, ContentUpsertCommand> asyncDeltaProcessor(
+	public AsyncItemProcessor<TmdbIdLine, ContentSyncDraft> asyncDeltaProcessor(
 		@Value("#{jobParameters['mediaType']}") String mediaType
 	) {
 		MediaType type = (mediaType == null || mediaType.isBlank())
 			? MediaType.MOVIE
 			: MediaType.valueOf(mediaType.toUpperCase());
-		ItemProcessor<TmdbIdLine, ContentUpsertCommand> delegate = type == MediaType.TV
-			? new TmdbTvDetailProcessor(tmdbClient)
-			: new TmdbMovieDetailProcessor(tmdbClient);
-		AsyncItemProcessor<TmdbIdLine, ContentUpsertCommand> async = new AsyncItemProcessor<>();
+		ItemProcessor<TmdbIdLine, ContentSyncDraft> delegate = type == MediaType.TV
+			? new TmdbTvDetailProcessor(tmdbClient, localizedTitleService)
+			: new TmdbMovieDetailProcessor(tmdbClient, localizedTitleService);
+		AsyncItemProcessor<TmdbIdLine, ContentSyncDraft> async = new AsyncItemProcessor<>();
 		async.setDelegate(delegate);
 		async.setTaskExecutor(tmdbTaskExecutor);
 		return async;
 	}
 
 	@Bean
-	public AsyncItemWriter<ContentUpsertCommand> asyncDeltaWriter() {
-		AsyncItemWriter<ContentUpsertCommand> writer = new AsyncItemWriter<>();
+	public AsyncItemWriter<ContentSyncDraft> asyncDeltaWriter() {
+		AsyncItemWriter<ContentSyncDraft> writer = new AsyncItemWriter<>();
 		writer.setDelegate(contentUpsertWriter);
 		return writer;
 	}

@@ -1,6 +1,7 @@
 package kr.flint.adminauth.service;
 
 import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Optional;
 
 import org.springframework.stereotype.Service;
@@ -31,6 +32,12 @@ public class AdminUserService {
 
     public boolean canUseAdmin(Long adminId) {
         return adminUserRepository.existsById(adminId);
+    }
+
+    public boolean canUseAdminToken(Long adminId, Instant issuedAt) {
+        return adminUserRepository.findById(adminId)
+            .filter(admin -> admin.acceptsTokenIssuedAt(issuedAt))
+            .isPresent();
     }
 
     public void validateCanUseAdmin(Long adminId) {

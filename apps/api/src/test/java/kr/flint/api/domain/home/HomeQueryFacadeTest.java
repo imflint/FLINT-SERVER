@@ -75,7 +75,7 @@ class HomeQueryFacadeTest {
                     new CollectionContentImageDto(collectionId, null),
                     new CollectionContentImageDto(collectionId, "poster.jpg")
                 ));
-            when(bookmarkQueryService.getBookmarkedCollectionIdSet(userId)).thenReturn(Set.of());
+            when(bookmarkQueryService.getBookmarkedCollectionIdSet(userId, List.of(collectionId))).thenReturn(Set.of());
             when(cloudFrontUrlProvider.resolveUrl(nullable(String.class)))
                 .thenAnswer(invocation -> {
                     String imageUrl = invocation.getArgument(0, String.class);
@@ -102,6 +102,7 @@ class HomeQueryFacadeTest {
         @DisplayName("인기 컬렉션에 콘텐츠 이미지 최대 2개를 포함")
         void includeContentImagesUpToTwo() {
             // given
+			Long userId = 1L;
             Long collectionId = 10L;
             when(homeCollectionRepository.findWeeklyPopularPublicCollectionIds(any(LocalDateTime.class), eq(10)))
                 .thenReturn(List.of(collectionId));
@@ -122,6 +123,7 @@ class HomeQueryFacadeTest {
                     new CollectionContentImageDto(collectionId, "poster-2.jpg"),
                     new CollectionContentImageDto(collectionId, "poster-3.jpg")
                 ));
+			when(bookmarkQueryService.getBookmarkedCollectionIdSet(userId, List.of(collectionId))).thenReturn(Set.of(collectionId));
             when(cloudFrontUrlProvider.resolveUrl(nullable(String.class)))
                 .thenAnswer(invocation -> {
                     String imageUrl = invocation.getArgument(0, String.class);
@@ -132,13 +134,33 @@ class HomeQueryFacadeTest {
                 });
 
             // when
-            PopularCollectionsRes response = homeQueryFacade.getPopularCollections();
+            PopularCollectionsRes response = homeQueryFacade.getPopularCollections(userId);
 
             // then
             assertThat(response.collections().getFirst().imageList())
                 .containsExactly("resolved/poster-1.jpg", "resolved/poster-2.jpg");
             assertThat(response.collections().getFirst().bookmarkCount()).isEqualTo(3);
+			assertThat(response.collections().getFirst().isBookmarked()).isTrue();
             verify(cloudFrontUrlProvider, never()).resolveUrl(isNull());
         }
+
+		@Test
+		@DisplayName("익명 인기 컬렉션 조회는 저장 상태를 false로 반환")
+		void anonymousUserIsNotBookmarked() {
+			Long collectionId = 10L;
+			when(homeCollectionRepository.findWeeklyPopularPublicCollectionIds(any(LocalDateTime.class), eq(10)))
+				.thenReturn(List.of(collectionId));
+			when(homeCollectionRepository.findCollectionCardsWithUser(List.of(collectionId)))
+				.thenReturn(List.of(new CollectionCardDto(
+					collectionId, "제목", "설명", null, 0, 100L, null, "플린트"
+				)));
+			when(homeCollectionRepository.findContentImagesByCollectionIds(List.of(collectionId)))
+				.thenReturn(List.of());
+			when(bookmarkQueryService.getBookmarkedCollectionIdSet(null, List.of(collectionId))).thenReturn(Set.of());
+
+			PopularCollectionsRes response = homeQueryFacade.getPopularCollections(null);
+
+			assertThat(response.collections().getFirst().isBookmarked()).isFalse();
+		}
     }
 }

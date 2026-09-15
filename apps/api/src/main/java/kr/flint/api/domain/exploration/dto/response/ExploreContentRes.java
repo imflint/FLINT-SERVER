@@ -15,5 +15,7 @@ public record ExploreContentRes(
 	@Schema(description = "제작 연도", example = "2014")
 	int year,
 	@Schema(description = "자세히 보기 이동용 대표 컬렉션 ID (여러 공개 컬렉션에 속하면 최신 1개)", example = "801473411402741000", type = "string")
-	Long collectionId
+	Long collectionId,
+	@Schema(description = "세션 내 고정 위치 (1~30)", example = "1")
+	int position
 ) {}

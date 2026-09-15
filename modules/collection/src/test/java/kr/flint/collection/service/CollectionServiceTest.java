@@ -322,6 +322,32 @@ class CollectionServiceTest {
         }
     }
 
+	@Nested
+	@DisplayName("bookmarkCount synchronization")
+	class BookmarkCountSynchronization {
+
+		@Test
+		@DisplayName("활성 컬렉션을 비관적 잠금으로 조회")
+		void getsActiveCollectionForUpdate() {
+			Collection collection = Collection.create("제목", "설명", null, true, 1L);
+			when(collectionRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(collection));
+
+			assertThat(collectionService.getActiveCollectionByIdForUpdate(10L)).isSameAs(collection);
+			verify(collectionRepository).findByIdForUpdate(10L);
+		}
+
+		@Test
+		@DisplayName("존재하는 활성 컬렉션 카운트를 실제 관계 수로 교체")
+		void synchronizesExistingCollection() {
+			Collection collection = Collection.create("제목", "설명", null, true, 1L);
+			when(collectionRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(collection));
+
+			collectionService.synchronizeBookmarkCountIfPresent(10L, 4);
+
+			assertThat(collection.getBookmarkCount()).isEqualTo(4);
+		}
+	}
+
     private <T> List<T> toList(Iterable<T> values) {
         List<T> result = new ArrayList<>();
         values.forEach(result::add);

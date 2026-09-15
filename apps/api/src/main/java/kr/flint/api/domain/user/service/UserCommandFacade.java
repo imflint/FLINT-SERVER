@@ -4,9 +4,6 @@ import java.util.List;
 
 import kr.flint.api.domain.bookmark.repository.BookmarkQueryRepository;
 import kr.flint.infra.gpt.dto.TasteWorkMetaDto;
-import kr.flint.infra.gpt.service.ChatService;
-import kr.flint.taste.dto.response.KeywordSimpleRes;
-import kr.flint.taste.service.TasteService;
 import kr.flint.user.domain.User;
 import kr.flint.user.exception.UserErrorCode;
 import kr.flint.user.exception.UserException;
@@ -21,16 +18,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserCommandFacade {
 
 	private final UserService userService;
-	private final ChatService chatService;
-	private final TasteService tasteService;
+	private final TasteAnalysisService tasteAnalysisService;
 	private final BookmarkQueryRepository bookmarkQueryRepository;
 
 	public void callGpt(Long userId) {
 		List<TasteWorkMetaDto> tasteWorkMetaDto = bookmarkQueryRepository.getBookmarkWorkMeta(userId);
-		List<KeywordSimpleRes> keywordResList = chatService.callGptForTaste(tasteWorkMetaDto).tasteKeywords().stream()
-			.map(gptRes -> new KeywordSimpleRes(gptRes.keyword(), gptRes.rank(), gptRes.percent()))
-			.toList();
-		tasteService.matchUserKeywords(userId, keywordResList);
+		tasteAnalysisService.analyze(userId, tasteWorkMetaDto);
 	}
 
 	// 사용자가 명시적으로 재계산 버튼을 눌렀을 때 호출 — 임계값 미달이면 거부, 통과 시 callGpt 후 카운터 리셋

@@ -26,8 +26,6 @@ locals {
   )
   admin_frontend_certificate_arn = var.admin_frontend_cloudfront_certificate_arn == null ? "" : trimspace(var.admin_frontend_cloudfront_certificate_arn)
   admin_frontend_route53_zone_id = var.admin_frontend_route53_zone_id == null ? "" : trimspace(var.admin_frontend_route53_zone_id)
-  admin_api_route53_zone_id      = var.admin_api_route53_zone_id == null ? "" : trimspace(var.admin_api_route53_zone_id)
-  admin_api_dns_name             = var.admin_api_domain_name == null ? "" : trimspace(var.admin_api_domain_name)
   admin_frontend_custom_domain_aliases = (
     length(var.admin_frontend_cloudfront_aliases) > 0
     ? var.admin_frontend_cloudfront_aliases
@@ -64,16 +62,10 @@ locals {
   admin_frontend_origin_id        = "${local.name_prefix}-admin-frontend-origin"
   admin_frontend_github_role_name = "${local.name_prefix}-admin-frontend-github-actions-deploy"
   api_deploy_prefix               = "deploy/${var.application_name}"
-  admin_deploy_prefix             = "deploy/${var.admin_application_name}"
   ecr_repository_name = (
     var.ecr_repository_name != null && var.ecr_repository_name != ""
     ? var.ecr_repository_name
     : "${local.name_prefix}-api"
-  )
-  admin_ecr_repository_name = (
-    var.admin_ecr_repository_name != null && var.admin_ecr_repository_name != ""
-    ? var.admin_ecr_repository_name
-    : "${local.name_prefix}-admin-api"
   )
   admin_auth_ssm_enabled = (
     var.create_admin_auth_ssm_parameters

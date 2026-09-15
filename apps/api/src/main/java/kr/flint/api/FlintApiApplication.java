@@ -7,6 +7,7 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication(scanBasePackages = "kr.flint")
 @ConfigurationPropertiesScan(basePackages = "kr.flint")
@@ -14,6 +15,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 @EnableFeignClients(basePackages = "kr.flint")
 @EntityScan(basePackages = "kr.flint")
 @EnableAsync
+@EnableScheduling
 public class FlintApiApplication {
 
     public static void main(String[] args) {

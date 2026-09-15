@@ -51,8 +51,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             "/api/v1/collections",
             "/api/v1/bookmarks/{collectionId:\\d+}",
             "/api/v1/contents/search",
-            "/api/v1/search/contents",
-            "/api/v1/home/popular-collections"
+            "/api/v1/search/contents"
     };
 
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
@@ -63,7 +62,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return matchesAny(request.getRequestURI(), COMMON_EXCLUDED_PATHS)
+        return pathMatcher.match("/api/v1/admin/**", request.getRequestURI())
+            || matchesAny(request.getRequestURI(), COMMON_EXCLUDED_PATHS)
             || matchesMethod(request, HttpMethod.POST, POST_EXCLUDED_PATHS)
             || matchesMethod(request, HttpMethod.GET, GET_EXCLUDED_PATHS);
     }

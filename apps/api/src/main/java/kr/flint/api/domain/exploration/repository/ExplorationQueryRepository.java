@@ -3,6 +3,7 @@ package kr.flint.api.domain.exploration.repository;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.Set;
 
 import org.springframework.stereotype.Repository;
 
@@ -111,6 +112,32 @@ public class ExplorationQueryRepository {
 			));
 	}
 
+	public Set<ExposableSnapshotKey> findExposableSnapshotKeys(
+		List<Long> contentIds,
+		List<Long> collectionIds
+	) {
+		if (contentIds.isEmpty() || collectionIds.isEmpty()) {
+			return Set.of();
+		}
+
+		return jpaQueryFactory
+			.select(collectionContent.contentId, collection.id)
+			.from(collectionContent)
+			.join(collectionContent.collection, collection)
+			.where(
+				collectionContent.contentId.in(contentIds),
+				collection.id.in(collectionIds),
+				isVisiblePublicCollection()
+			)
+			.fetch()
+			.stream()
+			.map(tuple -> new ExposableSnapshotKey(
+				tuple.get(collectionContent.contentId),
+				tuple.get(collection.id)
+			))
+			.collect(Collectors.toSet());
+	}
+
 	// 노출 정책: 공개(VISIBLE)인 공개 컬렉션에 속한 작품만 노출한다. 작품이 여러 컬렉션에 속해도 서브쿼리로 1행만 유지한다.
 	private BooleanExpression isExposable() {
 		return content.id.in(
@@ -133,4 +160,6 @@ public class ExplorationQueryRepository {
 		Long collectionId,
 		String reason
 	) {}
+
+	public record ExposableSnapshotKey(Long contentId, Long collectionId) {}
 }

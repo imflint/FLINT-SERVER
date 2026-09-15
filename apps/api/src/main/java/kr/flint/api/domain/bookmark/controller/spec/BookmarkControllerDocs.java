@@ -36,7 +36,7 @@ public interface BookmarkControllerDocs {
 
 	@Operation(
 		summary = "컬렉션 북마크 토글 - 재민",
-		description = "컬렉션을 북마크하거나 이미 북마크된 경우 해제합니다."
+		description = "컬렉션을 북마크하거나 이미 북마크된 경우 해제합니다. 응답 Boolean은 처리 완료 후의 최종 저장 상태이며, 컬렉션의 저장 수는 실제 북마크 관계 수와 동기화됩니다."
 	)
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "토글 성공", useReturnTypeSchema = true),

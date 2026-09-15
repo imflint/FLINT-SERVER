@@ -53,7 +53,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build and test
-        run: ./gradlew :apps:api:build :apps:admin-api:build :apps:batch:build --parallel --build-cache
+        run: ./gradlew :apps:api:build :apps:batch:build --parallel --build-cache
         env:
           DB_URL: jdbc:mysql://localhost:3306/flint_test
           DB_USERNAME: test

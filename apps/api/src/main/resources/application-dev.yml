@@ -81,6 +81,11 @@ logging:
     org.hibernate.orm.jdbc.bind: warn
 
 flint:
+  batch:
+    scheduling:
+      enabled: true
+    s3-cleanup:
+      enabled: true
   logging:
     sql:
       slow-query-threshold-ms: 500

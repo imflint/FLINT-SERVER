@@ -29,6 +29,8 @@ public record GetContentListRes(
 		Long id,
 		@Schema(description = "콘텐츠 제목", example = "인셉션")
 		String title,
+		@Schema(description = "영화 감독 또는 TV creator. 정보가 없으면 null", nullable = true, example = "크리스토퍼 놀란")
+		String author,
 		@Schema(description = "콘텐츠 이미지 URL", example = "https://example.com/poster.jpg")
 		String imageUrl,
 		@Schema(description = "개봉/방영 연도", example = "2010")
@@ -44,6 +46,7 @@ public record GetContentListRes(
 			return new Content(
 				content.id(),
 				content.title(),
+				content.author(),
 				content.imageUrl(),
 				content.year(),
 				content.bookmarkCount(),

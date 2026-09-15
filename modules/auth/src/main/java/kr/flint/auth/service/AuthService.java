@@ -87,8 +87,13 @@ public class AuthService {
     }
 
     @Transactional
-    public Long validateAndRotateToken(String refreshToken, TokenAudience expectedAudience) {
-        RefreshTokenValue currentTokenValue = refreshTokenRepository.findByToken(refreshToken)
+	public Long validateAndRotateToken(String refreshToken, TokenAudience expectedAudience) {
+		return validateAndRotateTokenValue(refreshToken, expectedAudience).userId();
+	}
+
+	@Transactional
+	public RefreshTokenValue validateAndRotateTokenValue(String refreshToken, TokenAudience expectedAudience) {
+		RefreshTokenValue currentTokenValue = refreshTokenRepository.findByToken(refreshToken)
             .orElseThrow(() -> new AuthException(AuthErrorCode.REFRESH_TOKEN_NOT_FOUND));
         if (currentTokenValue.audienceOrDefault() != expectedAudience) {
             throw new AuthException(AuthErrorCode.INVALID_TOKEN);
@@ -113,8 +118,8 @@ public class AuthService {
             throw new AuthException(AuthErrorCode.EXPIRED_TOKEN);
         }
 
-        return tokenValue.userId();
-    }
+		return tokenValue;
+	}
 
     // 로그아웃 (Blacklist + RTR)
     @Transactional

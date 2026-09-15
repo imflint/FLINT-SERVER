@@ -3,6 +3,7 @@ package kr.flint.api.domain.home.controller.spec;
 import org.springframework.http.ResponseEntity;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -35,6 +36,9 @@ public interface HomeControllerDocs {
             최근 1주일 동안 컬렉션이 추가로 저장된 횟수(증가량) 기준으로 인기 컬렉션을 최대 10개까지 반환합니다.
 
             - 좌우 스크롤 UI 용도 (페이지네이션 없음)
+            - 토큰 없이 조회할 수 있으며 `isBookmarked`는 `false`입니다.
+            - 유효한 USER 토큰으로 조회하면 `isBookmarked`에 현재 사용자의 실제 저장 상태가 포함됩니다.
+            - 만료·위조 토큰이나 정지 계정의 토큰은 기존 인증 오류를 반환합니다.
             - 최근 1주일 증가량이 동률이거나 0건인 항목은 **총 북마크 수** 로 자연스럽게 fallback 정렬됩니다.
               (서비스 초기에 충분한 주간 데이터가 없을 때도 의미 있는 결과를 반환하기 위함)
             - 비공개 컬렉션, 본문/사유가 비어있는 컬렉션은 제외됩니다.
@@ -63,6 +67,7 @@ public interface HomeControllerDocs {
                                   "https://cdn.flint.kr/content/poster/101.jpg"
                                 ],
                                 "bookmarkCount": 15,
+                                "isBookmarked": true,
                                 "nickname": "플린트",
                                 "profileImageUrl": "https://cdn.flint.kr/user/profile/123.jpg"
                               },
@@ -75,6 +80,7 @@ public interface HomeControllerDocs {
                                   "https://cdn.flint.kr/content/poster/103.jpg"
                                 ],
                                 "bookmarkCount": 12,
+                                "isBookmarked": false,
                                 "nickname": "수채한",
                                 "profileImageUrl": "https://cdn.flint.kr/user/profile/124.jpg"
                               }
@@ -86,5 +92,7 @@ public interface HomeControllerDocs {
             )
         )
     })
-    ResponseEntity<SuccessResponse<PopularCollectionsRes>> getPopularCollections();
+    ResponseEntity<SuccessResponse<PopularCollectionsRes>> getPopularCollections(
+        @Parameter(hidden = true) Long userId
+    );
 }

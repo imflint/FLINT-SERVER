@@ -9,6 +9,7 @@ import org.springframework.web.servlet.config.annotation.PathMatchConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import kr.flint.api.global.security.annotation.CurrentUserResolver;
+import kr.flint.api.admin.global.security.annotation.CurrentAdminResolver;
 import lombok.RequiredArgsConstructor;
 
 @Configuration
@@ -18,6 +19,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
     private static final String API_PREFIX = "/api/v1";
 
     private final CurrentUserResolver currentUserResolver;
+    private final CurrentAdminResolver currentAdminResolver;
 
     @Override
     public void configurePathMatch(PathMatchConfigurer configurer) {
@@ -30,5 +32,6 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
         resolvers.add(currentUserResolver);
+        resolvers.add(currentAdminResolver);
     }
 }

@@ -13,9 +13,7 @@ import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.integration.async.AsyncItemProcessor;
 import org.springframework.batch.integration.async.AsyncItemWriter;
 import org.springframework.batch.item.ItemProcessor;
-import org.springframework.batch.item.file.FlatFileItemReader;
-import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
-import org.springframework.batch.item.file.mapping.JsonLineMapper;
+import org.springframework.batch.item.ItemStreamReader;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -30,10 +28,14 @@ import kr.flint.batch.config.TmdbBatchAsyncConfig;
 import kr.flint.batch.config.TmdbRetryPolicyFactory;
 import kr.flint.batch.download.TmdbExportDownloader;
 import kr.flint.batch.job.ContentUpsertWriter;
+import kr.flint.batch.job.ContentSyncDraft;
 import kr.flint.batch.job.TmdbBatchSkipListener;
 import kr.flint.batch.job.TmdbIdLine;
-import kr.flint.content.dto.ContentUpsertCommand;
+import kr.flint.batch.job.TmdbExportRegistryItemReader;
+import kr.flint.batch.repository.TmdbCatalogEntryJdbcRepository;
+import kr.flint.content.domain.MediaType;
 import kr.flint.infra.tmdb.client.TmdbClient;
+import kr.flint.batch.service.TmdbLocalizedTitleService;
 import lombok.RequiredArgsConstructor;
 
 @Configuration
@@ -50,6 +52,8 @@ public class TmdbMovieImportJobConfig {
 	private final ContentUpsertWriter contentUpsertWriter;
 	private final BatchProperties batchProperties;
 	private final TmdbRetryPolicyFactory tmdbRetryPolicyFactory;
+	private final TmdbLocalizedTitleService localizedTitleService;
+	private final TmdbCatalogEntryJdbcRepository catalogEntryRepository;
 
 	@Bean(name = JOB_NAME)
 	public Job tmdbMovieImportJob(@Qualifier(STEP_NAME) Step tmdbMovieImportStep) {
@@ -60,12 +64,12 @@ public class TmdbMovieImportJobConfig {
 
 	@Bean(name = STEP_NAME)
 	public Step tmdbMovieImportStep(
-		@Qualifier("movieIdsReader") FlatFileItemReader<TmdbIdLine> movieIdsReader,
-		@Qualifier("asyncMovieProcessor") AsyncItemProcessor<TmdbIdLine, ContentUpsertCommand> asyncMovieProcessor,
-		@Qualifier("asyncContentWriter") AsyncItemWriter<ContentUpsertCommand> asyncContentWriter
+		@Qualifier("movieIdsReader") ItemStreamReader<TmdbIdLine> movieIdsReader,
+		@Qualifier("asyncMovieProcessor") AsyncItemProcessor<TmdbIdLine, ContentSyncDraft> asyncMovieProcessor,
+		@Qualifier("asyncContentWriter") AsyncItemWriter<ContentSyncDraft> asyncContentWriter
 	) {
 		return new StepBuilder(STEP_NAME, jobRepository)
-			.<TmdbIdLine, Future<ContentUpsertCommand>>chunk(batchProperties.tmdb().chunkSize(), transactionManager)
+			.<TmdbIdLine, Future<ContentSyncDraft>>chunk(batchProperties.tmdb().chunkSize(), transactionManager)
 			.reader(movieIdsReader)
 			.processor(asyncMovieProcessor)
 			.writer(asyncContentWriter)
@@ -82,7 +86,7 @@ public class TmdbMovieImportJobConfig {
 
 	@Bean
 	@StepScope
-	public FlatFileItemReader<TmdbIdLine> movieIdsReader(
+	public ItemStreamReader<TmdbIdLine> movieIdsReader(
 		@Value("#{jobParameters['exportDate']}") String exportDate
 	) {
 		LocalDate date = (exportDate == null || exportDate.isBlank())
@@ -95,44 +99,45 @@ public class TmdbMovieImportJobConfig {
 			Thread.currentThread().interrupt();
 			throw new IllegalStateException("Failed to fetch TMDB movie export for " + date, e);
 		}
-		return new FlatFileItemReaderBuilder<TmdbIdLine>()
-			.name("movieIdsReader")
-			.resource(resource)
-			.lineMapper(jsonLineToTmdbIdMapper())
-			.strict(true)
-			.build();
-	}
-
-	private org.springframework.batch.item.file.LineMapper<TmdbIdLine> jsonLineToTmdbIdMapper() {
-		JsonLineMapper jsonLineMapper = new JsonLineMapper();
-		return (line, lineNumber) -> {
-			java.util.Map<String, Object> raw = jsonLineMapper.mapLine(line, lineNumber);
-			return TmdbIdLine.fromMap(raw);
-		};
+		return new TmdbExportRegistryItemReader(
+			resource,
+			MediaType.MOVIE,
+			date,
+			batchProperties.tmdb().chunkSize(),
+			catalogEntryRepository
+		);
 	}
 
 	@Bean
-	public AsyncItemProcessor<TmdbIdLine, ContentUpsertCommand> asyncMovieProcessor() {
-		AsyncItemProcessor<TmdbIdLine, ContentUpsertCommand> async = new AsyncItemProcessor<>();
-		async.setDelegate(movieDetailProcessorDelegate());
+	@StepScope
+	public AsyncItemProcessor<TmdbIdLine, ContentSyncDraft> asyncMovieProcessor(
+		@Value("#{jobParameters['classifyOnly']}") String classifyOnly
+	) {
+		AsyncItemProcessor<TmdbIdLine, ContentSyncDraft> async = new AsyncItemProcessor<>();
+		ItemProcessor<TmdbIdLine, ContentSyncDraft> detailProcessor = movieDetailProcessorDelegate();
+		async.setDelegate(item -> applyMode(detailProcessor.process(item), classifyOnly));
 		async.setTaskExecutor(tmdbTaskExecutor());
 		return async;
 	}
 
 	@Bean
-	public ItemProcessor<TmdbIdLine, ContentUpsertCommand> movieDetailProcessorDelegate() {
-		return new TmdbMovieDetailProcessor(tmdbClient);
+	public ItemProcessor<TmdbIdLine, ContentSyncDraft> movieDetailProcessorDelegate() {
+		return new TmdbMovieDetailProcessor(tmdbClient, localizedTitleService);
 	}
 
 	@Bean
-	public AsyncItemWriter<ContentUpsertCommand> asyncContentWriter() {
-		AsyncItemWriter<ContentUpsertCommand> writer = new AsyncItemWriter<>();
+	public AsyncItemWriter<ContentSyncDraft> asyncContentWriter() {
+		AsyncItemWriter<ContentSyncDraft> writer = new AsyncItemWriter<>();
 		writer.setDelegate(contentUpsertWriter);
 		return writer;
 	}
 
 	private TaskExecutor tmdbTaskExecutor() {
 		return tmdbTaskExecutorRef;
+	}
+
+	private ContentSyncDraft applyMode(ContentSyncDraft draft, String classifyOnly) {
+		return draft != null && Boolean.parseBoolean(classifyOnly) ? draft.classificationOnly() : draft;
 	}
 
 	@org.springframework.beans.factory.annotation.Autowired

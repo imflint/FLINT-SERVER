@@ -9,11 +9,8 @@ import org.springframework.transaction.event.TransactionalEventListener;
 
 import kr.flint.content.dto.ContentWithGenres;
 import kr.flint.content.service.ContentService;
-import kr.flint.infra.gpt.dto.GptKeywordDto;
 import kr.flint.infra.gpt.dto.TasteWorkMetaDto;
-import kr.flint.infra.gpt.service.ChatService;
-import kr.flint.taste.dto.response.KeywordSimpleRes;
-import kr.flint.taste.service.TasteService;
+import kr.flint.api.domain.user.service.TasteAnalysisService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -23,8 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 public class TasteAnalysisEventHandler {
 
     private final ContentService contentService;
-    private final ChatService chatService;
-    private final TasteService tasteService;
+    private final TasteAnalysisService tasteAnalysisService;
 
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -42,15 +38,9 @@ public class TasteAnalysisEventHandler {
             List<TasteWorkMetaDto> workMetaList = contents.stream()
                 .map(c -> new TasteWorkMetaDto(c.contentId(), c.title(), c.genreList(), c.overview()))
                 .toList();
-            GptKeywordDto gptResult = chatService.callGptForTaste(workMetaList);
+			tasteAnalysisService.analyze(event.userId(), workMetaList);
 
-            List<KeywordSimpleRes> keywordList = gptResult.tasteKeywords().stream()
-                .map(tk -> new KeywordSimpleRes(tk.keyword(), tk.rank(), tk.percent()))
-                .toList();
-
-            tasteService.matchUserKeywords(event.userId(), keywordList);
-
-            log.debug("취향 분석 완료. userId={}, keywordCount={}", event.userId(), keywordList.size());
+			log.debug("취향 분석 완료. userId={}", event.userId());
         } catch (Exception e) {
             log.error("취향 분석 실패 - userId: {}", event.userId(), e);
         }

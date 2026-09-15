@@ -21,6 +21,14 @@ class ContentQueryRepositoryUnitTest {
 	}
 
 	@Test
+	@DisplayName("keyword cursor는 완전 일치 등급과 관련도 점수와 contentId를 인코딩")
+	void encodesKeywordCursor() {
+		ContentSearchCursor cursor = ContentSearchCursor.keyword(1, 2.75, 10L);
+
+		assertThat(ContentSearchCursor.decode(cursor.encode())).isEqualTo(cursor);
+	}
+
+	@Test
 	@DisplayName("빈 cursor는 첫 페이지로 처리한다")
 	void decodesBlankCursorAsFirstPage() {
 		assertThat(ContentSearchCursor.decodeNullable(null)).isNull();
