@@ -36,11 +36,13 @@ public class HomeController implements HomeControllerDocs {
 
     @Override
     @GetMapping("/popular-collections")
-    public ResponseEntity<SuccessResponse<PopularCollectionsRes>> getPopularCollections() {
+    public ResponseEntity<SuccessResponse<PopularCollectionsRes>> getPopularCollections(
+        @CurrentUser(required = false) Long userId
+    ) {
         return ResponseEntity.ok(
             SuccessResponse.of(
                 SuccessCode.SUCCESS_POPULAR_COLLECTIONS_FETCH,
-                homeQueryFacade.getPopularCollections()
+                homeQueryFacade.getPopularCollections(userId)
             )
         );
     }

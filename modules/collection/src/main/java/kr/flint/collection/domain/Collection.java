@@ -91,4 +91,11 @@ public class Collection extends BaseTime {
             this.bookmarkCount--;
         }
     }
+
+    public void synchronizeBookmarkCount(int actualCount) {
+        if (actualCount < 0) {
+            throw new IllegalArgumentException("북마크 수는 음수일 수 없습니다.");
+        }
+        this.bookmarkCount = actualCount;
+    }
 }

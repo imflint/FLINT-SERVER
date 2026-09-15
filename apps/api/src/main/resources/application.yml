@@ -13,6 +13,9 @@ spring:
     virtual:
       enabled: true
 
+  lifecycle:
+    timeout-per-shutdown-phase: 330s
+
   jpa:
     open-in-view: false
     hibernate:
@@ -27,6 +30,13 @@ spring:
 
   jackson:
     default-property-inclusion: non_null
+
+  batch:
+    jdbc:
+      initialize-schema: always
+      schema: classpath:batch-schema-mysql.sql
+    job:
+      enabled: false
 
 server:
   port: 8080
@@ -60,3 +70,26 @@ decorator:
 
 recommendation:
   strategy: fliner-keyword  # fliner-keyword | fliner-collection
+
+tmdb:
+  base-url: https://api.themoviedb.org
+  api-key: ${TMDB_API_KEY:}
+  requests-per-second: 5
+
+flint:
+  exploration:
+    snapshot-enabled: ${FLINT_EXPLORATION_SNAPSHOT_ENABLED:false}
+  content:
+    localized-search-enabled: ${FLINT_LOCALIZED_SEARCH_ENABLED:false}
+  batch:
+    scheduling:
+      enabled: false
+    s3-cleanup:
+      enabled: false
+    tmdb:
+      export-base-url: https://files.tmdb.org/p/exports
+      download-dir: ${java.io.tmpdir}/flint-tmdb-exports
+      chunk-size: 50
+      concurrency-limit: 3
+      retry-attempts: 3
+      retry-back-off-ms: 2000

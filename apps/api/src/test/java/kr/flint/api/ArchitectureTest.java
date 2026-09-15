@@ -19,7 +19,8 @@ class ArchitectureTest {
     private static JavaClasses moduleClasses;
 
     private static final String ROOT_PACKAGE = "kr.flint";
-    private static final String API_PACKAGE = "kr.flint.api";
+	private static final String API_PACKAGE = "kr.flint.api";
+	private static final String BATCH_PACKAGE = "kr.flint.batch";
     private static final String SHARED_PACKAGE = "kr.flint.shared";
     private static final String INFRA_PACKAGE = "kr.flint.infra";
 
@@ -56,10 +57,10 @@ class ArchitectureTest {
         @Test
         @DisplayName("도메인 모듈은 apps 패키지에 의존하지 않는다")
         void modules_should_not_depend_on_apps() {
-            ArchRule rule = noClasses()
-                    .that().resideInAnyPackage(toSubPackages(DOMAIN_MODULES))
-                    .should().dependOnClassesThat()
-                    .resideInAPackage(API_PACKAGE + "..");
+			ArchRule rule = noClasses()
+					.that().resideInAnyPackage(toSubPackages(DOMAIN_MODULES))
+					.should().dependOnClassesThat()
+					.resideInAnyPackage(API_PACKAGE + "..", BATCH_PACKAGE + "..");
 
             rule.check(allClasses);
         }
@@ -100,10 +101,10 @@ class ArchitectureTest {
         @Test
         @DisplayName("infra 모듈은 apps 패키지에 의존하지 않는다")
         void infra_should_not_depend_on_apps() {
-            ArchRule rule = noClasses()
-                    .that().resideInAPackage(INFRA_PACKAGE + "..")
-                    .should().dependOnClassesThat()
-                    .resideInAPackage(API_PACKAGE + "..")
+			ArchRule rule = noClasses()
+					.that().resideInAPackage(INFRA_PACKAGE + "..")
+					.should().dependOnClassesThat()
+					.resideInAnyPackage(API_PACKAGE + "..", BATCH_PACKAGE + "..")
                     .allowEmptyShould(true);
 
             rule.check(allClasses);
@@ -126,7 +127,8 @@ class ArchitectureTest {
                 ArchRule rule = noClasses()
                         .that().resideOutsideOfPackage(module + "..")
                         .and().resideOutsideOfPackage(SHARED_PACKAGE + "..")
-                        .and().resideOutsideOfPackage(API_PACKAGE + "..")
+					.and().resideOutsideOfPackage(API_PACKAGE + "..")
+					.and().resideOutsideOfPackage(BATCH_PACKAGE + "..")
                         .should().dependOnClassesThat()
                         .resideInAPackage(domainPackage)
                         .as(String.format("도메인 모듈 간 %s 모듈의 domain 패키지에 직접 접근하면 안 된다", moduleName));
@@ -146,7 +148,8 @@ class ArchitectureTest {
 
                 ArchRule rule = noClasses()
                         .that().resideOutsideOfPackage(module + "..")
-                        .and().resideOutsideOfPackage(API_PACKAGE + "..")
+					.and().resideOutsideOfPackage(API_PACKAGE + "..")
+					.and().resideOutsideOfPackage(BATCH_PACKAGE + "..")
                         .should().dependOnClassesThat()
                         .resideInAPackage(repositoryPackage)
                         .as(String.format("도메인 모듈 간 %s 모듈의 repository 패키지에 직접 접근하면 안 된다", moduleName));

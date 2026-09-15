@@ -90,13 +90,14 @@ class ContentQueryRepositoryTest {
 		registry.add("spring.datasource.driver-class-name", MYSQL::getDriverClassName);
 		registry.add("spring.jpa.hibernate.ddl-auto", () -> "create");
 		registry.add("spring.jpa.properties.hibernate.dialect", () -> "org.hibernate.dialect.MySQLDialect");
+		registry.add("flint.content.localized-search-enabled", () -> "true");
 	}
 
 	@BeforeEach
 	void ensureFullTextIndex() throws SQLException {
 		try (Connection connection = dataSource.getConnection();
 			 Statement statement = connection.createStatement()) {
-			statement.execute("CREATE FULLTEXT INDEX ft_content_title_ngram ON content (title) WITH PARSER ngram");
+			statement.execute("CREATE FULLTEXT INDEX ft_content_search_title_ngram ON content (search_title) WITH PARSER ngram");
 		} catch (SQLException exception) {
 			if (exception.getErrorCode() != 1061) {
 				throw exception;
@@ -105,8 +106,8 @@ class ContentQueryRepositoryTest {
 	}
 
 	@Test
-	@DisplayName("요청한 모든 장르를 가진 콘텐츠만 인기순으로 조회")
-	void searchContentsMatchesAllGenres() {
+	@DisplayName("요청한 장르 중 하나 이상을 가진 콘텐츠를 인기순으로 조회")
+	void searchContentsMatchesAnyGenre() {
 		// given
 		Genre action = persistGenre("액션");
 		Genre romance = persistGenre("로맨스");
@@ -131,7 +132,7 @@ class ContentQueryRepositoryTest {
 		// then
 		assertThat(results)
 			.extracting(ContentSearchRow::title)
-			.containsExactly("액션 로맨스", "액션 로맨스 드라마");
+			.containsExactly("액션만", "로맨스 드라마", "액션 로맨스", "액션 로맨스 드라마");
 	}
 
 	@Test
@@ -211,7 +212,23 @@ class ContentQueryRepositoryTest {
 		// then
 		assertThat(results)
 			.extracting(ContentSearchRow::title)
-			.containsExactly("눈물의 여왕", "눈부신 하루");
+			.containsExactly("눈부신 하루", "눈물의 여왕");
+	}
+
+	@Test
+	@DisplayName("keyword 검색은 인기보다 정규화 완전 일치와 관련도를 우선")
+	void keywordSearchOrdersExactMatchBeforePopularity() {
+		persistContent(3201L, "해리포터와 불의 잔", 100);
+		persistContent(3202L, "해리 포터", 0);
+		commitFullTextFixtures();
+
+		List<ContentSearchRow> results =
+			contentQueryRepository.searchContents(condition("해리포터", List.of(), null, 10));
+
+		assertThat(results)
+			.extracting(ContentSearchRow::title)
+			.startsWith("해리 포터");
+		assertThat(results.getFirst().exactMatchRank()).isZero();
 	}
 
 	@Test
@@ -234,7 +251,7 @@ class ContentQueryRepositoryTest {
 	}
 
 	@Test
-	@DisplayName("keyword, genre, mediaType 조건을 모두 AND로 검색")
+	@DisplayName("keyword, mediaType, 장르 그룹을 AND로 검색하고 장르 그룹 내부는 OR로 처리")
 	void searchContentsWithAllConditions() {
 		// given
 		Genre action = persistGenre("액션");
@@ -258,7 +275,7 @@ class ContentQueryRepositoryTest {
 		// then
 		assertThat(results)
 			.extracting(ContentSearchRow::title)
-			.containsExactly("눈물 액션 로맨스");
+			.containsExactlyInAnyOrder("눈물 액션 로맨스", "눈물 액션");
 	}
 
 	@Test
@@ -332,13 +349,16 @@ class ContentQueryRepositoryTest {
 	void bookmarkedContentRowsIncludeContentOttProviders() {
 		// given
 		Long userId = 1L;
-		Long providerId = 9001L;
 		Content content = persistContent(8001L, "OTT 포함 콘텐츠", 1);
 		entityManager.flush();
 
 		entityManager.persist(ContentBookmark.create(userId, content.getId()));
-		persistOttProvider(providerId, "Netflix", "netflix.svg");
-		persistOttContent(providerId, content.getId());
+		persistOttProvider(9001L, "Netflix", "netflix.svg", 20, true);
+		persistOttProvider(9002L, "Wavve", "wavve.svg", 10, true);
+		persistOttProvider(9003L, "Inactive", "inactive.svg", 1, false);
+		persistOttContent(9001L, content.getId());
+		persistOttContent(9002L, content.getId());
+		persistOttContent(9003L, content.getId());
 		entityManager.flush();
 		entityManager.clear();
 
@@ -349,7 +369,50 @@ class ContentQueryRepositoryTest {
 		assertThat(rows).hasSize(1);
 		assertThat(rows.getFirst().ottSimpleList())
 			.extracting(GetContentDetailRes.GetOttSimpleRes::ottName)
-			.containsExactly("Netflix");
+			.containsExactly("Wavve", "Netflix");
+	}
+
+	@Test
+	@DisplayName("북마크 콘텐츠 cursor 페이지는 현재 사용자 관계만 최신순으로 중복 없이 반환")
+	void bookmarkedContentRowsAreScopedAndCursorPaginated() {
+		Long userId = 1L;
+		Content first = persistContent(8101L, "첫 번째", 1);
+		Content second = persistContent(8102L, "두 번째", 1);
+		Content third = persistContent(8103L, "세 번째", 1);
+		Content otherUser = persistContent(8104L, "타 사용자 작품", 1);
+		persistContent(8105L, "미저장 작품", 1);
+		entityManager.flush();
+		persistBookmark(300L, userId, first.getId());
+		persistBookmark(200L, userId, second.getId());
+		persistBookmark(100L, userId, third.getId());
+		persistBookmark(400L, 2L, otherUser.getId());
+		entityManager.flush();
+		entityManager.clear();
+
+		List<BookmarkedContentRow> firstPage = contentQueryRepository.getBookmarkedContentRows(userId, null, 2);
+		List<BookmarkedContentRow> secondPage = contentQueryRepository.getBookmarkedContentRows(userId, 200L, 2);
+
+		assertThat(firstPage).extracting(BookmarkedContentRow::title).containsExactly("첫 번째", "두 번째");
+		assertThat(secondPage).extracting(BookmarkedContentRow::title).containsExactly("세 번째");
+		assertThat(java.util.stream.Stream.concat(firstPage.stream(), secondPage.stream()))
+			.extracting(BookmarkedContentRow::contentId)
+			.doesNotHaveDuplicates();
+	}
+
+	@Test
+	@DisplayName("저장 작품 감독이 Unknown이면 null, 실제 이름이면 그대로 반환")
+	void bookmarkedContentRowsNormalizeAuthor() {
+		Content unknown = persistContent(8201L, "감독 없음", MediaType.MOVIE, 0, "Unknown");
+		Content director = persistContent(8202L, "감독 있음", MediaType.MOVIE, 0, "감독 이름");
+		entityManager.flush();
+		persistBookmark(200L, 1L, unknown.getId());
+		persistBookmark(100L, 1L, director.getId());
+		entityManager.flush();
+		entityManager.clear();
+
+		List<BookmarkedContentRow> rows = contentQueryRepository.getBookmarkedContentRows(1L, null, 10);
+
+		assertThat(rows).extracting(BookmarkedContentRow::author).containsExactly(null, "감독 이름");
 	}
 
 	private Genre persistGenre(String name) {
@@ -363,18 +426,39 @@ class ContentQueryRepositoryTest {
 	}
 
 	private Content persistContent(Long tmdbId, String title, MediaType mediaType, int bookmarkCount) {
+		return persistContent(tmdbId, title, mediaType, bookmarkCount, "감독");
+	}
+
+	private Content persistContent(
+		Long tmdbId,
+		String title,
+		MediaType mediaType,
+		int bookmarkCount,
+		String author
+	) {
 		Content content = Content.create(
 			tmdbId,
 			mediaType,
 			title,
 			2026,
-			"감독",
+			author,
 			"설명",
 			"poster.jpg"
 		);
 		IntStream.range(0, bookmarkCount).forEach(ignored -> content.increaseBookmarkCount());
 		entityManager.persist(content);
 		return content;
+	}
+
+	private void persistBookmark(Long id, Long userId, Long contentId) {
+		entityManager.createNativeQuery("""
+			INSERT INTO content_bookmark (id, user_id, content_id)
+			VALUES (:id, :userId, :contentId)
+			""")
+			.setParameter("id", id)
+			.setParameter("userId", userId)
+			.setParameter("contentId", contentId)
+			.executeUpdate();
 	}
 
 	private void persistContentGenres(Content content, Genre... genres) {
@@ -384,14 +468,22 @@ class ContentQueryRepositoryTest {
 	}
 
 	private void persistOttProvider(Long id, String name, String logoUrl) {
+		persistOttProvider(id, name, logoUrl, 9999, true);
+	}
+
+	private void persistOttProvider(Long id, String name, String logoUrl, int displayPriority, boolean active) {
 		entityManager.createNativeQuery("""
-				INSERT INTO ott_provider (id, name, logo_url, url)
-				VALUES (:id, :name, :logoUrl, :url)
+				INSERT INTO ott_provider (
+					id, name, logo_url, url, tmdb_provider_id, display_priority, active
+				)
+				VALUES (:id, :name, :logoUrl, :url, NULL, :displayPriority, :active)
 			""")
 			.setParameter("id", id)
 			.setParameter("name", name)
 			.setParameter("logoUrl", logoUrl)
 			.setParameter("url", "https://example.com")
+			.setParameter("displayPriority", displayPriority)
+			.setParameter("active", active)
 			.executeUpdate();
 	}
 

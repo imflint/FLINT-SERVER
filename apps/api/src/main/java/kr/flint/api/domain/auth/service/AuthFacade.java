@@ -24,8 +24,10 @@ import kr.flint.auth.exception.AuthException;
 import kr.flint.auth.service.AuthService;
 import kr.flint.auth.service.UserIdentityService;
 import kr.flint.bookmark.service.BookmarkCommandService;
+import kr.flint.bookmark.service.BookmarkQueryService;
 import kr.flint.collection.service.CollectionService;
 import kr.flint.content.service.ContentService;
+import kr.flint.exploration.service.ExplorationProgressService;
 import kr.flint.ott.service.OttService;
 import kr.flint.taste.service.TasteService;
 import kr.flint.terms.domain.TermsContext;
@@ -44,12 +46,14 @@ public class AuthFacade {
     private final KakaoOAuthClient kakaoOAuthClient;
     private final AppleOAuthClient appleOAuthClient;
     private final BookmarkCommandService bookmarkCommandService;
+    private final BookmarkQueryService bookmarkQueryService;
     private final OttService ottService;
     private final ApplicationEventPublisher eventPublisher;
 	private final CollectionService collectionService;
 	private final TasteService tasteService;
 	private final ContentService contentService;
 	private final TermsService termsService;
+	private final ExplorationProgressService explorationProgressService;
 
 	/**
      * 소셜 로그인
@@ -129,6 +133,9 @@ public class AuthFacade {
     @Transactional
     public void withdraw(Long userId, String accessToken, List<Long> agreedTermsIds) {
         termsService.validateAndCreateAgreements(userId, TermsContext.WITHDRAWAL, agreedTermsIds);
+		List<Long> affectedCollectionIds = bookmarkQueryService.getBookmarkedCollectionIds(userId).stream()
+			.sorted()
+			.toList();
 
 		//User 삭제
 		userService.deleteUser(userId);
@@ -141,12 +148,19 @@ public class AuthFacade {
 
 		//북마크 삭제
 		bookmarkCommandService.deleteBookmarkByUser(userId);
+		affectedCollectionIds.forEach(collectionId -> collectionService.synchronizeBookmarkCountIfPresent(
+			collectionId,
+			bookmarkQueryService.getBookmarkCount(collectionId)
+		));
 
 		//취향 키워드 삭제
 		tasteService.deleteUserKeywords(userId);
 
 		//ott 삭제
 		ottService.deleteUserOtts(userId);
+
+		//탐색 세션 삭제
+		explorationProgressService.deleteByUser(userId);
     }
 
     /**

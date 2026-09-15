@@ -19,6 +19,8 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
+    hibernate:
+      ddl-auto: none
     show-sql: false
 
   data:
@@ -68,3 +70,8 @@ oauth:
 logging:
   level:
     kr.flint: info
+
+flint:
+  batch:
+    scheduling:
+      enabled: false

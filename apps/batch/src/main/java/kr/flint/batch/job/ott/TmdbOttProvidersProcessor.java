@@ -1,7 +1,5 @@
 package kr.flint.batch.job.ott;
 
-import java.util.List;
-
 import org.springframework.batch.item.ItemProcessor;
 
 import feign.FeignException;
@@ -15,7 +13,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class TmdbOttProvidersProcessor implements ItemProcessor<OttSyncContentRow, OttSyncDraft> {
 
-	private static final String COUNTRY = "KR";
 	private final TmdbClient tmdbClient;
 
 	@Override
@@ -28,14 +25,7 @@ public class TmdbOttProvidersProcessor implements ItemProcessor<OttSyncContentRo
 				? tmdbClient.getTvWatchProviders(row.tmdbId())
 				: tmdbClient.getMovieWatchProviders(row.tmdbId());
 
-			TmdbOttRes.CountryProvider country = (res.results() == null) ? null : res.results().get(COUNTRY);
-			if (country == null || country.flatrate() == null || country.flatrate().isEmpty()) {
-				return null;
-			}
-			List<String> providerNames = country.flatrate().stream()
-				.map(TmdbOttRes.Provider::providerName)
-				.toList();
-			return new OttSyncDraft(row.contentId(), providerNames);
+			return TmdbOttSnapshot.from(res).toDraft(row.contentId());
 		} catch (FeignException.NotFound nf) {
 			log.debug("watch providers not found tmdbId={} mediaType={}", row.tmdbId(), row.mediaType());
 			return null;

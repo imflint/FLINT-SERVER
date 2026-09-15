@@ -31,8 +31,10 @@ import kr.flint.auth.exception.AuthException;
 import kr.flint.auth.service.AuthService;
 import kr.flint.auth.service.UserIdentityService;
 import kr.flint.bookmark.service.BookmarkCommandService;
+import kr.flint.bookmark.service.BookmarkQueryService;
 import kr.flint.collection.service.CollectionService;
 import kr.flint.content.service.ContentService;
+import kr.flint.exploration.service.ExplorationProgressService;
 import kr.flint.ott.service.OttService;
 import kr.flint.taste.service.TasteService;
 import kr.flint.terms.domain.TermsContext;
@@ -64,6 +66,9 @@ class AuthFacadeTest {
 	private BookmarkCommandService bookmarkCommandService;
 
 	@Mock
+	private BookmarkQueryService bookmarkQueryService;
+
+	@Mock
 	private OttService ottService;
 
 	@Mock
@@ -80,6 +85,9 @@ class AuthFacadeTest {
 
 	@Mock
 	private TermsService termsService;
+
+	@Mock
+	private ExplorationProgressService explorationProgressService;
 
 	@InjectMocks
 	private AuthFacade authFacade;
@@ -187,6 +195,10 @@ class AuthFacadeTest {
 		@Test
 		@DisplayName("회원탈퇴 약관 동의 검증 후 탈퇴 처리")
 		void success() {
+			when(bookmarkQueryService.getBookmarkedCollectionIds(1L)).thenReturn(List.of(10L, 20L));
+			when(bookmarkQueryService.getBookmarkCount(10L)).thenReturn(2);
+			when(bookmarkQueryService.getBookmarkCount(20L)).thenReturn(0);
+
 			// when
 			authFacade.withdraw(1L, "access-token", List.of(30L));
 
@@ -196,8 +208,11 @@ class AuthFacadeTest {
 			verify(authService).withdraw(1L, "access-token");
 			verify(collectionService).deleteCollectionByUser(1L);
 			verify(bookmarkCommandService).deleteBookmarkByUser(1L);
+			verify(collectionService).synchronizeBookmarkCountIfPresent(10L, 2);
+			verify(collectionService).synchronizeBookmarkCountIfPresent(20L, 0);
 			verify(tasteService).deleteUserKeywords(1L);
 			verify(ottService).deleteUserOtts(1L);
+			verify(explorationProgressService).deleteByUser(1L);
 		}
 
 		@Test

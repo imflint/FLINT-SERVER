@@ -76,6 +76,9 @@ class ContentQueryFacadeTest {
 			assertThat(response.contents())
 				.extracting(GetContentListRes.Content::isBookmarked)
 				.containsExactly(false, true);
+			assertThat(response.contents())
+				.extracting(GetContentListRes.Content::author)
+				.containsExactly("크리스토퍼 놀란", "크리스토퍼 놀란");
 			verify(contentQueryRepository).getContentDetailList(10L);
 			verify(bookmarkQueryService).getBookmarkedContentIdSet(20L, List.of(1L, 2L));
 		}
@@ -189,8 +192,8 @@ class ContentQueryFacadeTest {
 		@DisplayName("검색 조건을 모두 전달하고 size 초과 결과로 다음 커서를 만든다")
 		void passesAllConditionsAndPaginates() {
 			// given
-			ContentSearchRow first = new ContentSearchRow(1L, "눈물 액션 로맨스", "감독", "poster.jpg", 2026, 10);
-			ContentSearchRow second = new ContentSearchRow(2L, "눈물 액션 로맨스 2", "감독", "poster.jpg", 2026, 9);
+			ContentSearchRow first = new ContentSearchRow(1L, "눈물 액션 로맨스", "감독", "poster.jpg", 2026, 10, 0, 4.5);
+			ContentSearchRow second = new ContentSearchRow(2L, "눈물 액션 로맨스 2", "감독", "poster.jpg", 2026, 9, 1, 3.2);
 			ContentSearchCondition condition = ContentSearchCondition.of(
 				"눈물",
 				List.of("액션", "로맨스"),
@@ -214,7 +217,7 @@ class ContentQueryFacadeTest {
 			assertThat(response.data())
 				.extracting(GetContentSearchRes::title)
 				.containsExactly("눈물 액션 로맨스");
-			assertThat(response.meta().nextCursor()).isEqualTo(ContentSearchCursor.of(10, 1L).encode());
+			assertThat(response.meta().nextCursor()).isEqualTo(ContentSearchCursor.keyword(0, 4.5, 1L).encode());
 			verify(contentQueryRepository).searchContents(condition);
 		}
 
@@ -288,6 +291,18 @@ class ContentQueryFacadeTest {
 			verify(contentQueryRepository).searchContents(
 				eq(ContentSearchCondition.of(null, List.of(), null, ContentSearchCursor.of(3, 123L), 20))
 			);
+		}
+
+		@Test
+		@DisplayName("keyword 검색에 인기순 cursor를 전달하면 거부")
+		void rejectsCursorForDifferentSortMode() {
+			String cursor = ContentSearchCursor.popular(3, 123L).encode();
+
+			assertThatThrownBy(() ->
+				contentQueryFacade.getContentSearchList("눈물", null, null, cursor, 20))
+				.isInstanceOf(GeneralException.class);
+
+			verifyNoInteractions(contentQueryRepository);
 		}
 	}
 }

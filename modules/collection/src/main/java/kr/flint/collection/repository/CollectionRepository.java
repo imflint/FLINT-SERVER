@@ -1,18 +1,25 @@
 package kr.flint.collection.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import jakarta.persistence.LockModeType;
 import kr.flint.collection.domain.Collection;
 import kr.flint.collection.dto.response.CollectionSummaryProjection;
 
 @Repository
 public interface CollectionRepository extends JpaRepository<Collection, Long> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select c from Collection c where c.id = :collectionId")
+    Optional<Collection> findByIdForUpdate(@Param("collectionId") Long collectionId);
 
     List<CollectionSummaryProjection> findByUserId(Long userId);
 

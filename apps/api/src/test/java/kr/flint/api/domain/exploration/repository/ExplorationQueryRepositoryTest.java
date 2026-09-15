@@ -3,6 +3,7 @@ package kr.flint.api.domain.exploration.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
+import java.util.Set;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import jakarta.persistence.EntityManager;
 import kr.flint.api.domain.exploration.repository.ExplorationQueryRepository.RepresentativeCollectionRow;
+import kr.flint.api.domain.exploration.repository.ExplorationQueryRepository.ExposableSnapshotKey;
 import kr.flint.collection.domain.Collection;
 import kr.flint.collection.domain.CollectionContent;
 import kr.flint.content.domain.Content;
@@ -102,6 +104,38 @@ class ExplorationQueryRepositoryTest {
 			: "두 번째 사용자가 작성한 소개";
 		assertThat(result.get(content.getId()).collectionId()).isEqualTo(expected.getId());
 		assertThat(result.get(content.getId()).reason()).isEqualTo(expectedReason);
+	}
+
+	@Test
+	@DisplayName("스냅샷 노출 상태는 콘텐츠와 대표 컬렉션 쌍으로 조회")
+	void findExposableSnapshotKeysUsesExactPairs() {
+		Content visibleContent = persistContent(11L, "노출 작품");
+		Content hiddenContent = persistContent(12L, "숨김 작품");
+		Collection visibleCollection = persistCollection("노출 컬렉션");
+		Collection hiddenCollection = persistCollection("숨김 컬렉션");
+		hiddenCollection.hideByAdmin();
+		entityManager.flush();
+		persistCollectionContent(visibleCollection, visibleContent, "노출 소개");
+		persistCollectionContent(hiddenCollection, hiddenContent, "숨김 소개");
+		entityManager.flush();
+		entityManager.clear();
+
+		Set<ExposableSnapshotKey> result = explorationQueryRepository.findExposableSnapshotKeys(
+			java.util.List.of(visibleContent.getId(), hiddenContent.getId()),
+			java.util.List.of(visibleCollection.getId(), hiddenCollection.getId())
+		);
+
+		assertThat(result).containsExactly(
+			new ExposableSnapshotKey(visibleContent.getId(), visibleCollection.getId())
+		);
+	}
+
+	private Content persistContent(Long tmdbId, String title) {
+		Content content = Content.create(
+			tmdbId, MediaType.MOVIE, title, 2026, "감독", "줄거리", "poster.jpg"
+		);
+		entityManager.persist(content);
+		return content;
 	}
 
 	private Collection persistCollection(String title) {

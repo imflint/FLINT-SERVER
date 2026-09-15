@@ -46,24 +46,66 @@ class OttBatchJdbcRepositoryTest {
 	}
 
 	@Test
-	void linkProvidersInsertsExistingProvidersOnlyAndDeduplicatesRows() {
+	void replaceProvidersPreservesLegacyProviderIdsAndDeduplicatesRows() {
 		List<OttSyncDraft> drafts = List.of(
-			new OttSyncDraft(10L, List.of("Netflix", "Missing", "Netflix")),
-			new OttSyncDraft(10L, List.of("Disney Plus")),
-			new OttSyncDraft(null, List.of("Netflix")),
-			new OttSyncDraft(11L, List.of())
+			new OttSyncDraft(10L, "https://watch.example.com/10", List.of(
+				provider(8L, "Netflix", 0),
+				provider(337L, "Disney Plus", 1),
+				provider(8L, "Netflix", 0)
+			)),
+			new OttSyncDraft(11L, "https://watch.example.com/11", List.of())
 		);
 
-		repository.linkProviders(drafts);
-		repository.linkProviders(drafts);
+		repository.replaceProviders(drafts);
+		repository.replaceProviders(drafts);
 
 		assertThat(count("ott_content")).isEqualTo(2);
+		assertThat(jdbcTemplate.queryForList("""
+			SELECT id
+			FROM ott_provider
+			WHERE tmdb_provider_id IN (8, 337)
+			ORDER BY id
+			""", Long.class)).containsExactly(1L, 2L);
 		assertThat(jdbcTemplate.queryForList("""
 			SELECT content_url
 			FROM ott_content
 			ORDER BY content_url
 			""", String.class))
-			.containsExactly("https://disney.example.com", "https://netflix.example.com");
+			.containsExactly("https://watch.example.com/10", "https://watch.example.com/10");
+	}
+
+	@Test
+	void successfulEmptyProviderResponseRemovesExistingLinks() {
+		repository.replaceProviders(List.of(
+			new OttSyncDraft(10L, "https://watch.example.com/10", List.of(provider(8L, "Netflix", 0)))
+		));
+
+		repository.replaceProviders(List.of(new OttSyncDraft(10L, null, List.of())));
+
+		assertThat(count("ott_content")).isZero();
+	}
+
+	@Test
+	void providerMasterDeactivatesMissingProvidersWithoutDeletingLegacyRows() {
+		repository.synchronizeProviderMaster(List.of(provider(8L, "Netflix", 1)));
+
+		assertThat(jdbcTemplate.queryForObject(
+			"SELECT active FROM ott_provider WHERE id = 1",
+			Boolean.class
+		)).isTrue();
+		assertThat(jdbcTemplate.queryForObject(
+			"SELECT active FROM ott_provider WHERE id = 2",
+			Boolean.class
+		)).isTrue();
+
+		jdbcTemplate.update("UPDATE ott_provider SET tmdb_provider_id = 337 WHERE id = 2");
+		repository.synchronizeProviderMaster(List.of(provider(8L, "Netflix", 1)));
+
+		assertThat(jdbcTemplate.queryForObject(
+			"SELECT active FROM ott_provider WHERE id = 2",
+			Boolean.class
+		)).isFalse();
+		assertThat(count("ott_provider")).isEqualTo(2);
 	}
 
 	private int count(String tableName) {
@@ -79,7 +121,11 @@ class OttBatchJdbcRepositoryTest {
 				id BIGINT NOT NULL PRIMARY KEY,
 				name VARCHAR(255) NOT NULL,
 				logo_url VARCHAR(255) NOT NULL,
-				url VARCHAR(255) NOT NULL
+				url VARCHAR(255) NOT NULL,
+				tmdb_provider_id BIGINT NULL,
+				display_priority INT NOT NULL DEFAULT 9999,
+				active BOOLEAN NOT NULL DEFAULT TRUE,
+				UNIQUE KEY uk_ott_provider_tmdb_provider_id (tmdb_provider_id)
 			)
 			""");
 		jdbcTemplate.execute("""
@@ -107,6 +153,15 @@ class OttBatchJdbcRepositoryTest {
 			"Disney Plus",
 			"logo-disney",
 			"https://disney.example.com"
+		);
+	}
+
+	private OttSyncDraft.Provider provider(Long tmdbProviderId, String name, int displayPriority) {
+		return new OttSyncDraft.Provider(
+			tmdbProviderId,
+			name,
+			"https://image.tmdb.org/t/p/original/provider.png",
+			displayPriority
 		);
 	}
 }
