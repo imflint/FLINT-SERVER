@@ -313,11 +313,13 @@ flint-api/
 **[처리 로직]**
 
 1. UserKeyword 테이블에서 해당 사용자의 키워드를 순위, 비율, 이름 순으로 조회
-2. 최대 6개를 반환하고 응답 순위를 1~6으로 정규화
+2. 재계산 결과는 등록된 서로 다른 키워드가 정확히 6개인지 검증하고, 조회 응답은 최대 6개의 순위를 1~6으로 정규화
 3. 1~3위는 코어 키워드, 4~6위는 서브 키워드로 사용
 4. 재계산 결과는 기존 키워드 전체를 교체하며 GPT가 동점 순위를 반환해도 고유 순위를 저장
 5. 1~3위는 기존 레벨 색상을 우선 사용하되 중복 시 `PINK → GREEN → ORANGE → YELLOW → BLUE` 순으로 미사용 색상을 배정
 6. 4~6위는 기존 레벨 색상을 유지
+7. 누락·중복·미등록·음수 비율이면 GPT 분석을 한 번 재시도하고, 두 번째도 실패하면 기존 데이터를 유지한 채 오류 반환
+8. 비율은 largest remainder 방식으로 정수 합계를 정확히 100으로 정규화하며, 전체 가중치가 0이면 `17, 17, 17, 17, 16, 16` 적용
 
 **[응답]**
 
@@ -326,6 +328,7 @@ flint-api/
     - percentage (Integer): 비율 (0~100)
     - color (String): 표시 색상
     - rank (Integer): 정규화된 순위 (1~6)
+    - group (String): 1~3위 `CORE`, 4~6위 `SUB`
 
 ---
 
@@ -394,6 +397,7 @@ flint-api/
 - contents: 북마크한 콘텐츠 목록
     - id (Long): 콘텐츠 ID
     - title (String): 콘텐츠 제목
+    - author (String, nullable): 영화 감독 또는 TV creator. 없으면 `null`
     - imageUrl (String): 콘텐츠 이미지 URL
     - year (Integer): 개봉/방영 연도
     - bookmarkCount (Integer): 북마크 수
@@ -466,22 +470,28 @@ flint-api/
 **[처리 로직]**
 
 1. 공개 상태의 공개 컬렉션에 포함된 작품만 조회
-2. 사용자별 세션 시작 커서를 저장하고 작품 ID 오름차순으로 30개 구성
+2. 사용자별 세션 시작 커서와 버전별 작품 30개를 스냅샷으로 저장
 3. 각 작품에는 TMDB 줄거리 대신 대표 컬렉션 작성자의 선정 이유(`CollectionContent.reason`)를 반환
-4. 현재 세션이 끝난 경우 `POST /exploration/next`로 다음 30개 세션으로 이동
+4. `PATCH /exploration/progress`로 마지막 열람 위치를 저장하고, 현재 세션이 끝난 경우에만 `POST /exploration/next`로 다음 30개 세션으로 이동
 
 **[세션 규칙]**
 
 - 완전한 30개가 준비된 경우에만 세션을 반환
-- 신규 작품은 더 큰 ID로 뒤에 추가되므로 진행 중인 세션의 기본 윈도우는 유지
-- 서버는 현재 30개 세션과 완료 여부를 저장하지만 세션 내부의 마지막 열람 인덱스는 저장하지 않음
-- 앱 이탈 후 정확한 카드 위치 복원은 진행 인덱스 갱신 API와 클라이언트 호출 정책을 추가해야 함
+- 신규 작품이 추가되어도 저장된 진행 중 세션은 교체하지 않음
+- 작품 ID, 위치, 제목, 포스터, 연도, 추천 사유, 대표 컬렉션을 세션 스냅샷에 저장
+- 비공개·삭제 항목은 조회 즉시 제외하되 다른 작품으로 충원하지 않음
+- 같은 위치 재전송은 멱등 성공하고 위치 회귀·건너뛰기는 거부
+- 진행 행은 비관적 잠금으로 직렬화하며 세션을 모두 소비해야 다음 세션으로 이동 가능
+- DDL 적용 및 smoke test 전에는 `FLINT_EXPLORATION_SNAPSHOT_ENABLED=false` 유지
 
 **[응답]**
 
 - items: 작품 목록 (30개 또는 빈 배열)
 - state: IN_PROGRESS, END, EMPTY
 - hasNext (Boolean): 다음 30개 세션 존재 여부
+- lastViewedPosition (Integer): 마지막으로 확인한 세션 내 위치, 시작 전은 0
+- canAdvance (Boolean): 현재 세션을 모두 소비해 다음 세션으로 이동 가능한지
+- items[].position (Integer): 세션 내 고정 위치 (1~30)
 
 ---
 
@@ -589,9 +599,11 @@ flint-api/
 
 **[처리 로직]**
 
-1. 해당 컬렉션의 북마크 존재 여부 확인
+1. 컬렉션 행을 비관적 잠금으로 조회
 2. **북마크 존재**: 삭제 (북마크 해제)
 3. **북마크 미존재**: 생성 (북마크 추가)
+4. 변경 후 실제 `collection_bookmark` 행 수를 집계해 `collection.bookmark_count`를 절대값으로 동기화
+5. 회원 탈퇴 시에도 영향받은 컬렉션 카운트를 같은 방식으로 재계산
 
 **[응답]**
 
@@ -664,10 +676,12 @@ flint-api/
 1. 사용자가 북마크한 콘텐츠 목록을 북마크 최신순으로 조회
 2. size + 1개를 조회해 다음 페이지 존재 여부 판단
 3. 콘텐츠 상세 정보와 cursor 페이지네이션 메타 포함하여 반환
+4. 현재 사용자의 `content_bookmark` 관계만 반환하며 다른 사용자 작품과 미저장 작품을 병합하지 않음
 
 **[응답]**
 
 - data: 북마크한 콘텐츠 목록
+    - author (String, nullable): 영화 감독 또는 TV creator. 없으면 `null`
 - meta.type: CURSOR
 - meta.returned: 현재 응답의 콘텐츠 수
 - meta.nextCursor: 다음 페이지 조회용 cursor
@@ -841,6 +855,9 @@ flint-api/
 
 - 컬렉션별 `imageList`에는 작품 공식 포스터만 최대 2개 반환
 - 각 항목에 총 `bookmarkCount`를 포함
+- 유효한 USER 토큰이면 실제 저장 관계 기준 `isBookmarked`, 토큰이 없으면 `false` 반환
+- 만료·위조·정지 계정 토큰은 공개 API라도 기존 인증 오류 반환
+- 저장 상태는 응답 대상 컬렉션 ID에 대해 한 번에 조회하며 사용자별 응답이므로 공유 캐시하지 않음
 - 사용자 업로드 작품 소개 이미지는 카드 미리보기에 포함하지 않음
 
 ---
@@ -1007,6 +1024,9 @@ flint-api/
 | GET | /collections/{id} | 상세 조회 | O |
 | DELETE | /collections/{id} | 컬렉션 삭제 | O |
 | GET | /collections/recent | 최근 본 목록 | O |
+| GET | /exploration | 현재 탐색 세션 조회 | O |
+| PATCH | /exploration/progress | 탐색 진행 위치 저장 | O |
+| POST | /exploration/next | 다음 탐색 세션 이동 | O |
 
 ### 6.4 북마크 관련
 
@@ -1038,7 +1058,7 @@ flint-api/
 | Method | Endpoint | 설명 | 인증 |
 |--------|----------|------|------|
 | GET | /home/recommended-collections | 추천 컬렉션 | O |
-| GET | /home/popular-collections | 인기 컬렉션 | X |
+| GET | /home/popular-collections | 인기 컬렉션 | 선택 |
 
 ### 6.8 관리자 및 배치 관련
 

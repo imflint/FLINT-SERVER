@@ -82,12 +82,38 @@ dev 프로필에서 다음 순서로 실행한다.
 
 ## 6. OTT와 스케줄 검증
 
-- Movie/TV provider master가 `watch_region=KR` 합집합으로 저장됐는지 확인한다.
-- 기존 6개 provider의 내부 PK와 사용자 구독 FK가 유지됐는지 확인한다.
-- 콘텐츠 상세 200 응답은 `KR.flatrate` 관계 전체를 교체하고, 실패 응답은 기존 관계를 보존하는지 확인한다.
-- `GET /api/v1/contents/ott/{contentId}`가 사용자 구독과 무관하게 활성 국내 정액제 OTT 전체를 반환하는지 확인한다.
-- Watch Provider 데이터가 보이는 클라이언트 화면에 JustWatch 출처를 표시한다.
-- dev에서 월간 02:00 KST, 일간 05:00 KST 실행과 월간 우선 lease를 확인한 후에만 prod 자동 스케줄 활성화를 별도 승인한다.
+1. 카탈로그 DDL을 적용하고 prod 자동 스케줄은 비활성 상태로 배포한다.
+2. 대표 Movie/TV 작품만 `next_refresh_at`을 현재 시각 이전으로 지정한 뒤 `POST /api/v1/admin/batch/daily-sync`를 호출한다. 실행 시작 시 Movie/TV provider master가 `watch_region=KR` 합집합으로 먼저 동기화된다.
+3. 기존 6개 provider의 내부 PK와 사용자 구독 FK가 유지되는지 확인한다.
+4. 대표 작품의 TMDB `KR.flatrate`, `ott_content`, `GET /api/v1/contents/ott/{contentId}` 결과를 비교한다. API는 사용자 구독과 무관하게 활성 국내 정액제 OTT 전체를 반환해야 한다.
+5. 콘텐츠 상세 200 응답은 OTT 관계 전체를 교체하고 빈 `flatrate`면 관계를 비우며, 429·5xx·timeout은 기존 관계를 보존하는지 확인한다.
+6. canary가 통과하면 `SYNCED` 작품의 `next_refresh_at`을 현재 시각 이전으로 옮기고 일간 동기화를 실행해 5req/s, 동시성 3, chunk 50으로 전체 백필한다. 약 107만 건이면 최소 약 60시간을 예상하고 실행 목록의 실패·재시도·처리량을 관찰한다.
+7. Watch Provider 데이터가 보이는 클라이언트 화면에 JustWatch 출처를 표시한다.
+8. dev에서 월간 02:00 KST, 일간 05:00 KST 실행과 월간 우선 lease를 확인한 후에만 prod 자동 스케줄 활성화를 별도 승인한다.
+
+canary와 전체 백필 대상은 실행 전에 반드시 건수를 확인한다.
+
+```sql
+-- Canary: 승인한 대표 TMDB ID만 due 상태로 전환한다.
+SELECT media_type, tmdb_id, status, next_refresh_at
+FROM tmdb_catalog_entry
+WHERE (media_type, tmdb_id) IN (('MOVIE', <movie_tmdb_id>), ('TV', <tv_tmdb_id>));
+
+UPDATE tmdb_catalog_entry
+SET next_refresh_at = UTC_TIMESTAMP(6)
+WHERE status = 'SYNCED'
+  AND (media_type, tmdb_id) IN (('MOVIE', <movie_tmdb_id>), ('TV', <tv_tmdb_id>));
+
+-- Full backfill preview.
+SELECT COUNT(*) AS due_backfill_count
+FROM tmdb_catalog_entry
+WHERE status = 'SYNCED';
+
+-- Execute only after canary approval and capacity confirmation.
+UPDATE tmdb_catalog_entry
+SET next_refresh_at = UTC_TIMESTAMP(6)
+WHERE status = 'SYNCED';
+```
 
 ## 7. 관리자 전환과 인프라 폐기
 
