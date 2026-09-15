@@ -88,7 +88,7 @@ public class ContentQueryRepository {
 
 		// 2) 컨텐츠 기본 정보 (year/bookmark_count NULL 행 방어를 위해 coalesce)
 		List<Tuple> contentRows = jpaQueryFactory
-			.select(content.id, content.title, content.year.coalesce(0), content.poster, content.bookmarkCount.coalesce(0))
+			.select(content.id, content.title, content.author, content.year.coalesce(0), content.poster, content.bookmarkCount.coalesce(0))
 			.from(content)
 			.where(content.id.in(contentIds))
 			.fetch();
@@ -104,6 +104,7 @@ public class ContentQueryRepository {
 				bookmarkIdMap.get(id),
 				id,
 				row.get(content.title),
+				row.get(content.author),
 				row.get(content.poster),
 				year == null ? 0 : year,
 				bookmarkCount == null ? 0 : bookmarkCount,
@@ -151,6 +152,7 @@ public class ContentQueryRepository {
 		Long bookmarkId,
 		Long contentId,
 		String title,
+		String author,
 		String imageUrl,
 		int year,
 		int bookmarkCount,
@@ -160,6 +162,7 @@ public class ContentQueryRepository {
 			return new GetContentDetailRes(
 				contentId,
 				title,
+				author,
 				imageUrl,
 				year,
 				bookmarkCount,
