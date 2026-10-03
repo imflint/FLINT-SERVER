@@ -40,7 +40,11 @@ public record GetCollectionDetailRes(
 		String profileImageUrl,
 		@Schema(description = "사용자 역할 (FLINER, FLING)", example = "FLINER")
 		String userRole
-	){}
+	){
+		public Author resolveImage(Function<String, String> imageUrlResolver) {
+			return new Author(id, nickname, imageUrlResolver.apply(profileImageUrl), userRole);
+		}
+	}
 
 	@Schema(name = "CollectionDetailContent", description = "컬렉션 내 콘텐츠")
 	public record Content(

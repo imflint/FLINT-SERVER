@@ -21,6 +21,15 @@ ALTER TABLE content
     ADD COLUMN normalized_title_en VARCHAR(255) NULL AFTER normalized_title_ko,
     ADD COLUMN search_title TEXT NULL AFTER normalized_title_en;
 
+-- TMDB poster_path is optional. Keep the missing source value as NULL instead of
+-- persisting an unrelated or placeholder image as if it were an official poster.
+-- content has FULLTEXT indexes, so MySQL cannot apply this change with INPLACE.
+-- COPY keeps reads available but blocks content writes until the table copy finishes.
+ALTER TABLE content
+    MODIFY COLUMN poster VARCHAR(255) NULL,
+    ALGORITHM=COPY,
+    LOCK=SHARED;
+
 -- Compatibility seed only. CLASSIFY_ONLY stages authoritative values in tmdb_catalog_entry;
 -- cleanup execute promotes them before localized-title reads are enabled.
 UPDATE content

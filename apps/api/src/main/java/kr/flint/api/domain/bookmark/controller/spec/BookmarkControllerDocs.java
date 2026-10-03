@@ -54,7 +54,7 @@ public interface BookmarkControllerDocs {
 
 	@Operation(
 		summary = "컬렉션 북마크 유저 조회 - 재민",
-		description = "특정 컬렉션을 북마크한 유저 목록과 총 북마크 수를 조회합니다."
+		description = "특정 컬렉션을 북마크한 유저 목록과 총 북마크 수를 조회합니다. userList[].profileImageUrl은 S3 key를 CloudFront URL로 변환해 반환하며, 외부 URL은 그대로 유지하고 이미지가 없으면 null을 반환합니다."
 	)
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "조회 성공", useReturnTypeSchema = true),

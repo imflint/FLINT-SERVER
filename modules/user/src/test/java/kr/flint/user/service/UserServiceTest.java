@@ -40,6 +40,25 @@ class UserServiceTest {
     @InjectMocks
     private UserService userService;
 
+    @Test
+    @DisplayName("사용자를 비관적 쓰기 잠금으로 조회")
+    void getByIdForUpdate() {
+        User user = User.createFling("locked");
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(user));
+
+        assertThat(userService.getByIdForUpdate(1L)).isSameAs(user);
+    }
+
+    @Test
+    @DisplayName("잠금 조회에서도 삭제된 사용자는 기존 사용자 없음 오류로 거부")
+    void lockedUserNotFound() {
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.getByIdForUpdate(1L))
+            .isInstanceOf(UserException.class)
+            .extracting("errorCode").isEqualTo(UserErrorCode.USER_NOT_FOUND);
+    }
+
     @Nested
     @DisplayName("create")
     class Create {

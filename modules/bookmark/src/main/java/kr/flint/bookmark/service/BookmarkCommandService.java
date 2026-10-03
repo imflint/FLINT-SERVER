@@ -34,7 +34,7 @@ public class BookmarkCommandService {
 	}
 
 	public boolean toggleCollection(Long userId, Long collectionId) {
-		return collectionBookmarkRepository.findByCollectionIdAndUserId(collectionId, userId)
+		boolean isBookmarked = collectionBookmarkRepository.findByCollectionIdAndUserId(collectionId, userId)
 			.map(
 				collectionBookmark -> {
 					collectionBookmarkRepository.delete(collectionBookmark);
@@ -46,6 +46,8 @@ public class BookmarkCommandService {
 					return true;
 				}
 			);
+		collectionBookmarkRepository.flush();
+		return isBookmarked;
 	}
 
 	public void createContentBookmarks(Long userId, List<Long> contentIds) {
@@ -63,5 +65,6 @@ public class BookmarkCommandService {
 	public void deleteBookmarkByUser(final Long userId){
 		collectionBookmarkRepository.deleteAllByUserId(userId);
 		contentBookmarkRepository.deleteAllByUserId(userId);
+		collectionBookmarkRepository.flush();
 	}
 }

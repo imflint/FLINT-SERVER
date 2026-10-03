@@ -194,6 +194,18 @@ public class CollectionService {
         return collection;
     }
 
+    public List<Long> getOwnedCollectionIds(final Long userId) {
+        return collectionRepository.findIdsByUserId(userId);
+    }
+
+    @Transactional
+    public List<Collection> lockExistingCollections(final List<Long> collectionIds) {
+        List<Collection> lockedCollections = new ArrayList<>();
+        collectionIds.stream().distinct().sorted().forEach(collectionId ->
+            collectionRepository.findByIdForUpdate(collectionId).ifPresent(lockedCollections::add));
+        return lockedCollections;
+    }
+
     @Transactional
     public void synchronizeBookmarkCountIfPresent(final Long collectionId, final int actualCount) {
         collectionRepository.findByIdForUpdate(collectionId)

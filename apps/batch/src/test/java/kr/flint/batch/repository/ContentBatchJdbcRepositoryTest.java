@@ -96,6 +96,28 @@ class ContentBatchJdbcRepositoryTest {
 	}
 
 	@Test
+	void upsertAllAllowsContentWithoutPoster() {
+		repository.upsertAll(List.of(ContentUpsertCommand.of(
+			101L,
+			MediaType.MOVIE,
+			"Posterless Movie",
+			2026,
+			"Director",
+			"description",
+			null,
+			List.of("Drama")
+		)));
+
+		Map<String, Object> content = jdbcTemplate.queryForMap("""
+			SELECT poster
+			FROM content
+			WHERE tmdb_id = 101 AND media_type = 'MOVIE'
+			""");
+
+		assertThat(content.get("poster")).isNull();
+	}
+
+	@Test
 	void upsertAllUpdatesExistingContentAndKeepsCounters() {
 		repository.upsertAll(List.of(ContentUpsertCommand.of(
 			200L,

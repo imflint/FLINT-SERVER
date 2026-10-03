@@ -346,6 +346,25 @@ class CollectionServiceTest {
 
 			assertThat(collection.getBookmarkCount()).isEqualTo(4);
 		}
+
+        @Test
+        @DisplayName("중복 ID를 제거하고 오름차순으로 잠그며 물리 삭제된 컬렉션은 건너뜀")
+        void locksExistingCollectionsInOrder() {
+            Collection first = Collection.create("first", "description", null, true, 1L);
+            Collection third = Collection.create("third", "description", null, true, 1L);
+            third.delete(LocalDateTime.now());
+            when(collectionRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(first));
+            when(collectionRepository.findByIdForUpdate(20L)).thenReturn(Optional.empty());
+            when(collectionRepository.findByIdForUpdate(30L)).thenReturn(Optional.of(third));
+
+            assertThat(collectionService.lockExistingCollections(List.of(30L, 10L, 20L, 10L)))
+                .containsExactly(first, third);
+            InOrder order = inOrder(collectionRepository);
+            order.verify(collectionRepository).findByIdForUpdate(10L);
+            order.verify(collectionRepository).findByIdForUpdate(20L);
+            order.verify(collectionRepository).findByIdForUpdate(30L);
+            order.verifyNoMoreInteractions();
+        }
 	}
 
     private <T> List<T> toList(Iterable<T> values) {
