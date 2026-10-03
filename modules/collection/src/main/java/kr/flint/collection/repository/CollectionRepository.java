@@ -23,6 +23,9 @@ public interface CollectionRepository extends JpaRepository<Collection, Long> {
 
     List<CollectionSummaryProjection> findByUserId(Long userId);
 
+    @Query("select c.id from Collection c where c.userId = :userId")
+    List<Long> findIdsByUserId(@Param("userId") Long userId);
+
     List<CollectionSummaryProjection> findByIdIn(List<Long> ids);
 
 	@Modifying

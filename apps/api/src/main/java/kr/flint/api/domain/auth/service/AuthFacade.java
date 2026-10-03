@@ -1,9 +1,11 @@
 package kr.flint.api.domain.auth.service;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import kr.flint.api.domain.auth.dto.request.RefreshTokenReq;
@@ -25,6 +27,7 @@ import kr.flint.auth.service.AuthService;
 import kr.flint.auth.service.UserIdentityService;
 import kr.flint.bookmark.service.BookmarkCommandService;
 import kr.flint.bookmark.service.BookmarkQueryService;
+import kr.flint.collection.domain.Collection;
 import kr.flint.collection.service.CollectionService;
 import kr.flint.content.service.ContentService;
 import kr.flint.exploration.service.ExplorationProgressService;
@@ -130,28 +133,27 @@ public class AuthFacade {
     /**
      * 회원탈퇴
      */
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public void withdraw(Long userId, String accessToken, List<Long> agreedTermsIds) {
+        userService.getByIdForUpdate(userId);
         termsService.validateAndCreateAgreements(userId, TermsContext.WITHDRAWAL, agreedTermsIds);
-		List<Long> affectedCollectionIds = bookmarkQueryService.getBookmarkedCollectionIds(userId).stream()
-			.sorted()
-			.toList();
-
-		//User 삭제
-		userService.deleteUser(userId);
+        List<Long> ownedCollectionIds = collectionService.getOwnedCollectionIds(userId);
+        List<Long> affectedCollectionIds = Stream.concat(
+            bookmarkQueryService.getBookmarkedCollectionIds(userId).stream(), ownedCollectionIds.stream())
+            .distinct().sorted().toList();
+        List<Collection> lockedCollections = collectionService.lockExistingCollections(affectedCollectionIds);
 
 		//토큰 삭제
         authService.withdraw(userId, accessToken);
 
-		//컬렉션 삭제
-		collectionService.deleteCollectionByUser(userId);
-
 		//북마크 삭제
 		bookmarkCommandService.deleteBookmarkByUser(userId);
-		affectedCollectionIds.forEach(collectionId -> collectionService.synchronizeBookmarkCountIfPresent(
-			collectionId,
-			bookmarkQueryService.getBookmarkCount(collectionId)
-		));
+        lockedCollections.stream().filter(collection -> !ownedCollectionIds.contains(collection.getId()))
+            .forEach(collection -> collection.synchronizeBookmarkCount(
+                bookmarkQueryService.getBookmarkCount(collection.getId())));
+
+		//컬렉션 삭제
+		collectionService.deleteCollectionByUser(userId);
 
 		//취향 키워드 삭제
 		tasteService.deleteUserKeywords(userId);
@@ -161,6 +163,8 @@ public class AuthFacade {
 
 		//탐색 세션 삭제
 		explorationProgressService.deleteByUser(userId);
+
+        userService.deleteUser(userId);
     }
 
     /**

@@ -29,6 +29,12 @@ public class UserService {
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
     }
 
+    @Transactional
+    public User getByIdForUpdate(Long userId) {
+        return userRepository.findByIdForUpdate(userId)
+            .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
+    }
+
     public User getByNickname(String nickname) {
         return userRepository.findByNickname(nickname)
                 .orElseThrow(() -> new UserException(UserErrorCode.USER_NOT_FOUND));
@@ -86,6 +92,7 @@ public class UserService {
 
         @Transactional
         public void deleteUser(Long userId){
+            userRepository.flush();
             userRepository.deleteById(userId);
         }
 

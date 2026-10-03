@@ -1,9 +1,9 @@
 package kr.flint.api.domain.bookmark.service;
 
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
-import io.hypersistence.tsid.TSID;
 import kr.flint.bookmark.exception.BookmarkErrorCode;
 import kr.flint.bookmark.exception.BookmarkException;
 import kr.flint.bookmark.repository.CollectionBookmarkRepository;
@@ -50,28 +50,13 @@ public class BookmarkCommandFacade {
 		return isBookmarked;
 	}
 
-    // TODO: 동시성 이슈 처리 필요
-	@Transactional
+	@Transactional(isolation = Isolation.READ_COMMITTED)
 	public boolean toggleCollection(final Long userId, final Long collectionId) {
-		userService.getById(userId);
+		userService.getByIdForUpdate(userId);
 		Collection collection = collectionService.getActiveCollectionByIdForUpdate(collectionId);
-
-		// 북마크가 되어있는 경우 영향 받은 row 1 -> 북마크 off
-		int deleted = collectionBookmarkRepository.deleteCollectionBookmarkByUserIdAndCollectionId(userId, collectionId);
-		if(deleted == 1){
-			collection.synchronizeBookmarkCount(collectionBookmarkRepository.countByCollectionId(collectionId));
-			return false;
-		}
-
-		//북마크가 되어 있지 않은 경우 영향 받은 row 1 -> 북마크 on
-		Long id = TSID.Factory.getTsid().toLong();
-		int inserted = collectionBookmarkRepository.insertIgnore(id, userId, collectionId);
+		boolean isBookmarked = bookmarkCommandService.toggleCollection(userId, collectionId);
 		collection.synchronizeBookmarkCount(collectionBookmarkRepository.countByCollectionId(collectionId));
-
-		// INSERT IGNORE가 0이면 동일 사용자의 관계가 이미 존재하므로 최종 상태는 on이다.
-		return inserted == 1 || collectionBookmarkRepository
-			.findByCollectionIdAndUserId(collectionId, userId)
-			.isPresent();
+		return isBookmarked;
 	}
 
 

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -33,6 +34,7 @@ import kr.flint.auth.service.UserIdentityService;
 import kr.flint.bookmark.service.BookmarkCommandService;
 import kr.flint.bookmark.service.BookmarkQueryService;
 import kr.flint.collection.service.CollectionService;
+import kr.flint.collection.domain.Collection;
 import kr.flint.content.service.ContentService;
 import kr.flint.exploration.service.ExplorationProgressService;
 import kr.flint.ott.service.OttService;
@@ -195,6 +197,13 @@ class AuthFacadeTest {
 		@Test
 		@DisplayName("회원탈퇴 약관 동의 검증 후 탈퇴 처리")
 		void success() {
+			Collection first = org.mockito.Mockito.mock(Collection.class);
+			Collection second = org.mockito.Mockito.mock(Collection.class);
+			when(first.getId()).thenReturn(10L);
+			when(second.getId()).thenReturn(20L);
+			when(collectionService.getOwnedCollectionIds(1L)).thenReturn(List.of(30L));
+			when(collectionService.lockExistingCollections(List.of(10L, 20L, 30L)))
+				.thenReturn(List.of(first, second));
 			when(bookmarkQueryService.getBookmarkedCollectionIds(1L)).thenReturn(List.of(10L, 20L));
 			when(bookmarkQueryService.getBookmarkCount(10L)).thenReturn(2);
 			when(bookmarkQueryService.getBookmarkCount(20L)).thenReturn(0);
@@ -208,11 +217,19 @@ class AuthFacadeTest {
 			verify(authService).withdraw(1L, "access-token");
 			verify(collectionService).deleteCollectionByUser(1L);
 			verify(bookmarkCommandService).deleteBookmarkByUser(1L);
-			verify(collectionService).synchronizeBookmarkCountIfPresent(10L, 2);
-			verify(collectionService).synchronizeBookmarkCountIfPresent(20L, 0);
+			verify(first).synchronizeBookmarkCount(2);
+			verify(second).synchronizeBookmarkCount(0);
 			verify(tasteService).deleteUserKeywords(1L);
 			verify(ottService).deleteUserOtts(1L);
 			verify(explorationProgressService).deleteByUser(1L);
+			var order = inOrder(userService, termsService, collectionService, bookmarkCommandService, first, second);
+			order.verify(userService).getByIdForUpdate(1L);
+			order.verify(termsService).validateAndCreateAgreements(1L, TermsContext.WITHDRAWAL, List.of(30L));
+			order.verify(collectionService).lockExistingCollections(List.of(10L, 20L, 30L));
+			order.verify(bookmarkCommandService).deleteBookmarkByUser(1L);
+			order.verify(first).synchronizeBookmarkCount(2);
+			order.verify(second).synchronizeBookmarkCount(0);
+			order.verify(userService).deleteUser(1L);
 		}
 
 		@Test
