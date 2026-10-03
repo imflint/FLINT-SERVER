@@ -48,7 +48,7 @@ public class CollectionQueryFacade {
 			header.createdAt().toLocalDate(),
 			header.isBookmarked(),
 			header.isPublic(),
-			header.toAuthor(),
+			header.toAuthor().resolveImage(cloudFrontUrlProvider::resolveUrl),
 			contentList
 		);
 	}

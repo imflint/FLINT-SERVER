@@ -186,7 +186,7 @@ public interface CollectionControllerDocs {
 
 	@Operation(
 		summary = "컬렉션 상세 조회 - 재민",
-		description = "collectionId로 컬렉션 상세 정보를 조회합니다. 포함 콘텐츠의 커스텀 이미지는 `customImageUrls` 배열로 반환됩니다. (조회 시 최근 본 컬렉션 저장 로직이 실행될 수 있습니다.)"
+		description = "collectionId로 컬렉션 상세 정보를 조회합니다. 포함 콘텐츠의 커스텀 이미지는 `customImageUrls` 배열로 반환됩니다. author.profileImageUrl은 S3 key를 CloudFront URL로 변환해 반환하며, 외부 URL은 그대로 유지하고 이미지가 없으면 null을 반환합니다. (조회 시 최근 본 컬렉션 저장 로직이 실행될 수 있습니다.)"
 	)
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "조회 성공", useReturnTypeSchema = true),
