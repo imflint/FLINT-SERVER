@@ -515,7 +515,7 @@ flint-api/
 **[응답]**
 
 - collection: 컬렉션 정보
-- author: 작성자 정보
+- author: 작성자 정보. `author.profileImageUrl`은 S3 key를 CloudFront URL로 변환해 반환하고, 외부 URL은 그대로 유지하며 null/빈 이미지는 null로 반환
 - contents: 콘텐츠 목록
 - isBookmarked (Boolean): 북마크 여부
 - isPublic (Boolean): 공개 여부
@@ -599,11 +599,12 @@ flint-api/
 
 **[처리 로직]**
 
-1. 컬렉션 행을 비관적 잠금으로 조회
+1. 사용자 행을 먼저, 컬렉션 행을 다음으로 비관적 쓰기 잠금 조회
 2. **북마크 존재**: 삭제 (북마크 해제)
 3. **북마크 미존재**: 생성 (북마크 추가)
-4. 변경 후 실제 `collection_bookmark` 행 수를 집계해 `collection.bookmark_count`를 절대값으로 동기화
-5. 회원 탈퇴 시에도 영향받은 컬렉션 카운트를 같은 방식으로 재계산
+4. `READ_COMMITTED` 트랜잭션에서 JPA 관계 변경을 flush한 뒤 실제 `collection_bookmark` 행 수를 집계해 `collection.bookmark_count`를 절대값으로 동기화. `INSERT IGNORE`로 무결성 오류를 숨기지 않음
+5. 회원 탈퇴 시 사용자 잠금 후 저장한/소유한 컬렉션 ID를 합쳐 오름차순으로 잠금. 북마크 및 연결 데이터 삭제 후 물리 삭제되지 않은 컬렉션(soft-delete 포함)의 카운트를 재계산하고, 연결 데이터 삭제를 flush한 뒤 사용자를 마지막에 삭제
+6. `collection_bookmark.user_id`는 `user.id`를 참조하는 `RESTRICT` 외래 키로 보호. 기존 사용자 없는 북마크와 카운트 불일치는 `docs/collection-bookmark-integrity.sql`로 점검 배포 중 정리하며, 외래 키 DDL은 DML commit 이후 별도로 적용
 
 **[응답]**
 
@@ -621,13 +622,14 @@ flint-api/
 
 **[처리 로직]**
 
-1. 해당 컬렉션을 북마크한 사용자 목록 조회
-2. 북마크 수 집계
+1. 읽기 전용 `REPEATABLE_READ` 트랜잭션에서 해당 컬렉션의 북마크 수, 사용자 ID, 사용자 목록을 동일 스냅샷으로 조회
+2. 북마크 수는 실제 관계 수 기준. 유효한 기존 사용자 전체를 반환하며 사용자 상태에 따른 추가 필터나 목록 개수 제한을 적용하지 않음
+3. 저장 사용자 전체의 프로필 이미지 S3 key를 CloudFront URL로 변환
 
 **[응답]**
 
-- users: 북마크한 사용자 목록
-- count (Integer): 총 북마크 수
+- userList: 북마크한 사용자 목록. `profileImageUrl`은 CloudFront URL로 반환하고, 외부 URL은 그대로 유지하며 null/빈 이미지는 null로 반환
+- bookmarkCount (Integer): 총 북마크 수
 
 ---
 
@@ -883,6 +885,7 @@ flint-api/
 - changes reader는 페이지와 항목 위치를 ExecutionContext에 저장하고 요청 날짜 범위는 최대 14일이다.
 - 종료 시 실행 중 Job에 STOP을 요청하고 최대 5분간 chunk checkpoint 완료를 기다린다. 새 인스턴스는 같은 JobInstance를 checkpoint부터 재개한다.
 - 상세 조회는 `translations,credits,watch/providers`를 한 번에 받고 콘텐츠·장르·`KR.flatrate` OTT 관계를 같은 chunk에서 멱등 upsert/reconciliation한다.
+- TMDB에 포스터가 없는 콘텐츠는 `content.poster=NULL`로 보존하며 임의 이미지나 placeholder URL을 원본 데이터로 저장하지 않는다. 표시용 placeholder는 클라이언트가 처리한다.
 - Movie/TV provider master는 `watch_region=KR` 결과의 합집합으로 동기화하며 누락 provider는 삭제하지 않고 비활성화한다.
 - 기존 6개 provider는 명시적 이름 alias로 TMDB provider ID를 연결해 사용자 구독 FK를 보존한다.
 - 월간 export는 유효 ID registry를 갱신하되 신규·PENDING·RETRY·갱신기한 경과 ID만 상세 조회한다.
