@@ -97,7 +97,7 @@ public class TmdbCatalogRefreshJobConfig {
 			.fromClause("FROM tmdb_catalog_entry")
 			.whereClause("""
 				WHERE media_type = :mediaType
-				  AND (status = 'RETRY' OR (status = 'SYNCED' AND next_refresh_at <= UTC_TIMESTAMP()))
+				  AND (status = 'RETRY' OR (status IN ('SYNCED', 'DUPLICATE_TITLE') AND next_refresh_at <= UTC_TIMESTAMP()))
 				""")
 			.sortKeys(Map.of("id", Order.ASCENDING))
 			.parameterValues(Map.of("mediaType", type.name()))

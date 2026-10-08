@@ -142,6 +142,7 @@ public class OttBatchJdbcRepository {
             SELECT id, tmdb_provider_id
             FROM ott_provider
             WHERE tmdb_provider_id IN (:tmdbProviderIds)
+            ORDER BY id FOR UPDATE
             """, params, rs -> {
             Map<Long, Long> result = new LinkedHashMap<>();
             while (rs.next()) {

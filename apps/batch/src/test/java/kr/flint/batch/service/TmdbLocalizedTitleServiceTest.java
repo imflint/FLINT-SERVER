@@ -48,6 +48,18 @@ class TmdbLocalizedTitleServiceTest {
         assertThat(result.eligible()).isFalse();
     }
 
+    @Test
+    void acceptsEnglishTranslationRegardlessOfOriginalLanguageAndRejectsBlankTitles() {
+        LocalizedTitles translated = service.select("ja", "原題", new TmdbTranslationsRes(List.of(
+            translation("en", "US", "English translation"), translation("ko", "KR", " ")
+        )));
+        assertThat(translated.titleKo()).isNull();
+        assertThat(translated.titleEn()).isEqualTo("English translation");
+        assertThat(translated.eligible()).isTrue();
+        assertThat(service.select("ko", "한국 원제", null).titleKo()).isEqualTo("한국 원제");
+        assertThat(service.select("en", " ", null).eligible()).isFalse();
+    }
+
     private TmdbTranslationsRes.Translation translation(String language, String country, String title) {
         return new TmdbTranslationsRes.Translation(
             language,

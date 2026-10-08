@@ -46,6 +46,10 @@ public class ContentBatchJdbcRepository {
 	}
 
 	public void upsertClassified(List<ContentUpsertCommand> commands) {
+		upsertClassified(commands, Set.of());
+	}
+
+	public void upsertClassified(List<ContentUpsertCommand> commands, Set<ContentIdentity> preserveTitles) {
 		if (CollectionUtils.isEmpty(commands)) {
 			return;
 		}
@@ -67,7 +71,9 @@ public class ContentBatchJdbcRepository {
 			return;
 		}
 
-		upsertContents(new ArrayList<>(latestByKey.values()));
+		List<ContentUpsertCommand> accepted = new ArrayList<>(latestByKey.values());
+		upsertContents(accepted.stream().filter(c -> !preserveTitles.contains(identity(c))).toList());
+		updateMetadataWithoutTitles(accepted.stream().filter(c -> preserveTitles.contains(identity(c))).toList());
 
 		Map<ContentKey, Long> contentIds = findContentIds(latestByKey.keySet());
 		deleteExistingContentGenres(contentIds.values());
@@ -89,6 +95,44 @@ public class ContentBatchJdbcRepository {
 		return result;
 	}
 
+    public void restoreRegistryTitles(Set<ContentIdentity> identities) {
+        if (identities.isEmpty()) {
+            return;
+        }
+        List<Object> params = new ArrayList<>();
+        List<String> conditions = new ArrayList<>();
+        for (ContentIdentity identity : identities) {
+            conditions.add("(c.tmdb_id = ? AND c.media_type = ?)");
+            params.add(identity.tmdbId());
+            params.add(identity.mediaType().name());
+        }
+        jdbcTemplate.update("""
+            UPDATE tmdb_catalog_entry registry
+            JOIN content c ON c.tmdb_id = registry.tmdb_id AND c.media_type = registry.media_type
+            SET registry.title_ko = c.title_ko, registry.title_en = c.title_en,
+                registry.normalized_title_ko = c.normalized_title_ko,
+                registry.normalized_title_en = c.normalized_title_en, registry.search_title = c.search_title
+            WHERE
+            """ + String.join(" OR ", conditions), params.toArray());
+    }
+
+    public void promoteTitles(List<ContentUpsertCommand> commands) {
+        jdbcTemplate.batchUpdate("""
+            UPDATE content SET title = ?, title_ko = ?, title_en = ?, normalized_title_ko = ?,
+                normalized_title_en = ?, search_title = ?, updated_at = UTC_TIMESTAMP()
+            WHERE tmdb_id = ? AND media_type = ?
+            """, commands, Math.max(1, commands.size()), (ps, command) -> {
+            ps.setString(1, ContentTitleNormalizer.displayTitle(command.titleKo(), command.titleEn()));
+            ps.setString(2, command.titleKo());
+            ps.setString(3, command.titleEn());
+            ps.setString(4, ContentTitleNormalizer.normalizeNullable(command.titleKo()));
+            ps.setString(5, ContentTitleNormalizer.normalizeNullable(command.titleEn()));
+            ps.setString(6, ContentTitleNormalizer.buildSearchTitle(command.titleKo(), command.titleEn()));
+            ps.setLong(7, command.tmdbId());
+            ps.setString(8, command.mediaType().name());
+        });
+    }
+
 	private void upsertCatalogEntries(List<ContentUpsertCommand> commands) {
 		List<ContentUpsertCommand> classified = commands.stream()
 			.filter(Objects::nonNull)
@@ -106,7 +150,7 @@ public class ContentBatchJdbcRepository {
 			) VALUES (
 				?, ?, ?, ?, ?, ?, ?, ?, ?,
 				IF(? = 'SYNCED', UTC_TIMESTAMP(), NULL),
-				IF(? = 'SYNCED', DATE_ADD(UTC_TIMESTAMP(), INTERVAL 30 DAY), NULL),
+				IF(? IN ('SYNCED', 'DUPLICATE_TITLE'), DATE_ADD(UTC_TIMESTAMP(), INTERVAL 30 DAY), NULL),
 				?, UTC_TIMESTAMP(), UTC_TIMESTAMP()
 			)
 			ON DUPLICATE KEY UPDATE
@@ -117,7 +161,7 @@ public class ContentBatchJdbcRepository {
 				normalized_title_en = IF(VALUES(status) = 'RETRY', normalized_title_en, VALUES(normalized_title_en)),
 				search_title = IF(VALUES(status) = 'RETRY', search_title, VALUES(search_title)),
 				last_synced_at = IF(VALUES(status) = 'SYNCED', VALUES(last_synced_at), last_synced_at),
-				next_refresh_at = IF(VALUES(status) = 'SYNCED', VALUES(next_refresh_at), next_refresh_at),
+				next_refresh_at = IF(VALUES(status) IN ('SYNCED', 'DUPLICATE_TITLE'), VALUES(next_refresh_at), next_refresh_at),
 				error_message = VALUES(error_message),
 				updated_at = UTC_TIMESTAMP()
 			""";
@@ -138,6 +182,9 @@ public class ContentBatchJdbcRepository {
 	}
 
 	private void upsertContents(List<ContentUpsertCommand> commands) {
+		if (commands.isEmpty()) {
+			return;
+		}
 		String sql = """
 			INSERT INTO content (
 				id, tmdb_id, media_type, title, title_ko, title_en,
@@ -190,6 +237,34 @@ public class ContentBatchJdbcRepository {
 		});
 	}
 
+    private void updateMetadataWithoutTitles(List<ContentUpsertCommand> commands) {
+        if (commands.isEmpty()) {
+            return;
+        }
+        jdbcTemplate.batchUpdate("""
+            UPDATE content SET updated_at = IF(
+                NOT (`year` <=> ?) OR NOT (author <=> ?) OR NOT (description <=> ?) OR NOT (poster <=> ?),
+                UTC_TIMESTAMP(), updated_at),
+                `year` = ?, author = ?, description = ?, poster = ?
+            WHERE tmdb_id = ? AND media_type = ?
+            """, commands, commands.size(), (ps, command) -> {
+            ps.setInt(1, command.year());
+            ps.setString(2, command.author());
+            ps.setString(3, command.description());
+            ps.setString(4, command.poster());
+            ps.setInt(5, command.year());
+            ps.setString(6, command.author());
+            ps.setString(7, command.description());
+            ps.setString(8, command.poster());
+            ps.setLong(9, command.tmdbId());
+            ps.setString(10, command.mediaType().name());
+        });
+    }
+
+    private ContentIdentity identity(ContentUpsertCommand command) {
+        return new ContentIdentity(command.tmdbId(), command.mediaType());
+    }
+
 	private void deleteExistingContentGenres(java.util.Collection<Long> contentIds) {
 		if (contentIds.isEmpty()) {
 			return;
@@ -203,6 +278,9 @@ public class ContentBatchJdbcRepository {
 	}
 
 	private Map<ContentKey, Long> findContentIds(Set<ContentKey> keys) {
+		if (keys.isEmpty()) {
+			return Map.of();
+		}
 		MapSqlParameterSource params = new MapSqlParameterSource()
 			.addValue("tmdbIds", keys.stream().map(ContentKey::tmdbId).toList())
 			.addValue("mediaTypes", keys.stream().map(key -> key.mediaType().name()).distinct().toList());
@@ -212,6 +290,7 @@ public class ContentBatchJdbcRepository {
 			FROM content
 			WHERE tmdb_id IN (:tmdbIds)
 				AND media_type IN (:mediaTypes)
+			ORDER BY id FOR UPDATE
 			""";
 
 		return namedParameterJdbcTemplate.query(sql, params, rs -> {
@@ -253,6 +332,7 @@ public class ContentBatchJdbcRepository {
 			SELECT id, name
 			FROM genre
 			WHERE name IN (:names)
+			ORDER BY id FOR UPDATE
 			""";
 
 		MapSqlParameterSource params = new MapSqlParameterSource()

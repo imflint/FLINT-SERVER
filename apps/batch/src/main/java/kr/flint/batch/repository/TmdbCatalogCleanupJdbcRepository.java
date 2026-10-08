@@ -212,24 +212,6 @@ public class TmdbCatalogCleanupJdbcRepository {
             """, Long.class, manifestId);
     }
 
-    @Transactional
-    public int promoteLocalizedTitlesForEligibleContents() {
-        return jdbcTemplate.update("""
-            UPDATE content c
-            JOIN tmdb_catalog_entry registry
-              ON registry.tmdb_id = c.tmdb_id AND registry.media_type = c.media_type
-            SET c.title_ko = registry.title_ko,
-                c.title_en = registry.title_en,
-                c.normalized_title_ko = registry.normalized_title_ko,
-                c.normalized_title_en = registry.normalized_title_en,
-                c.search_title = registry.search_title,
-                c.title = COALESCE(NULLIF(registry.title_ko, ''), NULLIF(registry.title_en, '')),
-                c.updated_at = UTC_TIMESTAMP()
-            WHERE registry.status = 'SYNCED'
-              AND (NULLIF(registry.title_ko, '') IS NOT NULL OR NULLIF(registry.title_en, '') IS NOT NULL)
-            """);
-    }
-
     private java.time.LocalDateTime toLocalDateTime(Timestamp timestamp) {
         return timestamp == null ? null : timestamp.toLocalDateTime();
     }

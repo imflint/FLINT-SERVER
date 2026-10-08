@@ -5,6 +5,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.never;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -26,9 +28,11 @@ import org.springframework.core.task.TaskExecutor;
 
 import kr.flint.batch.job.movie.TmdbMovieImportJobConfig;
 import kr.flint.batch.repository.TmdbSyncRunJdbcRepository;
+import kr.flint.batch.repository.TmdbContentAdmissionJdbcRepository;
 import kr.flint.batch.repository.TmdbSyncRunJdbcRepository.PreparedRun;
 import kr.flint.batch.service.TmdbChangeWindowService;
 import kr.flint.batch.service.TmdbOttProviderMasterService;
+import kr.flint.shared.exception.GeneralException;
 
 @ExtendWith(MockitoExtension.class)
 class TmdbCatalogCoordinatorTest {
@@ -55,6 +59,8 @@ class TmdbCatalogCoordinatorTest {
 	private Job catalogRefreshJob;
 	@Mock
 	private TmdbOttProviderMasterService providerMasterService;
+    @Mock
+    private TmdbContentAdmissionJdbcRepository admissionRepository;
 
 	private TmdbCatalogCoordinator coordinator;
 
@@ -72,7 +78,8 @@ class TmdbCatalogCoordinatorTest {
 			dailyDeltaJob,
 			catalogRefreshJob,
 			providerMasterService,
-			new TmdbChangeWindowService()
+			new TmdbChangeWindowService(),
+            admissionRepository
 		);
 	}
 
@@ -81,6 +88,7 @@ class TmdbCatalogCoordinatorTest {
 		TmdbSyncRun stopped = run(TmdbSyncRunStatus.STOPPED);
 		when(runRepository.schemaReady()).thenReturn(true);
 		when(runRepository.findRestartable()).thenReturn(List.of(stopped));
+        when(admissionRepository.schemaReady()).thenReturn(true);
 		when(runRepository.prepare(
 			eq(stopped.runKey()),
 			eq(stopped.runType()),
@@ -114,6 +122,15 @@ class TmdbCatalogCoordinatorTest {
 		order.verify(jobOperator).stop(10L);
 		order.verify(runRepository).markStoppedByOwner(anyString());
 	}
+
+    @Test
+    void refusesToLaunchBeforeAdmissionDdlIsReady() {
+        when(runRepository.schemaReady()).thenReturn(true);
+        when(admissionRepository.schemaReady()).thenReturn(false);
+        assertThatThrownBy(() -> coordinator.startDaily(LocalDate.of(2026, 10, 8)))
+            .isInstanceOf(GeneralException.class);
+        verify(runRepository, never()).prepare(anyString(), any(), any(), anyString(), any());
+    }
 
 	private TmdbSyncRun run(TmdbSyncRunStatus status) {
 		return new TmdbSyncRun(

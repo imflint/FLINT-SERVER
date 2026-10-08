@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -23,6 +24,8 @@ import kr.flint.api.domain.home.service.CollectionKeywordSyncService;
 import kr.flint.api.domain.home.service.RecommendationCacheService;
 import kr.flint.batch.repository.TmdbCatalogCleanupJdbcRepository;
 import kr.flint.batch.sync.TmdbPruneManifest;
+import kr.flint.batch.service.TmdbContentSyncService;
+import kr.flint.batch.service.TmdbContentSyncService.TitlePromotionProgress;
 import kr.flint.shared.exception.ErrorCode;
 import kr.flint.shared.exception.GeneralException;
 
@@ -37,6 +40,8 @@ class TmdbLanguageCleanupServiceTest {
 
 	@Mock
 	private RecommendationCacheService recommendationCacheService;
+    @Mock
+    private TmdbContentSyncService contentSyncService;
 
 	private TmdbLanguageCleanupService service;
 
@@ -45,7 +50,8 @@ class TmdbLanguageCleanupServiceTest {
 		service = new TmdbLanguageCleanupService(
 			cleanupRepository,
 			collectionKeywordSyncService,
-			recommendationCacheService
+			recommendationCacheService,
+            contentSyncService
 		);
 	}
 
@@ -72,6 +78,18 @@ class TmdbLanguageCleanupServiceTest {
 	}
 
 	@Test
+	void executeRejectsMissingAdmissionSchemaBeforeDeleting() {
+		when(cleanupRepository.findManifest(1L)).thenReturn(java.util.Optional.of(manifest("PREVIEW", 1, 0, null)));
+		doThrow(new GeneralException(ErrorCode.CONFLICT)).when(contentSyncService).ensureSchemaReady();
+
+		assertThatThrownBy(() -> service.execute(new LanguageCleanupExecuteReq(1L, "hash", true)))
+			.isInstanceOfSatisfying(GeneralException.class, exception ->
+				assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.CONFLICT)
+			);
+		verify(cleanupRepository, never()).deleteNextChunk(1L, 500);
+	}
+
+	@Test
 	void executeProcessesChunksThenRebuildsAffectedCollectionsAndCache() {
 		TmdbPruneManifest preview = manifest("PREVIEW", 501, 0, null);
 		TmdbPruneManifest completed = manifest("COMPLETED", 501, 501, LocalDateTime.now());
@@ -80,12 +98,15 @@ class TmdbLanguageCleanupServiceTest {
 			.thenReturn(java.util.Optional.of(completed));
 		when(cleanupRepository.deleteNextChunk(1L, 500)).thenReturn(500, 1, 0);
 		when(cleanupRepository.findActiveAffectedCollectionIds(1L)).thenReturn(List.of(10L, 11L));
+        when(contentSyncService.promoteTitleChunk(0, 50)).thenReturn(new TitlePromotionProgress(0, 0, 0));
 
 		var response = service.execute(new LanguageCleanupExecuteReq(1L, "hash", true));
 
 		assertThat(response.status()).isEqualTo("COMPLETED");
-		InOrder order = inOrder(cleanupRepository, collectionKeywordSyncService, recommendationCacheService);
-		order.verify(cleanupRepository).promoteLocalizedTitlesForEligibleContents();
+		InOrder order = inOrder(cleanupRepository, collectionKeywordSyncService, recommendationCacheService, contentSyncService);
+		order.verify(contentSyncService).ensureSchemaReady();
+		order.verify(cleanupRepository, times(3)).deleteNextChunk(1L, 500);
+		order.verify(contentSyncService).promoteTitleChunk(0, 50);
 		order.verify(cleanupRepository).finalizeAffectedCollections(1L);
 		order.verify(cleanupRepository).findActiveAffectedCollectionIds(1L);
 		order.verify(collectionKeywordSyncService).fullSync(10L);
@@ -100,6 +121,7 @@ class TmdbLanguageCleanupServiceTest {
 		when(cleanupRepository.findManifest(1L)).thenReturn(java.util.Optional.of(executing));
 		when(cleanupRepository.deleteNextChunk(1L, 500)).thenReturn(0);
 		when(cleanupRepository.findActiveAffectedCollectionIds(1L)).thenReturn(List.of(10L));
+        when(contentSyncService.promoteTitleChunk(0, 50)).thenReturn(new TitlePromotionProgress(0, 0, 0));
 		doThrow(new IllegalStateException("sync failed")).when(collectionKeywordSyncService).fullSync(10L);
 
 		assertThatThrownBy(() -> service.execute(new LanguageCleanupExecuteReq(1L, "hash", true)))

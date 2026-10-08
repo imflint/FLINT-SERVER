@@ -13,6 +13,7 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.util.CollectionUtils;
 
 import io.hypersistence.tsid.TSID;
@@ -27,7 +28,8 @@ public class TmdbCatalogEntryJdbcRepository {
 	private final JdbcTemplate jdbcTemplate;
 	private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
-	@Transactional
+    // Export 관측은 재실행 가능하다. chunk의 콘텐츠 잠금보다 먼저 registry 잠금을 오래 잡지 않는다.
+	@Transactional(propagation = Propagation.REQUIRES_NEW)
 	public List<TmdbIdLine> registerExportBatch(
 		MediaType mediaType,
 		LocalDate exportDate,
@@ -92,7 +94,7 @@ public class TmdbCatalogEntryJdbcRepository {
 		if (state == null || "PENDING".equals(state.status()) || "RETRY".equals(state.status())) {
 			return true;
 		}
-		return "SYNCED".equals(state.status())
+		return ("SYNCED".equals(state.status()) || "DUPLICATE_TITLE".equals(state.status()))
 			&& (state.nextRefreshAt() == null || !state.nextRefreshAt().isAfter(now));
 	}
 

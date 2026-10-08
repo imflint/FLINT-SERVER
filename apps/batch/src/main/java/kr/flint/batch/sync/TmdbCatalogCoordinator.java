@@ -32,6 +32,7 @@ import kr.flint.batch.job.ott.TmdbOttSyncJobConfig;
 import kr.flint.batch.job.refresh.TmdbCatalogRefreshJobConfig;
 import kr.flint.batch.job.tv.TmdbTvImportJobConfig;
 import kr.flint.batch.repository.TmdbSyncRunJdbcRepository;
+import kr.flint.batch.repository.TmdbContentAdmissionJdbcRepository;
 import kr.flint.batch.repository.TmdbSyncRunJdbcRepository.PreparedRun;
 import kr.flint.batch.service.TmdbOttProviderMasterService;
 import kr.flint.batch.service.TmdbChangeWindowService;
@@ -58,6 +59,7 @@ public class TmdbCatalogCoordinator {
 	private final Job catalogRefreshJob;
 	private final TmdbOttProviderMasterService providerMasterService;
 	private final TmdbChangeWindowService changeWindowService;
+    private final TmdbContentAdmissionJdbcRepository admissionRepository;
     private final String ownerId = UUID.randomUUID().toString();
     private final AtomicBoolean shuttingDown = new AtomicBoolean(false);
 
@@ -73,7 +75,8 @@ public class TmdbCatalogCoordinator {
 		@Qualifier(TmdbDailyDeltaJobConfig.JOB_NAME) Job dailyDeltaJob,
 		@Qualifier(TmdbCatalogRefreshJobConfig.JOB_NAME) Job catalogRefreshJob,
 		TmdbOttProviderMasterService providerMasterService,
-		TmdbChangeWindowService changeWindowService
+		TmdbChangeWindowService changeWindowService,
+		TmdbContentAdmissionJdbcRepository admissionRepository
     ) {
         this.runRepository = runRepository;
         this.asyncJobLauncher = asyncJobLauncher;
@@ -87,6 +90,7 @@ public class TmdbCatalogCoordinator {
 		this.catalogRefreshJob = catalogRefreshJob;
 		this.providerMasterService = providerMasterService;
 		this.changeWindowService = changeWindowService;
+		this.admissionRepository = admissionRepository;
     }
 
     public TmdbSyncRun startDaily(LocalDate businessDate) {
@@ -127,7 +131,7 @@ public class TmdbCatalogCoordinator {
 
     @EventListener(ApplicationReadyEvent.class)
 	public void resumeInterruptedRuns() {
-		if (!runRepository.schemaReady()) {
+		if (!runRepository.schemaReady() || !admissionRepository.schemaReady()) {
 			log.info("TMDB coordinator resume is disabled until manual DDL is applied");
 			return;
 		}
@@ -274,8 +278,8 @@ public class TmdbCatalogCoordinator {
 	}
 
 	private void ensureSchemaReady() {
-		if (!runRepository.schemaReady()) {
-			throw new GeneralException(ErrorCode.CONFLICT, "TMDB coordinator DDL이 적용되지 않았습니다.");
+		if (!runRepository.schemaReady() || !admissionRepository.schemaReady()) {
+			throw new GeneralException(ErrorCode.CONFLICT, "TMDB coordinator/admission DDL이 적용되지 않았습니다.");
 		}
 	}
 

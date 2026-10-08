@@ -82,4 +82,14 @@ public record ContentUpsertCommand(
 	public boolean syncable() {
 		return catalogStatus == ContentCatalogStatus.SYNCED;
 	}
+
+    public ContentUpsertCommand preservingTitles(String titleKo, String titleEn) {
+        return new ContentUpsertCommand(tmdbId, mediaType, titleKo, titleEn, year, author, description,
+            poster, genreNames, catalogStatus, "Title update conflicts with another content; existing titles retained");
+    }
+
+    public ContentUpsertCommand duplicateTitle(String reason) {
+        return new ContentUpsertCommand(tmdbId, mediaType, titleKo, titleEn, year, author, description,
+            poster, genreNames, ContentCatalogStatus.DUPLICATE_TITLE, reason);
+    }
 }
