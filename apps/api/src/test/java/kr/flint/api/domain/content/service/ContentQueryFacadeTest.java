@@ -196,7 +196,7 @@ class ContentQueryFacadeTest {
 			ContentSearchRow second = new ContentSearchRow(2L, "눈물 액션 로맨스 2", "감독", "poster.jpg", 2026, 9, 1, 3.2);
 			ContentSearchCondition condition = ContentSearchCondition.of(
 				"눈물",
-				List.of("액션", "로맨스"),
+				"액션",
 				MediaType.TV,
 				null,
 				1
@@ -207,7 +207,7 @@ class ContentQueryFacadeTest {
 			// when
 			PaginationResponse<GetContentSearchRes> response = contentQueryFacade.getContentSearchList(
 				"눈물",
-				List.of(SearchGenre.ACTION, SearchGenre.ROMANCE),
+				SearchGenre.ACTION,
 				MediaType.TV,
 				null,
 				1
@@ -241,18 +241,17 @@ class ContentQueryFacadeTest {
 
 			// then
 			verify(contentQueryRepository).searchContents(
-				eq(ContentSearchCondition.of("눈", List.of(), null, null, 20))
+				eq(ContentSearchCondition.of("눈", null, null, null, 20))
 			);
 		}
 
 		@Test
-		@DisplayName("중복 genre는 제거하고 조회한다")
-		@SuppressWarnings("unchecked")
-		void duplicatedGenresAreDeduplicated() {
+		@DisplayName("단일 genre를 DB 장르명으로 변환하고 조회한다")
+		void mapsSingleGenreToGenreName() {
 			// when
 			contentQueryFacade.getContentSearchList(
 				null,
-				List.of(SearchGenre.ACTION, SearchGenre.ACTION),
+				SearchGenre.ACTION,
 				null,
 				null,
 				20
@@ -261,20 +260,20 @@ class ContentQueryFacadeTest {
 			// then
 			ArgumentCaptor<ContentSearchCondition> captor = ArgumentCaptor.forClass(ContentSearchCondition.class);
 			verify(contentQueryRepository).searchContents(captor.capture());
-			assertThat(captor.getValue().genreNames()).containsExactly("액션");
+			assertThat(captor.getValue().genreName()).isEqualTo("액션");
 			assertThat(captor.getValue().cursor()).isNull();
 			assertThat(captor.getValue().size()).isEqualTo(20);
 		}
 
 		@Test
-		@DisplayName("조건이 없으면 빈 장르 목록과 전체 mediaType으로 조회한다")
+		@DisplayName("조건이 없으면 장르 필터 없이 전체 mediaType으로 조회한다")
 		void searchesAllContentsWithoutConditions() {
 			// when
 			contentQueryFacade.getContentSearchList(null, null, null, null, 20);
 
 			// then
 			verify(contentQueryRepository).searchContents(
-				eq(ContentSearchCondition.of(null, List.of(), null, null, 20))
+				eq(ContentSearchCondition.of(null, null, null, null, 20))
 			);
 		}
 
@@ -289,7 +288,7 @@ class ContentQueryFacadeTest {
 
 			// then
 			verify(contentQueryRepository).searchContents(
-				eq(ContentSearchCondition.of(null, List.of(), null, ContentSearchCursor.of(3, 123L), 20))
+				eq(ContentSearchCondition.of(null, null, null, ContentSearchCursor.of(3, 123L), 20))
 			);
 		}
 

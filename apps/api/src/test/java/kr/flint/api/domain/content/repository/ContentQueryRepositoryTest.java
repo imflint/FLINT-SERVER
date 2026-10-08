@@ -106,8 +106,8 @@ class ContentQueryRepositoryTest {
 	}
 
 	@Test
-	@DisplayName("요청한 장르 중 하나 이상을 가진 콘텐츠를 인기순으로 조회")
-	void searchContentsMatchesAnyGenre() {
+	@DisplayName("단일 장르를 포함한 콘텐츠만 중복 없이 인기순으로 조회")
+	void searchContentsMatchesSingleGenre() {
 		// given
 		Genre action = persistGenre("액션");
 		Genre romance = persistGenre("로맨스");
@@ -127,17 +127,17 @@ class ContentQueryRepositoryTest {
 
 		// when
 		List<ContentSearchRow> results =
-			contentQueryRepository.searchContents(condition(null, List.of("액션", "로맨스"), null, 10));
+			contentQueryRepository.searchContents(condition(null, "액션", null, 10));
 
 		// then
 		assertThat(results)
 			.extracting(ContentSearchRow::title)
-			.containsExactly("액션만", "로맨스 드라마", "액션 로맨스", "액션 로맨스 드라마");
+			.containsExactly("액션만", "액션 로맨스", "액션 로맨스 드라마");
 	}
 
 	@Test
-	@DisplayName("중복 장르명은 단일 장르 조건처럼 처리")
-	void duplicatedGenreNamesAreDeduplicated() {
+	@DisplayName("DB에 없는 장르를 요청하면 빈 결과를 반환")
+	void searchContentsWithMissingGenreReturnsEmpty() {
 		// given
 		Genre action = persistGenre("액션");
 		Content actionContent = persistContent(2001L, "액션 콘텐츠", 1);
@@ -147,17 +147,15 @@ class ContentQueryRepositoryTest {
 
 		// when
 		List<ContentSearchRow> results =
-			contentQueryRepository.searchContents(condition(null, List.of("액션", "액션"), null, 10));
+			contentQueryRepository.searchContents(condition(null, "로맨스", null, 10));
 
 		// then
-		assertThat(results)
-			.extracting(ContentSearchRow::title)
-			.containsExactly("액션 콘텐츠");
+		assertThat(results).isEmpty();
 	}
 
 	@Test
 	@DisplayName("정규화된 장르명으로 검색")
-	void searchContentsWithNormalizedGenreNames() {
+	void searchContentsWithNormalizedGenreName() {
 		// given
 		Genre action = persistGenre("액션");
 		Content actionContent = persistContent(2101L, "공백 정규화 콘텐츠", 1);
@@ -167,7 +165,7 @@ class ContentQueryRepositoryTest {
 
 		// when
 		List<ContentSearchRow> results = contentQueryRepository.searchContents(
-			condition(null, List.of("액션"), null, 10)
+			condition(null, " 액션 ", null, 10)
 		);
 
 		// then
@@ -187,7 +185,7 @@ class ContentQueryRepositoryTest {
 
 		// when
 		List<ContentSearchRow> results =
-			contentQueryRepository.searchContents(condition("눈물", List.of(), null, 10));
+			contentQueryRepository.searchContents(condition("눈물", null, null, 10));
 
 		// then
 		assertThat(results)
@@ -207,7 +205,7 @@ class ContentQueryRepositoryTest {
 
 		// when
 		List<ContentSearchRow> results =
-			contentQueryRepository.searchContents(condition("눈", List.of(), null, 10));
+			contentQueryRepository.searchContents(condition("눈", null, null, 10));
 
 		// then
 		assertThat(results)
@@ -223,7 +221,7 @@ class ContentQueryRepositoryTest {
 		commitFullTextFixtures();
 
 		List<ContentSearchRow> results =
-			contentQueryRepository.searchContents(condition("해리포터", List.of(), null, 10));
+			contentQueryRepository.searchContents(condition("해리포터", null, null, 10));
 
 		assertThat(results)
 			.extracting(ContentSearchRow::title)
@@ -242,7 +240,7 @@ class ContentQueryRepositoryTest {
 
 		// when
 		List<ContentSearchRow> results =
-			contentQueryRepository.searchContents(condition(null, List.of(), MediaType.TV, 10));
+			contentQueryRepository.searchContents(condition(null, null, MediaType.TV, 10));
 
 		// then
 		assertThat(results)
@@ -251,7 +249,7 @@ class ContentQueryRepositoryTest {
 	}
 
 	@Test
-	@DisplayName("keyword, mediaType, 장르 그룹을 AND로 검색하고 장르 그룹 내부는 OR로 처리")
+	@DisplayName("keyword, mediaType, 단일 장르를 AND로 검색")
 	void searchContentsWithAllConditions() {
 		// given
 		Genre action = persistGenre("액션");
@@ -261,16 +259,18 @@ class ContentQueryRepositoryTest {
 		Content movieMatchedTitleAndGenres = persistContent(5002L, "눈물 액션 로맨스 영화", MediaType.MOVIE, 10);
 		Content tvMatchedGenresOnly = persistContent(5003L, "다른 액션 로맨스", MediaType.TV, 9);
 		Content tvMatchedTitleOnly = persistContent(5004L, "눈물 액션", MediaType.TV, 8);
+		Content tvMatchedOtherGenre = persistContent(5005L, "눈물 로맨스", MediaType.TV, 20);
 
 		persistContentGenres(tvMatched, action, romance);
 		persistContentGenres(movieMatchedTitleAndGenres, action, romance);
 		persistContentGenres(tvMatchedGenresOnly, action, romance);
 		persistContentGenres(tvMatchedTitleOnly, action);
+		persistContentGenres(tvMatchedOtherGenre, romance);
 		commitFullTextFixtures();
 
 		// when
 		List<ContentSearchRow> results =
-			contentQueryRepository.searchContents(condition("눈물", List.of("액션", "로맨스"), MediaType.TV, 10));
+			contentQueryRepository.searchContents(condition("눈물", "액션", MediaType.TV, 10));
 
 		// then
 		assertThat(results)
@@ -290,7 +290,7 @@ class ContentQueryRepositoryTest {
 
 		// when
 		List<ContentSearchRow> results =
-			contentQueryRepository.searchContents(condition(null, List.of(), null, 10));
+			contentQueryRepository.searchContents(condition(null, null, null, 10));
 
 		// then
 		assertThat(results)
@@ -311,7 +311,7 @@ class ContentQueryRepositoryTest {
 		// when
 		List<ContentSearchRow> results =
 			contentQueryRepository.searchContents(
-				condition(null, List.of(), null, ContentSearchCursor.of(first.getBookmarkCount(), first.getId()), 1)
+				condition(null, null, null, ContentSearchCursor.of(first.getBookmarkCount(), first.getId()), 1)
 			);
 
 		// then
@@ -330,12 +330,12 @@ class ContentQueryRepositoryTest {
 		entityManager.flush();
 		entityManager.clear();
 
-		List<ContentSearchRow> firstPage = contentQueryRepository.searchContents(condition(null, List.of(), null, 1));
+		List<ContentSearchRow> firstPage = contentQueryRepository.searchContents(condition(null, null, null, 1));
 		ContentSearchCursor cursor = ContentSearchCursor.of(firstPage.getFirst().bookmarkCount(), firstPage.getFirst().id());
 
 		// when
 		List<ContentSearchRow> results = contentQueryRepository.searchContents(
-			condition(null, List.of(), null, cursor, 1)
+			condition(null, null, null, cursor, 1)
 		);
 
 		// then
@@ -508,20 +508,20 @@ class ContentQueryRepositoryTest {
 
 	private ContentSearchCondition condition(
 		String keyword,
-		List<String> genreNames,
+		String genreName,
 		MediaType mediaType,
 		int size
 	) {
-		return ContentSearchCondition.of(keyword, genreNames, mediaType, null, size);
+		return ContentSearchCondition.of(keyword, genreName, mediaType, null, size);
 	}
 
 	private ContentSearchCondition condition(
 		String keyword,
-		List<String> genreNames,
+		String genreName,
 		MediaType mediaType,
 		ContentSearchCursor cursor,
 		int size
 	) {
-		return ContentSearchCondition.of(keyword, genreNames, mediaType, cursor, size);
+		return ContentSearchCondition.of(keyword, genreName, mediaType, cursor, size);
 	}
 }

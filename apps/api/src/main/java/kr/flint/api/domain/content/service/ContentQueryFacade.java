@@ -2,7 +2,6 @@ package kr.flint.api.domain.content.service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 
 import org.springframework.stereotype.Component;
@@ -87,20 +86,20 @@ public class ContentQueryFacade {
 
 	public PaginationResponse<GetContentSearchRes> getContentSearchList(
 		final String keyword,
-		final List<SearchGenre> genres,
+		final SearchGenre genre,
 		final MediaType mediaType,
 		final String cursor,
 		final int size
 	) {
 		String normalizedKeyword = normalizeKeyword(keyword);
-		List<String> genreNames = toGenreNames(genres);
+		String genreName = genre == null ? null : genre.genreName();
 		ContentSearchCursor decodedCursor = ContentSearchCursor.decodeNullable(cursor);
 		if (decodedCursor != null) {
 			decodedCursor.validateSortMode(StringUtils.hasText(normalizedKeyword));
 		}
 		ContentSearchCondition condition = ContentSearchCondition.of(
 			normalizedKeyword,
-			genreNames,
+			genreName,
 			mediaType,
 			decodedCursor,
 			size
@@ -128,18 +127,6 @@ public class ContentQueryFacade {
 			return null;
 		}
 		return keyword.trim();
-	}
-
-	private List<String> toGenreNames(List<SearchGenre> genres) {
-		if (genres == null || genres.isEmpty()) {
-			return List.of();
-		}
-
-		return genres.stream()
-			.filter(Objects::nonNull)
-			.map(SearchGenre::genreName)
-			.distinct()
-			.toList();
 	}
 
 }

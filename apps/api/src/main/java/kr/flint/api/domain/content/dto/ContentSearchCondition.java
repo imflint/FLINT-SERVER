@@ -1,42 +1,36 @@
 package kr.flint.api.domain.content.dto;
 
-import java.util.List;
-
 import org.springframework.util.StringUtils;
 
 import kr.flint.content.domain.MediaType;
 
 public record ContentSearchCondition(
 	String keyword,
-	List<String> genreNames,
+	String genreName,
 	MediaType mediaType,
 	ContentSearchCursor cursor,
 	int size
 ) {
 	public ContentSearchCondition {
-		genreNames = genreNames == null ? List.of() : genreNames.stream()
-			.filter(StringUtils::hasText)
-			.map(String::trim)
-			.distinct()
-			.toList();
+		genreName = StringUtils.hasText(genreName) ? genreName.trim() : null;
 	}
 
 	public static ContentSearchCondition of(
 		String keyword,
-		List<String> genreNames,
+		String genreName,
 		MediaType mediaType,
 		ContentSearchCursor cursor,
 		int size
 	) {
-		return new ContentSearchCondition(keyword, genreNames, mediaType, cursor, size);
+		return new ContentSearchCondition(keyword, genreName, mediaType, cursor, size);
 	}
 
 	public boolean hasKeyword() {
 		return StringUtils.hasText(keyword);
 	}
 
-	public boolean hasGenres() {
-		return !genreNames.isEmpty();
+	public boolean hasGenre() {
+		return genreName != null;
 	}
 
 	public boolean usesFullTextSearch() {

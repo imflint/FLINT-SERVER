@@ -279,8 +279,8 @@ public class ContentQueryRepository {
 	}
 
 	public List<ContentSearchRow> searchContents(ContentSearchCondition condition) {
-		List<Long> genreIds = findGenreIds(condition.genreNames());
-		if (condition.hasGenres() && genreIds.isEmpty()) {
+		Long genreId = findGenreId(condition.genreName());
+		if (condition.hasGenre() && genreId == null) {
 			return List.of();
 		}
 
@@ -304,23 +304,23 @@ public class ContentQueryRepository {
 				keywordCondition(condition),
 				onCondition(condition.mediaType(), content.mediaType::eq),
 				cursorCondition(condition),
-				genreCondition(genreIds)
+				genreCondition(genreId)
 			)
 			.orderBy(orderSpecifiers(condition, exactMatchRank, relevanceScore))
 			.limit(condition.queryLimit())
 			.fetch();
 	}
 
-	private List<Long> findGenreIds(List<String> genreNames) {
-		if (genreNames.isEmpty()) {
-			return List.of();
+	private Long findGenreId(String genreName) {
+		if (!StringUtils.hasText(genreName)) {
+			return null;
 		}
 
 		return jpaQueryFactory
 			.select(genre.id)
 			.from(genre)
-			.where(onNotEmpty(genreNames, names -> genre.name.in(names)))
-			.fetch();
+			.where(genre.name.eq(genreName))
+			.fetchOne();
 	}
 
 	private Predicate keywordCondition(ContentSearchCondition condition) {
@@ -421,14 +421,14 @@ public class ContentQueryRepository {
 		return new OrderSpecifier<?>[] {content.bookmarkCount.desc(), content.id.desc()};
 	}
 
-	private Predicate genreCondition(List<Long> genreIds) {
-		return onNotEmpty(genreIds, ids ->
+	private Predicate genreCondition(Long genreId) {
+		return onCondition(genreId, id ->
 			com.querydsl.jpa.JPAExpressions
 				.selectOne()
 				.from(contentGenre)
 				.where(
 					contentGenre.content.id.eq(content.id),
-					contentGenre.genre.id.in(ids)
+					contentGenre.genre.id.eq(id)
 				)
 				.exists()
 		);
