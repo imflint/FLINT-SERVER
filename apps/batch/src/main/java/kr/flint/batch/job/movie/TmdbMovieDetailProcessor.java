@@ -13,7 +13,6 @@ import kr.flint.content.domain.MediaType;
 import kr.flint.content.dto.ContentUpsertCommand;
 import kr.flint.content.dto.ContentCatalogStatus;
 import kr.flint.infra.tmdb.client.TmdbClient;
-import kr.flint.infra.tmdb.dto.TmdbGenreListRes;
 import kr.flint.infra.tmdb.dto.TmdbMovieCreditRes;
 import kr.flint.infra.tmdb.dto.TmdbMovieDetailRes;
 import kr.flint.batch.service.TmdbLocalizedTitleService;
@@ -43,8 +42,8 @@ public class TmdbMovieDetailProcessor implements ItemProcessor<TmdbIdLine, Conte
 			String poster = resolvePoster(detail.posterPath());
 			TmdbMovieCreditRes credit = detail.credits();
 
-			List<String> genres = detail.genres() == null ? List.of() :
-				detail.genres().stream().map(TmdbGenreListRes.TmdbGenre::name).toList();
+			List<Long> genres = detail.genres() == null ? List.of() :
+				detail.genres().stream().map(g -> g.id() == null ? null : g.id().longValue()).toList();
 
 			String director = credit == null || credit.crew() == null ? null : credit.crew().stream()
 				.filter(c -> "Director".equals(c.job()))
@@ -75,8 +74,8 @@ public class TmdbMovieDetailProcessor implements ItemProcessor<TmdbIdLine, Conte
 				director,
 				detail.overview(),
 				poster,
-				genres
-			);
+				List.of()
+			).withTmdbGenreIds(genres);
 			return ContentSyncDraft.synchronizedContent(command, TmdbOttSnapshot.from(detail.watchProviders()));
 		} catch (FeignException.NotFound nf) {
 			log.debug("movie {} not found, skip", line.id());

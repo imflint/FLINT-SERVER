@@ -39,8 +39,8 @@ public class TmdbTvDetailProcessor implements ItemProcessor<TmdbIdLine, ContentS
 		try {
 			TmdbTvFullDetailRes detail = tmdbClient.getTvFullDetail(line.id(), LANG, APPEND_TO_RESPONSE);
 			String poster = resolvePoster(detail.posterPath());
-			List<String> genres = detail.genres() == null ? List.of() :
-				detail.genres().stream().map(TmdbTvDetailRes.TmdbGenre::name).toList();
+			List<Long> genres = detail.genres() == null ? List.of() :
+				detail.genres().stream().map(g -> g.id() == null ? null : g.id().longValue()).toList();
 
 			String creator = detail.created_by() == null ? null : detail.created_by().stream()
 				.map(TmdbTvDetailRes.Creator::name)
@@ -70,8 +70,8 @@ public class TmdbTvDetailProcessor implements ItemProcessor<TmdbIdLine, ContentS
 				creator,
 				detail.overview(),
 				poster,
-				genres
-			);
+				List.of()
+			).withTmdbGenreIds(genres);
 			return ContentSyncDraft.synchronizedContent(command, TmdbOttSnapshot.from(detail.watchProviders()));
 		} catch (FeignException.NotFound nf) {
 			log.debug("tv {} not found, skip", line.id());

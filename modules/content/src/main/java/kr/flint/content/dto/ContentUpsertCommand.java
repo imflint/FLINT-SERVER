@@ -15,7 +15,8 @@ public record ContentUpsertCommand(
 	String poster,
 	List<String> genreNames,
 	ContentCatalogStatus catalogStatus,
-	String errorMessage
+	String errorMessage,
+	List<Long> tmdbGenreIds
 ) {
 	public static ContentUpsertCommand of(
 		Long tmdbId,
@@ -38,7 +39,7 @@ public record ContentUpsertCommand(
 			poster,
 			genreNames == null ? List.of() : genreNames,
 			ContentCatalogStatus.SYNCED,
-			null
+			null, List.of()
 		);
 	}
 
@@ -64,7 +65,7 @@ public record ContentUpsertCommand(
 			poster,
 			genreNames == null ? List.of() : genreNames,
 			ContentCatalogStatus.SYNCED,
-			null
+			null, List.of()
 		);
 	}
 
@@ -75,7 +76,7 @@ public record ContentUpsertCommand(
 		String errorMessage
 	) {
 		return new ContentUpsertCommand(
-			tmdbId, mediaType, null, null, 0, null, null, null, List.of(), status, errorMessage
+			tmdbId, mediaType, null, null, 0, null, null, null, List.of(), status, errorMessage, List.of()
 		);
 	}
 
@@ -85,11 +86,21 @@ public record ContentUpsertCommand(
 
     public ContentUpsertCommand preservingTitles(String titleKo, String titleEn) {
         return new ContentUpsertCommand(tmdbId, mediaType, titleKo, titleEn, year, author, description,
-            poster, genreNames, catalogStatus, "Title update conflicts with another content; existing titles retained");
+            poster, genreNames, catalogStatus, "Title update conflicts with another content; existing titles retained", tmdbGenreIds);
     }
 
     public ContentUpsertCommand duplicateTitle(String reason) {
         return new ContentUpsertCommand(tmdbId, mediaType, titleKo, titleEn, year, author, description,
-            poster, genreNames, ContentCatalogStatus.DUPLICATE_TITLE, reason);
+            poster, genreNames, ContentCatalogStatus.DUPLICATE_TITLE, reason, tmdbGenreIds);
+    }
+
+    public ContentUpsertCommand withTmdbGenreIds(List<Long> ids) {
+        return new ContentUpsertCommand(tmdbId, mediaType, titleKo, titleEn, year, author, description,
+            poster, List.of(), catalogStatus, errorMessage, ids == null ? List.of() : ids);
+    }
+
+    public ContentUpsertCommand retry(String reason) {
+        return new ContentUpsertCommand(tmdbId, mediaType, titleKo, titleEn, year, author, description,
+            poster, genreNames, ContentCatalogStatus.RETRY, reason, tmdbGenreIds);
     }
 }

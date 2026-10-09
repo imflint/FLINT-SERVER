@@ -18,10 +18,11 @@ public interface SearchControllerDocs {
 
 	@Operation(
 		summary = "콘텐츠 검색 - 재민",
-		description = "키워드로 콘텐츠를 검색합니다. 검색어가 없으면 인기 콘텐츠를 최대 30개 반환합니다."
+		description = "정규화 후 2자 이상인 제목 검색어로 검색하며 정확 일치·관련도·ID 순입니다. 검색어가 없으면 인기 콘텐츠를 최대 30개 반환합니다. localized 전환 후 한글·영문 search_title을 검색합니다."
 	)
 	@ApiResponses({
-		@ApiResponse(responseCode = "200", description = "검색 성공", useReturnTypeSchema = true)
+		@ApiResponse(responseCode = "200", description = "검색 성공", useReturnTypeSchema = true),
+		@ApiResponse(responseCode = "400", description = "정규화 후 검색어가 2자 미만인 경우")
 	})
 	@Deprecated
 	ResponseEntity<SuccessResponse<GetContentSearchListRes>> searchContent(
@@ -48,14 +49,15 @@ public interface SearchControllerDocs {
 
 	@Operation(
 		summary = "북마크한 작품 검색 - 호주",
-		description = "사용자가 북마크한 작품 중에서 키워드로 검색합니다. 제목과 감독/작가에서 검색합니다."
+		description = "사용자가 저장한 작품의 제목을 검색합니다. 정규화 후 2자 이상이며 localized 전환 후 한글·영문 search_title을 검색합니다. 최신 저장순과 북마크 ID 커서를 유지합니다. 감독/작가는 검색 대상이 아닙니다."
 	)
 	@ApiResponses({
-		@ApiResponse(responseCode = "200", description = "검색 성공", useReturnTypeSchema = true)
+		@ApiResponse(responseCode = "200", description = "검색 성공", useReturnTypeSchema = true),
+		@ApiResponse(responseCode = "400", description = "정규화 후 검색어가 2자 미만인 경우")
 	})
 	ResponseEntity<SuccessResponse<PaginationResponse<BookmarkedContentSearchRes>>> searchBookmarkedContents(
 		Long userId,
-		@Parameter(description = "검색 키워드", example = "눈물의 여왕", required = true)
+		@Parameter(description = "정규화 후 2자 이상인 제목 검색어. 미입력·공백은 저장 목록 조회", example = "눈물의 여왕")
 		String keyword,
 		@Parameter(description = "다음 페이지 커서", example = "12345")
 		Long cursor,

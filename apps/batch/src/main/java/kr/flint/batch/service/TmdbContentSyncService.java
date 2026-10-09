@@ -35,8 +35,8 @@ public class TmdbContentSyncService {
     private final OttBatchJdbcRepository ottRepository;
 
     public void ensureSchemaReady() {
-        if (!admissionRepository.schemaReady()) {
-            throw new GeneralException(ErrorCode.CONFLICT, "TMDB admission DDL이 적용되지 않았습니다.");
+        if (!admissionRepository.schemaReady() || !contentRepository.genreSchemaReady()) {
+            throw new GeneralException(ErrorCode.CONFLICT, "TMDB admission DDL 또는 표준 장르 이관이 완료되지 않았습니다.");
         }
     }
 
@@ -45,8 +45,17 @@ public class TmdbContentSyncService {
         if (drafts.isEmpty()) {
             return;
         }
+        drafts = drafts.stream().filter(java.util.Objects::nonNull).filter(d -> d.content() != null).toList();
         admissionRepository.lockWrites();
-        List<Admission> admitted = admit(drafts, false);
+        List<ContentUpsertCommand> validated = contentRepository.validateGenres(drafts.stream()
+            .filter(ContentSyncDraft::persistContent).map(ContentSyncDraft::content).toList());
+        Map<ContentIdentity, ContentUpsertCommand> byIdentity = new HashMap<>();
+        validated.forEach(command -> byIdentity.put(identity(command), command));
+        List<Admission> admitted = admit(drafts.stream().map(draft -> {
+            ContentUpsertCommand command = draft.persistContent()
+                ? byIdentity.get(identity(draft.content())) : draft.content();
+            return new ContentSyncDraft(command, command.syncable() ? draft.ott() : null, draft.persistContent());
+        }).toList(), false);
         contentRepository.classifyAll(admitted.stream().map(a -> a.draft().content()).toList());
         Set<ContentIdentity> preserveTitles = preservedIdentities(admitted);
         contentRepository.restoreRegistryTitles(preserveTitles);

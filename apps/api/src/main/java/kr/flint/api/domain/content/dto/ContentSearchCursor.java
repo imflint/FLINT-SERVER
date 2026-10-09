@@ -25,14 +25,15 @@ public record ContentSearchCursor(
     }
 
     public ContentSearchCursor {
-        if (version != CURRENT_VERSION || sortMode == null || contentId == null || contentId <= 0) {
+        if ((version != 1 && version != 2) || sortMode == null || contentId == null || contentId <= 0) {
             throw invalidCursor();
         }
-        if (sortMode == SortMode.POPULAR && (bookmarkCount == null || bookmarkCount < 0)) {
+        if (sortMode == SortMode.POPULAR && (version != 1 || bookmarkCount == null || bookmarkCount < 0)) {
             throw invalidCursor();
         }
         if (sortMode == SortMode.KEYWORD
-            && (exactMatchRank == null || exactMatchRank < 0 || relevanceScore == null || relevanceScore < 0)) {
+            && (exactMatchRank == null || exactMatchRank < 0 || relevanceScore == null
+                || !Double.isFinite(relevanceScore) || relevanceScore < 0)) {
             throw invalidCursor();
         }
     }
@@ -43,6 +44,16 @@ public record ContentSearchCursor(
 
     public static ContentSearchCursor keyword(int exactMatchRank, double relevanceScore, Long contentId) {
         return new ContentSearchCursor(CURRENT_VERSION, SortMode.KEYWORD, null, exactMatchRank, relevanceScore, contentId);
+    }
+
+    public static ContentSearchCursor keyword(int rank, double score, Long id, boolean localized) {
+        return new ContentSearchCursor(localized ? 2 : 1, SortMode.KEYWORD, null, rank, score, id);
+    }
+
+    public void validateKeywordVersion(boolean localized) {
+        if (sortMode != SortMode.KEYWORD || version != (localized ? 2 : 1)) {
+            throw invalidCursor();
+        }
     }
 
     public static ContentSearchCursor of(int bookmarkCount, Long contentId) {
@@ -65,18 +76,18 @@ public record ContentSearchCursor(
             }
 
             int version = Integer.parseInt(parts[0]);
-            if (version != CURRENT_VERSION) {
+            if (version != 1 && version != 2) {
                 throw invalidCursor();
             }
             SortMode mode = SortMode.valueOf(parts[1]);
             return switch (mode) {
                 case POPULAR -> {
                     if (parts.length != 4) throw invalidCursor();
-                    yield popular(Integer.parseInt(parts[2]), Long.parseLong(parts[3]));
+                    yield new ContentSearchCursor(version, mode, Integer.parseInt(parts[2]), null, null, Long.parseLong(parts[3]));
                 }
                 case KEYWORD -> {
                     if (parts.length != 5) throw invalidCursor();
-                    yield keyword(Integer.parseInt(parts[2]), Double.parseDouble(parts[3]), Long.parseLong(parts[4]));
+                    yield new ContentSearchCursor(version, mode, null, Integer.parseInt(parts[2]), Double.parseDouble(parts[3]), Long.parseLong(parts[4]));
                 }
             };
         } catch (IllegalArgumentException exception) {

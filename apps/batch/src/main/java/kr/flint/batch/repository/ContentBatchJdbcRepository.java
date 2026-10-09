@@ -20,6 +20,7 @@ import org.springframework.util.CollectionUtils;
 import io.hypersistence.tsid.TSID;
 import kr.flint.content.domain.MediaType;
 import kr.flint.content.domain.ContentTitleNormalizer;
+import kr.flint.content.domain.GenreCode;
 import kr.flint.content.dto.ContentUpsertCommand;
 import lombok.RequiredArgsConstructor;
 
@@ -35,8 +36,9 @@ public class ContentBatchJdbcRepository {
 			return;
 		}
 
-		upsertCatalogEntries(commands);
-		upsertClassified(commands);
+		List<ContentUpsertCommand> admitted = validateGenres(commands);
+		upsertCatalogEntries(admitted);
+		upsertClassified(admitted);
 	}
 
 	public void classifyAll(List<ContentUpsertCommand> commands) {
@@ -55,7 +57,8 @@ public class ContentBatchJdbcRepository {
 		}
 
 		Map<ContentKey, ContentUpsertCommand> latestByKey = new LinkedHashMap<>();
-		Map<ContentKey, LinkedHashSet<String>> genreNamesByKey = new LinkedHashMap<>();
+		Map<ContentKey, LinkedHashSet<Long>> genresByKey = new LinkedHashMap<>();
+		GenreMappings mappings = loadGenreMappings();
 
 		for (ContentUpsertCommand command : commands) {
 			if (command == null || !command.syncable()) {
@@ -63,8 +66,8 @@ public class ContentBatchJdbcRepository {
 			}
 			ContentKey key = contentKey(command);
 			latestByKey.put(key, command);
-			genreNamesByKey.computeIfAbsent(key, ignored -> new LinkedHashSet<>())
-				.addAll(normalizeGenreNames(command.genreNames()));
+			genresByKey.computeIfAbsent(key, ignored -> new LinkedHashSet<>())
+				.addAll(resolveGenreIds(command, mappings));
 		}
 
 		if (latestByKey.isEmpty()) {
@@ -77,10 +80,7 @@ public class ContentBatchJdbcRepository {
 
 		Map<ContentKey, Long> contentIds = findContentIds(latestByKey.keySet());
 		deleteExistingContentGenres(contentIds.values());
-		Set<String> genreNames = collectGenreNames(genreNamesByKey);
-		insertMissingGenres(genreNames);
-		Map<String, Long> genreIds = findGenreIds(genreNames);
-		insertContentGenres(genreNamesByKey, contentIds, genreIds);
+		insertContentGenres(genresByKey, contentIds);
 	}
 
 	public Map<ContentIdentity, Long> findContentIdsFor(List<ContentUpsertCommand> commands) {
@@ -306,64 +306,18 @@ public class ContentBatchJdbcRepository {
 		});
 	}
 
-	private void insertMissingGenres(Set<String> genreNames) {
-		if (genreNames.isEmpty()) {
-			return;
-		}
-
-		String sql = """
-			INSERT IGNORE INTO genre (id, name)
-			VALUES (?, ?)
-			""";
-
-		List<String> names = new ArrayList<>(genreNames);
-		jdbcTemplate.batchUpdate(sql, names, names.size(), (ps, name) -> {
-			ps.setLong(1, TSID.Factory.getTsid().toLong());
-			ps.setString(2, name);
-		});
-	}
-
-	private Map<String, Long> findGenreIds(Set<String> genreNames) {
-		if (genreNames.isEmpty()) {
-			return Map.of();
-		}
-
-		String sql = """
-			SELECT id, name
-			FROM genre
-			WHERE name IN (:names)
-			ORDER BY id FOR UPDATE
-			""";
-
-		MapSqlParameterSource params = new MapSqlParameterSource()
-			.addValue("names", new ArrayList<>(genreNames));
-
-		return namedParameterJdbcTemplate.query(sql, params, rs -> {
-			Map<String, Long> result = new HashMap<>();
-			while (rs.next()) {
-				result.put(rs.getString("name"), rs.getLong("id"));
-			}
-			return result;
-		});
-	}
-
 	private void insertContentGenres(
-		Map<ContentKey, LinkedHashSet<String>> genreNamesByKey,
-		Map<ContentKey, Long> contentIds,
-		Map<String, Long> genreIds
+		Map<ContentKey, LinkedHashSet<Long>> genresByKey,
+		Map<ContentKey, Long> contentIds
 	) {
 		List<ContentGenreRow> rows = new ArrayList<>();
 
-		for (Map.Entry<ContentKey, LinkedHashSet<String>> entry : genreNamesByKey.entrySet()) {
+		for (Map.Entry<ContentKey, LinkedHashSet<Long>> entry : genresByKey.entrySet()) {
 			Long contentId = contentIds.get(entry.getKey());
 			if (contentId == null) {
 				throw new IllegalStateException("Content was not found after upsert: " + entry.getKey());
 			}
-			for (String genreName : entry.getValue()) {
-				Long genreId = genreIds.get(genreName);
-				if (genreId == null) {
-					throw new IllegalStateException("Genre was not found after insert: " + genreName);
-				}
+			for (Long genreId : entry.getValue()) {
 				rows.add(new ContentGenreRow(contentId, genreId));
 			}
 		}
@@ -373,7 +327,7 @@ public class ContentBatchJdbcRepository {
 		}
 
 		String sql = """
-			INSERT IGNORE INTO content_genre (id, content_id, genre_id)
+			INSERT INTO content_genre (id, content_id, genre_id)
 			VALUES (?, ?, ?)
 			""";
 
@@ -391,23 +345,65 @@ public class ContentBatchJdbcRepository {
 		);
 	}
 
-	private List<String> normalizeGenreNames(List<String> genreNames) {
-		if (CollectionUtils.isEmpty(genreNames)) {
-			return List.of();
-		}
-		return genreNames.stream()
-			.filter(Objects::nonNull)
-			.map(String::trim)
-			.filter(name -> !name.isBlank())
-			.distinct()
-			.toList();
+	public boolean genreSchemaReady() {
+		return Integer.valueOf(1).equals(jdbcTemplate.queryForObject("""
+			SELECT COUNT(*) FROM information_schema.columns
+			WHERE table_schema=DATABASE() AND table_name='genre' AND column_name='code'
+			""", Integer.class)) && Integer.valueOf(1).equals(jdbcTemplate.queryForObject("""
+			SELECT COUNT(*) FROM information_schema.tables
+			WHERE table_schema=DATABASE() AND table_name='tmdb_genre_mapping'
+			""", Integer.class)) && Integer.valueOf(24).equals(jdbcTemplate.queryForObject(
+			"SELECT IF(COUNT(*)=24 AND COUNT(DISTINCT code)=24,24,0) FROM genre", Integer.class))
+			&& jdbcTemplate.queryForObject("SELECT COUNT(*) FROM tmdb_genre_mapping",Integer.class) >= 35;
 	}
 
-	private Set<String> collectGenreNames(Map<ContentKey, LinkedHashSet<String>> genreNamesByKey) {
-		Set<String> genreNames = new LinkedHashSet<>();
-		genreNamesByKey.values().forEach(genreNames::addAll);
-		return genreNames;
+	public List<ContentUpsertCommand> validateGenres(List<ContentUpsertCommand> commands) {
+		GenreMappings mappings = loadGenreMappings();
+		return commands.stream().map(command -> {
+			if (command == null || !command.syncable()) return command;
+			try {
+				resolveGenreIds(command, mappings);
+				return command;
+			} catch (IllegalArgumentException exception) {
+				return command.retry(exception.getMessage());
+			}
+		}).toList();
 	}
+
+	private GenreMappings loadGenreMappings() {
+		Map<GenreCode, Long> codes = new HashMap<>();
+		jdbcTemplate.query("SELECT id, code FROM genre WHERE code IS NOT NULL", rs -> {
+			codes.put(GenreCode.valueOf(rs.getString("code")), rs.getLong("id"));
+		});
+		Map<ExternalGenreKey, Long> external = new HashMap<>();
+		jdbcTemplate.query("""
+			SELECT m.media_type, m.tmdb_genre_id, m.genre_id FROM tmdb_genre_mapping m
+			JOIN genre g ON g.id=m.genre_id WHERE g.code IS NOT NULL
+			""", rs -> {
+			external.put(new ExternalGenreKey(MediaType.valueOf(rs.getString("media_type")),
+				rs.getLong("tmdb_genre_id")), rs.getLong("genre_id"));
+		});
+		return new GenreMappings(codes, external);
+	}
+
+	private Set<Long> resolveGenreIds(ContentUpsertCommand command, GenreMappings mappings) {
+		Set<Long> ids = new LinkedHashSet<>();
+		for (Long externalId : command.tmdbGenreIds()) {
+			Long id = mappings.external().get(new ExternalGenreKey(command.mediaType(), externalId));
+			if (id == null) throw new IllegalArgumentException("Unmapped TMDB genre: " + command.mediaType() + ":" + externalId);
+			ids.add(id);
+		}
+		for (String name : command.genreNames()) {
+			GenreCode code = GenreCode.find(name).orElseThrow(() -> new IllegalArgumentException("Unregistered genre alias"));
+			Long id = mappings.codes().get(code);
+			if (id == null) throw new IllegalArgumentException("Missing canonical genre: " + code);
+			ids.add(id);
+		}
+		return ids;
+	}
+
+	private record ExternalGenreKey(MediaType mediaType, Long id) { }
+	private record GenreMappings(Map<GenreCode, Long> codes, Map<ExternalGenreKey, Long> external) { }
 
 	private record ContentKey(Long tmdbId, MediaType mediaType) {
 	}

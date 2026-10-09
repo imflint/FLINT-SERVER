@@ -1,6 +1,8 @@
 package kr.flint.api.domain.content.dto;
 
 import org.springframework.util.StringUtils;
+import kr.flint.api.common.query.ContentSearchKeyword;
+import kr.flint.content.domain.GenreCode;
 
 import kr.flint.content.domain.MediaType;
 
@@ -12,6 +14,8 @@ public record ContentSearchCondition(
 	int size
 ) {
 	public ContentSearchCondition {
+		ContentSearchKeyword prepared = ContentSearchKeyword.ofNullable(keyword);
+		keyword = prepared == null ? null : prepared.raw();
 		genreName = StringUtils.hasText(genreName) ? genreName.trim() : null;
 	}
 
@@ -33,8 +37,8 @@ public record ContentSearchCondition(
 		return genreName != null;
 	}
 
-	public boolean usesFullTextSearch() {
-		return hasKeyword() && keyword.trim().length() > 1;
+	public GenreCode genreCode() {
+		return GenreCode.find(genreName).orElse(null);
 	}
 
 	public int queryLimit() {

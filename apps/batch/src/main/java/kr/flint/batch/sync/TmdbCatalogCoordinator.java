@@ -19,6 +19,7 @@ import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteExcep
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
@@ -62,6 +63,8 @@ public class TmdbCatalogCoordinator {
     private final TmdbContentAdmissionJdbcRepository admissionRepository;
     private final String ownerId = UUID.randomUUID().toString();
     private final AtomicBoolean shuttingDown = new AtomicBoolean(false);
+    @Value("${flint.content.search-document-backfill-enabled:false}")
+    private boolean searchBackfillEnabled;
 
     public TmdbCatalogCoordinator(
         TmdbSyncRunJdbcRepository runRepository,
@@ -124,13 +127,14 @@ public class TmdbCatalogCoordinator {
 
     @Scheduled(fixedDelay = 30_000)
 	public void heartbeat() {
-		if (!shuttingDown.get() && runRepository.schemaReady()) {
+		if (!searchBackfillEnabled && !shuttingDown.get() && runRepository.schemaReady()) {
             runRepository.heartbeat(ownerId, LEASE_DURATION);
         }
     }
 
     @EventListener(ApplicationReadyEvent.class)
 	public void resumeInterruptedRuns() {
+		if (searchBackfillEnabled) return;
 		if (!runRepository.schemaReady() || !admissionRepository.schemaReady()) {
 			log.info("TMDB coordinator resume is disabled until manual DDL is applied");
 			return;
@@ -147,7 +151,7 @@ public class TmdbCatalogCoordinator {
     @EventListener(ContextClosedEvent.class)
 	public void stopRunningJobs() {
 		shuttingDown.set(true);
-		if (!runRepository.schemaReady()) {
+		if (searchBackfillEnabled || !runRepository.schemaReady()) {
 			return;
 		}
         runRepository.markStoppingByOwner(ownerId);
@@ -165,6 +169,9 @@ public class TmdbCatalogCoordinator {
         TmdbSyncRunType runType,
         LocalDate businessDate
 	) {
+		if (searchBackfillEnabled) {
+			throw new GeneralException(ErrorCode.CONFLICT, "검색 문서 백필 중에는 TMDB 동기화를 실행할 수 없습니다.");
+		}
 		ensureSchemaReady();
 		PreparedRun prepared = runRepository.prepare(runKey, runType, businessDate, ownerId, LEASE_DURATION);
         if (prepared.launch()) {

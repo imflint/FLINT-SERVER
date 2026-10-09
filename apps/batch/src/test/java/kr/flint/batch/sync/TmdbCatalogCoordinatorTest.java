@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.never;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -11,6 +12,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Set;
 
@@ -25,6 +27,7 @@ import org.springframework.batch.core.explore.JobExplorer;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.core.task.TaskExecutor;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import kr.flint.batch.job.movie.TmdbMovieImportJobConfig;
 import kr.flint.batch.repository.TmdbSyncRunJdbcRepository;
@@ -130,6 +133,32 @@ class TmdbCatalogCoordinatorTest {
         assertThatThrownBy(() -> coordinator.startDaily(LocalDate.of(2026, 10, 8)))
             .isInstanceOf(GeneralException.class);
         verify(runRepository, never()).prepare(anyString(), any(), any(), anyString(), any());
+    }
+
+    @Test
+    void manualBackfillRejectsAllCatalogStartsBeforeAcquiringLease() {
+        ReflectionTestUtils.setField(coordinator, "searchBackfillEnabled", true);
+        for (Runnable trigger : new Runnable[] {
+            () -> coordinator.startDaily(LocalDate.of(2026, 10, 9)),
+            () -> coordinator.startMonthly(YearMonth.of(2026, 10)),
+            () -> coordinator.startClassification(YearMonth.of(2026, 10))
+        }) {
+            assertThatThrownBy(trigger::run).isInstanceOf(GeneralException.class)
+                .extracting(error -> ((GeneralException) error).getErrorCode())
+                .isEqualTo(kr.flint.shared.exception.ErrorCode.CONFLICT);
+        }
+        verifyNoInteractions(runRepository, admissionRepository, jobLauncher, jobExplorer,
+            jobOperator, workflowExecutor, providerMasterService);
+    }
+
+    @Test
+    void manualBackfillDoesNotResumeHeartbeatOrStopOtherCatalogJobs() {
+        ReflectionTestUtils.setField(coordinator, "searchBackfillEnabled", true);
+        coordinator.resumeInterruptedRuns();
+        coordinator.heartbeat();
+        coordinator.stopRunningJobs();
+        verifyNoInteractions(runRepository, admissionRepository, jobLauncher, jobExplorer,
+            jobOperator, workflowExecutor, providerMasterService);
     }
 
 	private TmdbSyncRun run(TmdbSyncRunStatus status) {

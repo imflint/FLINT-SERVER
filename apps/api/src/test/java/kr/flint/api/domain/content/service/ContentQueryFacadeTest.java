@@ -234,15 +234,42 @@ class ContentQueryFacadeTest {
 		}
 
 		@Test
-		@DisplayName("keyword가 1자여도 기존 계약대로 조회한다")
-		void acceptsOneCharacterKeyword() {
-			// when
-			contentQueryFacade.getContentSearchList("눈", null, null, null, 20);
+		@DisplayName("localized 검색은 결과 조회 전에 이전 keyword 커서를 거절한다")
+		void rejectsLegacyKeywordCursorBeforeSearch() {
+			when(contentQueryRepository.localizedSearchEnabled()).thenReturn(true);
+			String cursor = ContentSearchCursor.keyword(0, 1.0, 1L).encode();
+			assertThatThrownBy(() -> contentQueryFacade.getContentSearchList("해리", SearchGenre.ACTION, null, cursor, 20))
+				.isInstanceOf(GeneralException.class)
+				.hasMessageContaining("cursor 형식이 올바르지 않습니다.");
+			verify(contentQueryRepository, org.mockito.Mockito.never()).searchContents(org.mockito.ArgumentMatchers.any());
+		}
 
-			// then
-			verify(contentQueryRepository).searchContents(
-				eq(ContentSearchCondition.of("눈", null, null, null, 20))
-			);
+		@Test
+		@DisplayName("한 글자 keyword는 DB 조회 전에 거절한다")
+		void rejectsOneCharacterKeyword() {
+			for (String keyword : List.of("눈", " 눈 ", "\uD83D\uDE00")) {
+				assertThatThrownBy(() -> contentQueryFacade.getContentSearchList(keyword, null, null, null, 20))
+					.isInstanceOf(GeneralException.class)
+					.hasMessageContaining("keyword는 2자 이상이어야 합니다.");
+			}
+			verifyNoInteractions(contentQueryRepository);
+		}
+
+		@Test
+		@DisplayName("공백만 있는 keyword는 검색어 없는 조회로 처리한다")
+		void ignoresBlankKeyword() {
+			for (String keyword : List.of("   ", "\u00a0", "\u3000", "\u202f")) {
+				contentQueryFacade.getContentSearchList(keyword, null, null, null, 20);
+			}
+			verify(contentQueryRepository, org.mockito.Mockito.times(4))
+				.searchContents(eq(ContentSearchCondition.of(null, null, null, null, 20)));
+		}
+
+		@Test
+		@DisplayName("두 글자 keyword의 앞뒤 공백만 제거하고 조회한다")
+		void trimsKeywordBeforeSearching() {
+			contentQueryFacade.getContentSearchList(" 눈물 ", null, null, null, 20);
+			verify(contentQueryRepository).searchContents(eq(ContentSearchCondition.of("눈물", null, null, null, 20)));
 		}
 
 		@Test
