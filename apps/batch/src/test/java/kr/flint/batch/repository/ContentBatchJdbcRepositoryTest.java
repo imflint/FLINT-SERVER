@@ -12,19 +12,25 @@ import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import kr.flint.content.domain.MediaType;
+import kr.flint.content.domain.GenreCode;
 import kr.flint.content.dto.ContentCatalogStatus;
 import kr.flint.content.dto.ContentUpsertCommand;
+import kr.flint.batch.job.ContentSyncDraft;
+import kr.flint.batch.job.ott.TmdbOttSnapshot;
+import kr.flint.batch.service.TmdbContentSyncService;
 
 @Testcontainers(disabledWithoutDocker = true)
 class ContentBatchJdbcRepositoryTest {
 
 	@Container
-	private static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0.36")
+	private static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4.8")
 		.withDatabaseName("flint")
 		.withUsername("test")
 		.withPassword("test");
@@ -81,7 +87,7 @@ class ContentBatchJdbcRepositoryTest {
 		assertThat(content.get("description")).isEqualTo("description");
 		assertThat(content.get("poster")).isEqualTo("poster");
 		assertThat(((Number)content.get("bookmark_count")).intValue()).isZero();
-		assertThat(count("genre")).isEqualTo(2);
+		assertThat(count("genre")).isEqualTo(24);
 		assertThat(count("content_genre")).isEqualTo(2);
 		Map<String, Object> registry = jdbcTemplate.queryForMap("""
 			SELECT status, title_ko, title_en, normalized_title_ko, search_title
@@ -180,7 +186,7 @@ class ContentBatchJdbcRepositoryTest {
 		assertThat(((Number)content.get("bookmark_count")).intValue()).isEqualTo(7);
 		assertThat(updatedCreatedAt).isEqualTo(createdAt);
 		assertThat(count("content")).isEqualTo(1);
-		assertThat(count("genre")).isEqualTo(3);
+		assertThat(count("genre")).isEqualTo(24);
 		assertThat(count("content_genre")).isEqualTo(3);
 	}
 
@@ -256,7 +262,54 @@ class ContentBatchJdbcRepositoryTest {
 		return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM " + tableName, Integer.class);
 	}
 
+	@Test
+	void externalGenreIdsNormalizeAndUnknownIdsPreserveExistingContent() {
+		ContentUpsertCommand command = ContentUpsertCommand.of(900L,MediaType.MOVIE,"original",2020,
+			"director","description","poster",List.of()).withTmdbGenreIds(List.of(28L,28L));
+		repository.upsertAll(List.of(command));
+		assertThat(jdbcTemplate.queryForList("SELECT g.code FROM content_genre cg JOIN genre g ON g.id=cg.genre_id",String.class))
+			.containsExactly("ACTION");
+		repository.upsertAll(List.of(ContentUpsertCommand.of(900L,MediaType.MOVIE,"changed",2021,
+			"other","other","other",List.of()).withTmdbGenreIds(List.of(999999L))));
+		assertThat(jdbcTemplate.queryForObject("SELECT title FROM content WHERE tmdb_id=900",String.class)).isEqualTo("original");
+		assertThat(count("content_genre")).isEqualTo(1);
+		assertThat(jdbcTemplate.queryForObject("SELECT status FROM tmdb_catalog_entry WHERE tmdb_id=900",String.class)).isEqualTo("RETRY");
+		assertThat(count("genre")).isEqualTo(24);
+	}
+
+	@Test
+	void commonSyncDefersUnknownGenreAndPreservesOttSnapshot() {
+		ContentUpsertCommand original = ContentUpsertCommand.of(901L, MediaType.MOVIE, "original", 2020,
+			"director", "description", "poster", List.of("Drama"));
+		repository.upsertAll(List.of(original));
+		jdbcTemplate.execute("CREATE TABLE tmdb_sync_lock(lock_name VARCHAR(64) PRIMARY KEY) ENGINE=InnoDB");
+		jdbcTemplate.update("INSERT INTO tmdb_sync_lock VALUES('TMDB_CONTENT_WRITE')");
+		jdbcTemplate.execute("CREATE TABLE ott_content(id BIGINT PRIMARY KEY,content_id BIGINT,ott_provider_id BIGINT)");
+		jdbcTemplate.update("INSERT INTO ott_content SELECT 1,id,55 FROM content WHERE tmdb_id=901");
+		var before = jdbcTemplate.queryForMap("SELECT * FROM content WHERE tmdb_id=901");
+		var genresBefore = jdbcTemplate.queryForList("SELECT * FROM content_genre ORDER BY id");
+		var ottBefore = jdbcTemplate.queryForList("SELECT * FROM ott_content");
+		var named = new NamedParameterJdbcTemplate(jdbcTemplate.getDataSource());
+		var sync = new TmdbContentSyncService(new TmdbContentAdmissionJdbcRepository(jdbcTemplate, named),
+			repository, new OttBatchJdbcRepository(jdbcTemplate, named));
+		var manager = new DataSourceTransactionManager(jdbcTemplate.getDataSource());
+		ContentUpsertCommand changed = ContentUpsertCommand.of(901L, MediaType.MOVIE, "changed", 2021,
+			"other", "other", "other", List.of()).withTmdbGenreIds(List.of(999999L));
+		new TransactionTemplate(manager).executeWithoutResult(status -> sync.synchronize(List.of(
+			ContentSyncDraft.synchronizedContent(changed, new TmdbOttSnapshot(null, List.of())))));
+		assertThat(jdbcTemplate.queryForMap("SELECT * FROM content WHERE tmdb_id=901")).isEqualTo(before);
+		assertThat(jdbcTemplate.queryForList("SELECT * FROM content_genre ORDER BY id")).isEqualTo(genresBefore);
+		assertThat(jdbcTemplate.queryForList("SELECT * FROM ott_content")).isEqualTo(ottBefore);
+		assertThat(jdbcTemplate.queryForObject("SELECT status FROM tmdb_catalog_entry WHERE tmdb_id=901", String.class))
+			.isEqualTo("RETRY");
+		assertThat(jdbcTemplate.queryForObject("SELECT error_message FROM tmdb_catalog_entry WHERE tmdb_id=901", String.class))
+			.contains("Unmapped TMDB genre: MOVIE:999999");
+	}
+
 	private void recreateSchema() {
+		jdbcTemplate.execute("DROP TABLE IF EXISTS ott_content");
+		jdbcTemplate.execute("DROP TABLE IF EXISTS tmdb_sync_lock");
+		jdbcTemplate.execute("DROP TABLE IF EXISTS tmdb_genre_mapping");
 		jdbcTemplate.execute("DROP TABLE IF EXISTS content_genre");
 		jdbcTemplate.execute("DROP TABLE IF EXISTS genre");
 		jdbcTemplate.execute("DROP TABLE IF EXISTS content");
@@ -308,9 +361,19 @@ class ContentBatchJdbcRepositoryTest {
 			CREATE TABLE genre (
 				id BIGINT NOT NULL PRIMARY KEY,
 				name VARCHAR(255) NOT NULL,
+				code VARCHAR(32) NOT NULL UNIQUE,
 				UNIQUE KEY uk_genre_name (name)
 			)
 			""");
+		for (GenreCode code : GenreCode.values()) {
+			jdbcTemplate.update("INSERT INTO genre(id,name,code) VALUES(?,?,?)", code.ordinal()+1L, code.displayName(), code.name());
+		}
+		jdbcTemplate.execute("""
+			CREATE TABLE tmdb_genre_mapping(media_type VARCHAR(16),tmdb_genre_id BIGINT,genre_id BIGINT,
+			PRIMARY KEY(media_type,tmdb_genre_id),FOREIGN KEY(genre_id) REFERENCES genre(id))
+			""");
+		jdbcTemplate.update("INSERT INTO tmdb_genre_mapping VALUES ('MOVIE',28,?),('TV',10759,?)",
+			GenreCode.ACTION.ordinal()+1L, GenreCode.ACTION.ordinal()+1L);
 		jdbcTemplate.execute("""
 			CREATE TABLE content_genre (
 				id BIGINT NOT NULL PRIMARY KEY,

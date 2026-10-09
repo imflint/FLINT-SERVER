@@ -9,9 +9,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import kr.flint.batch.service.TmdbContentSyncService;
 
 @Testcontainers(disabledWithoutDocker = true)
 class TmdbCatalogCleanupJdbcRepositoryTest {
@@ -24,6 +27,8 @@ class TmdbCatalogCleanupJdbcRepositoryTest {
 
 	private JdbcTemplate jdbcTemplate;
 	private TmdbCatalogCleanupJdbcRepository repository;
+    private TransactionTemplate transaction;
+    private TmdbContentSyncService contentSyncService;
 
 	@BeforeEach
 	void setUp() {
@@ -33,6 +38,10 @@ class TmdbCatalogCleanupJdbcRepositoryTest {
 		dataSource.setUsername(MYSQL.getUsername());
 		dataSource.setPassword(MYSQL.getPassword());
 		jdbcTemplate = new JdbcTemplate(dataSource);
+        var named = new NamedParameterJdbcTemplate(dataSource);
+        transaction = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
+        contentSyncService = new TmdbContentSyncService(new TmdbContentAdmissionJdbcRepository(jdbcTemplate, named),
+            new ContentBatchJdbcRepository(jdbcTemplate, named), new OttBatchJdbcRepository(jdbcTemplate, named));
 		repository = new TmdbCatalogCleanupJdbcRepository(
 			jdbcTemplate,
 			new NamedParameterJdbcTemplate(dataSource)
@@ -46,7 +55,7 @@ class TmdbCatalogCleanupJdbcRepositoryTest {
 		var manifest = repository.createManifest(List.of(1L), "hash");
 
 		assertThat(repository.deleteNextChunk(manifest.id(), 500)).isEqualTo(1);
-		assertThat(repository.promoteLocalizedTitlesForEligibleContents()).isEqualTo(1);
+        assertThat(transaction.execute(s -> contentSyncService.promoteTitleChunk(0, 50)).promotedCount()).isEqualTo(1);
 		repository.finalizeAffectedCollections(manifest.id());
 		repository.completeManifest(manifest.id());
 
@@ -99,7 +108,7 @@ class TmdbCatalogCleanupJdbcRepositoryTest {
 		List.of(
 			"tmdb_s3_delete_queue", "tmdb_content_prune_collection", "tmdb_content_prune_candidate",
 			"tmdb_content_prune_manifest", "tmdb_catalog_entry", "collection_content_images", "content_bookmark", "ott_content",
-			"content_keywords", "content_genre", "collection_content", "collection", "content"
+			"content_keywords", "content_genre", "collection_content", "collection", "content", "tmdb_sync_lock"
 		).forEach(table -> jdbcTemplate.execute("DROP TABLE IF EXISTS " + table));
 
 		jdbcTemplate.execute("""
@@ -107,9 +116,15 @@ class TmdbCatalogCleanupJdbcRepositoryTest {
 				id BIGINT PRIMARY KEY, tmdb_id BIGINT NOT NULL, media_type VARCHAR(16) NOT NULL,
 				title VARCHAR(255), title_ko VARCHAR(255), title_en VARCHAR(255),
 				normalized_title_ko VARCHAR(255), normalized_title_en VARCHAR(255), search_title TEXT,
-				updated_at DATETIME(6)
+				`year` INT DEFAULT 2020, updated_at DATETIME(6),
+                title_dedup_key VARBINARY(1020) AS (CAST(LOWER(TRIM(title)) AS BINARY)) STORED,
+                KEY idx_content_title_dedup (media_type, `year`, title_dedup_key)
 			)
 			""");
+        jdbcTemplate.execute("""
+            CREATE TABLE tmdb_sync_lock (lock_name VARCHAR(64) PRIMARY KEY)
+            """);
+        jdbcTemplate.update("INSERT INTO tmdb_sync_lock VALUES ('TMDB_CONTENT_WRITE')");
 		jdbcTemplate.execute("""
 			CREATE TABLE tmdb_catalog_entry (
 				id BIGINT PRIMARY KEY, tmdb_id BIGINT NOT NULL, media_type VARCHAR(16) NOT NULL,

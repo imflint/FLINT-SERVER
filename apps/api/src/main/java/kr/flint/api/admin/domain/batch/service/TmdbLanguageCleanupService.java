@@ -14,6 +14,7 @@ import kr.flint.api.domain.home.service.CollectionKeywordSyncService;
 import kr.flint.api.domain.home.service.RecommendationCacheService;
 import kr.flint.batch.repository.TmdbCatalogCleanupJdbcRepository;
 import kr.flint.batch.sync.TmdbPruneManifest;
+import kr.flint.batch.service.TmdbContentSyncService;
 import kr.flint.shared.exception.ErrorCode;
 import kr.flint.shared.exception.GeneralException;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class TmdbLanguageCleanupService {
     private final TmdbCatalogCleanupJdbcRepository cleanupRepository;
     private final CollectionKeywordSyncService collectionKeywordSyncService;
     private final RecommendationCacheService recommendationCacheService;
+    private final TmdbContentSyncService contentSyncService;
 
     public LanguageCleanupManifestRes preview() {
         long unclassifiedCount = cleanupRepository.countUnclassifiedContents();
@@ -57,10 +59,18 @@ public class TmdbLanguageCleanupService {
             throw new GeneralException(ErrorCode.CONFLICT, "preview manifest 상태 또는 후보 해시가 일치하지 않습니다.");
         }
 
+        contentSyncService.ensureSchemaReady();
         while (cleanupRepository.deleteNextChunk(manifest.id(), DELETE_CHUNK_SIZE) > 0) {
             // 각 호출은 독립 트랜잭션으로 커밋되어 중단 후에도 이어서 실행할 수 있다.
         }
-        cleanupRepository.promoteLocalizedTitlesForEligibleContents();
+        long lastId = 0;
+        while (true) {
+            var progress = contentSyncService.promoteTitleChunk(lastId, 50);
+            if (progress.processedCount() == 0) {
+                break;
+            }
+            lastId = progress.lastId();
+        }
         cleanupRepository.finalizeAffectedCollections(manifest.id());
 
         for (Long collectionId : cleanupRepository.findActiveAffectedCollectionIds(manifest.id())) {

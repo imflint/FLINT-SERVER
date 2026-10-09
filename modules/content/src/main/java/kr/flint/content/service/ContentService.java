@@ -1,7 +1,5 @@
 package kr.flint.content.service;
 
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -15,6 +13,9 @@ import org.springframework.util.CollectionUtils;
 import kr.flint.content.domain.Content;
 import kr.flint.content.domain.ContentGenre;
 import kr.flint.content.domain.Genre;
+import kr.flint.content.domain.GenreCode;
+import kr.flint.shared.exception.ErrorCode;
+import kr.flint.shared.exception.GeneralException;
 import kr.flint.content.domain.MediaType;
 import kr.flint.content.dto.ContentUpdateCommand;
 import kr.flint.content.dto.ContentUpsertCommand;
@@ -68,8 +69,9 @@ public class ContentService {
 
     @Transactional
     public Content tmdbToDb(final Content content, List<Genre> genreList) {
+        List<Genre> savedGenreList = resolveGenres(genreList == null ? List.of()
+            : genreList.stream().map(Genre::getName).toList());
         Content savedContent = contentRepository.save(content);
-        List<Genre> savedGenreList = genreList != null ? genreRepository.saveAll(genreList) : List.of();
         List<ContentGenre> contentGenreList = savedGenreList.stream()
             .map(genre -> ContentGenre.create(savedContent, genre))
             .toList();
@@ -82,6 +84,10 @@ public class ContentService {
     // 배치 적재용: 이미 존재하면 메타데이터 갱신, 없으면 신규 생성. 장르는 정규화 후 ContentGenre 동기화.
     @Transactional
     public Content upsertWithGenres(final ContentUpsertCommand command) {
+        if (!CollectionUtils.isEmpty(command.tmdbGenreIds())) {
+            throw new GeneralException(ErrorCode.CONFLICT, "TMDB 장르 ID 적재는 공통 동기화 경로를 사용해야 합니다.");
+        }
+        List<Genre> genres = resolveGenres(command.genreNames());
         Content content = contentRepository.findByTmdbIdAndMediaType(command.tmdbId(), command.mediaType())
             .map(existing -> {
                 existing.updateLocalizedMetadata(
@@ -105,12 +111,13 @@ public class ContentService {
                 command.poster()
             )));
 
-        syncGenres(content, command.genreNames());
+        replaceGenres(content, genres);
         return content;
     }
 
     @Transactional
     public Content updateByAdmin(final Long contentId, final ContentUpdateCommand command) {
+        List<Genre> genres = command.genreNames() == null ? null : resolveGenres(command.genreNames());
         Content content = getContentById(contentId);
         content.updateMetadata(
             valueOrCurrent(command.title(), content.getTitle()),
@@ -120,47 +127,29 @@ public class ContentService {
             valueOrCurrent(command.poster(), content.getPoster())
         );
         if (command.genreNames() != null) {
-            replaceGenres(content, command.genreNames());
+            replaceGenres(content, genres);
         }
         return content;
     }
 
-    private void syncGenres(Content content, List<String> genreNames) {
-        if (CollectionUtils.isEmpty(genreNames)) {
-            return;
+    private List<Genre> resolveGenres(List<String> names) {
+        if (CollectionUtils.isEmpty(names)) return List.of();
+        Set<GenreCode> codes = names.stream().map(GenreCode::resolve).collect(Collectors.toSet());
+        List<Genre> genres = genreRepository.findAllByCodeIn(codes);
+        if (genres.size() != codes.size()) {
+            throw new GeneralException(ErrorCode.CONFLICT, "표준 장르 이관이 완료되지 않았습니다.");
         }
-
-        Map<String, Genre> resolved = new HashMap<>();
-        for (String name : new HashSet<>(genreNames)) {
-            Genre genre = genreRepository.findByName(name)
-                .orElseGet(() -> genreRepository.save(Genre.create(name)));
-            resolved.put(name, genre);
-        }
-
-        Set<Long> alreadyLinked = contentGenreRepository.findAllByContentIdsWithGenre(List.of(content.getId())).stream()
-            .map(cg -> cg.getGenre().getId())
-            .collect(Collectors.toSet());
-
-        List<ContentGenre> toAdd = resolved.values().stream()
-            .filter(g -> !alreadyLinked.contains(g.getId()))
-            .map(g -> ContentGenre.create(content, g))
-            .toList();
-        if (!toAdd.isEmpty()) {
-            contentGenreRepository.saveAll(toAdd);
-        }
+        return genres;
     }
 
-    private void replaceGenres(Content content, List<String> genreNames) {
+    private void replaceGenres(Content content, List<Genre> genres) {
         contentGenreRepository.deleteAllByContent(content);
         contentGenreRepository.flush();
-        if (CollectionUtils.isEmpty(genreNames)) {
+        if (CollectionUtils.isEmpty(genres)) {
             return;
         }
 
-        List<ContentGenre> contentGenres = genreNames.stream()
-            .distinct()
-            .map(name -> genreRepository.findByName(name)
-                .orElseGet(() -> genreRepository.save(Genre.create(name))))
+        List<ContentGenre> contentGenres = genres.stream()
             .map(genre -> ContentGenre.create(content, genre))
             .toList();
         contentGenreRepository.saveAll(contentGenres);
@@ -172,11 +161,11 @@ public class ContentService {
 
     public boolean checkGenre(final String genre) {
         log.debug("장르 존재 여부 확인. genre={}", genre);
-        return genreRepository.existsByName(genre);
+        return GenreCode.find(genre).flatMap(genreRepository::findByCode).isPresent();
     }
 
     public Genre getGenre(final String genreName) {
-        return genreRepository.findByName(genreName)
+        return GenreCode.find(genreName).flatMap(genreRepository::findByCode)
             .orElseThrow(() -> new ContentException(ContentErrorCode.GENRE_NOT_FOUND));
     }
 

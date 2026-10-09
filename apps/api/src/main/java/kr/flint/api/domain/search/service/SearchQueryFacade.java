@@ -16,8 +16,9 @@ import kr.flint.api.domain.search.repository.SearchQueryRepository;
 import kr.flint.shared.dto.PaginationResponse;
 import kr.flint.shared.dto.SliceCursor;
 import kr.flint.api.domain.search.dto.response.GetContentSearchRes;
-import kr.flint.content.domain.Content;
 import kr.flint.content.service.ContentService;
+import kr.flint.api.common.query.ContentSearchKeyword;
+import kr.flint.api.domain.content.repository.ContentSearchNativeRepository;
 import kr.flint.infra.storage.cloudfront.CloudFrontUrlProvider;
 import lombok.RequiredArgsConstructor;
 
@@ -25,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SearchQueryFacade {
 	private final ContentService contentService;
+	private final ContentSearchNativeRepository contentSearchNativeRepository;
 	private final SearchQueryRepository searchQueryRepository;
 	private final HomeCollectionRepository homeCollectionRepository;
 	private final CloudFrontUrlProvider cloudFrontUrlProvider;
@@ -32,10 +34,12 @@ public class SearchQueryFacade {
 	private static final int POPULAR_CONTENT_LIMIT = 30;
 
 	public List<GetContentSearchRes> searchContent(final String keyword) {
-		List<Content> contentList = StringUtils.hasText(keyword)
-			? contentService.getContentByTitle(keyword)
-			: contentService.getPopularContents(POPULAR_CONTENT_LIMIT);
-		return contentList.stream()
+		ContentSearchKeyword prepared = ContentSearchKeyword.ofNullable(keyword);
+		if (prepared != null) {
+			return contentSearchNativeRepository.searchAllKeywords(prepared.raw()).stream()
+				.map(row -> row.toSearchRow().toResponse()).toList();
+		}
+		return contentService.getPopularContents(POPULAR_CONTENT_LIMIT).stream()
 			.map(GetContentSearchRes::from)
 			.toList();
 	}

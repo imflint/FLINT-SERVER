@@ -1,10 +1,13 @@
 package kr.flint.api.domain.content.controller;
 
+import java.beans.PropertyEditorSupport;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -31,6 +34,18 @@ import lombok.RequiredArgsConstructor;
 @Validated
 public class ContentController implements ContentControllerDocs {
 	private final ContentQueryFacade contentQueryFacade;
+
+	@InitBinder("genre")
+	public void initGenreBinder(WebDataBinder binder) {
+		binder.registerCustomEditor(SearchGenre.class, new PropertyEditorSupport() {
+			@Override
+			public void setAsText(String text) {
+				// 기존 반복 파라미터와 쉼표 입력은 첫 장르만 적용합니다.
+				String firstGenre = text.split(",", 2)[0].trim();
+				setValue(firstGenre.isEmpty() ? null : SearchGenre.valueOf(firstGenre));
+			}
+		});
+	}
 
 	@Override
 	@GetMapping("/ott/{contentId}")
@@ -67,13 +82,13 @@ public class ContentController implements ContentControllerDocs {
 	@GetMapping("/search")
 	public ResponseEntity<SuccessResponse<PaginationResponse<GetContentSearchRes>>> searchContent(
 		@RequestParam(required = false, name = "keyword") String keyword,
-		@RequestParam(required = false, name = "genre") List<SearchGenre> genres,
+		@RequestParam(required = false, name = "genre") SearchGenre genre,
 		@RequestParam(required = false, name = "mediaType") MediaType mediaType,
 		@RequestParam(required = false, name = "cursor") String cursor,
 		@RequestParam(required = false, defaultValue = "20") int size
 	){
 		PaginationResponse<GetContentSearchRes> searchRes =
-			contentQueryFacade.getContentSearchList(keyword, genres, mediaType, cursor, size);
+			contentQueryFacade.getContentSearchList(keyword, genre, mediaType, cursor, size);
 		return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_FETCH, searchRes));
 
 	}

@@ -1,46 +1,44 @@
 package kr.flint.api.domain.content.dto;
 
-import java.util.List;
-
 import org.springframework.util.StringUtils;
+import kr.flint.api.common.query.ContentSearchKeyword;
+import kr.flint.content.domain.GenreCode;
 
 import kr.flint.content.domain.MediaType;
 
 public record ContentSearchCondition(
 	String keyword,
-	List<String> genreNames,
+	String genreName,
 	MediaType mediaType,
 	ContentSearchCursor cursor,
 	int size
 ) {
 	public ContentSearchCondition {
-		genreNames = genreNames == null ? List.of() : genreNames.stream()
-			.filter(StringUtils::hasText)
-			.map(String::trim)
-			.distinct()
-			.toList();
+		ContentSearchKeyword prepared = ContentSearchKeyword.ofNullable(keyword);
+		keyword = prepared == null ? null : prepared.raw();
+		genreName = StringUtils.hasText(genreName) ? genreName.trim() : null;
 	}
 
 	public static ContentSearchCondition of(
 		String keyword,
-		List<String> genreNames,
+		String genreName,
 		MediaType mediaType,
 		ContentSearchCursor cursor,
 		int size
 	) {
-		return new ContentSearchCondition(keyword, genreNames, mediaType, cursor, size);
+		return new ContentSearchCondition(keyword, genreName, mediaType, cursor, size);
 	}
 
 	public boolean hasKeyword() {
 		return StringUtils.hasText(keyword);
 	}
 
-	public boolean hasGenres() {
-		return !genreNames.isEmpty();
+	public boolean hasGenre() {
+		return genreName != null;
 	}
 
-	public boolean usesFullTextSearch() {
-		return hasKeyword() && keyword.trim().length() > 1;
+	public GenreCode genreCode() {
+		return GenreCode.find(genreName).orElse(null);
 	}
 
 	public int queryLimit() {

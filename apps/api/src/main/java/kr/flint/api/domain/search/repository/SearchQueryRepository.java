@@ -1,30 +1,39 @@
 package kr.flint.api.domain.search.repository;
 
+import static kr.flint.api.common.query.CollectionQueryConditions.*;
 import static kr.flint.bookmark.domain.QCollectionBookmark.*;
 import static kr.flint.bookmark.domain.QContentBookmark.*;
 import static kr.flint.collection.domain.QCollection.*;
 import static kr.flint.content.domain.QContent.*;
 import static kr.flint.user.domain.QUser.*;
-import static kr.flint.api.common.query.CollectionQueryConditions.*;
+import static kr.flint.shared.util.QueryDslUtil.onCondition;
 
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
 
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Projections;
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.StringPath;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
+import kr.flint.api.common.query.ContentSearchKeyword;
 import kr.flint.api.domain.search.dto.response.BookmarkedCollectionSearchRes;
 import kr.flint.api.domain.search.dto.response.BookmarkedContentSearchRes;
-import lombok.RequiredArgsConstructor;
 
 @Repository
-@RequiredArgsConstructor
 public class SearchQueryRepository {
 
     private final JPAQueryFactory jpaQueryFactory;
+    private final boolean localizedSearchEnabled;
+
+    public SearchQueryRepository(JPAQueryFactory jpaQueryFactory,
+        @Value("${flint.content.localized-search-enabled:false}") boolean localizedSearchEnabled) {
+        this.jpaQueryFactory = jpaQueryFactory;
+        this.localizedSearchEnabled = localizedSearchEnabled;
+    }
 
     /**
      * 북마크한 컬렉션에서 제목으로 검색
@@ -71,6 +80,7 @@ public class SearchQueryRepository {
         final Long cursor,
         final int size
     ) {
+        ContentSearchKeyword prepared = ContentSearchKeyword.ofNullable(keyword);
         return jpaQueryFactory
             .select(Projections.constructor(
                 BookmarkedContentSearchRes.class,
@@ -85,8 +95,13 @@ public class SearchQueryRepository {
             .join(content).on(content.id.eq(contentBookmark.contentId))
             .where(
                 contentBookmark.userId.eq(userId),
-                containsKeyword(keyword, content.title),
-                cursor != null ? contentBookmark.id.lt(cursor) : null
+                onCondition(prepared, value -> localizedSearchEnabled
+                    ? content.normalizedTitleKo.eq(value.normalized())
+                        .or(content.normalizedTitleEn.eq(value.normalized()))
+                        .or(Expressions.booleanTemplate("function('match_against_boolean', {0}, {1})",
+                            content.searchTitle, value.booleanQuery(true)).isTrue())
+                    : content.title.containsIgnoreCase(value.raw())),
+                onCondition(cursor, contentBookmark.id::lt)
             )
             .orderBy(contentBookmark.id.desc())
             .limit(size + 1L)

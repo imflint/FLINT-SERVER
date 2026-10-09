@@ -139,7 +139,8 @@ public class HomeCollectionRepositoryCustomImpl implements HomeCollectionReposit
             .where(
                 isVisiblePublicCollection(),
                 hasValidDescription(),
-                hasContentWithValidReason()
+                hasContentWithValidReason(),
+                collection.bookmarkCount.gt(0)
             )
             .groupBy(collection.id)
             .orderBy(

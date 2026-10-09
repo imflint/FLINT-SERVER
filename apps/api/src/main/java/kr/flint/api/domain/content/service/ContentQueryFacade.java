@@ -2,12 +2,10 @@ package kr.flint.api.domain.content.service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
 import kr.flint.api.domain.content.dto.ContentSearchCondition;
 import kr.flint.api.domain.content.dto.ContentSearchCursor;
@@ -87,24 +85,26 @@ public class ContentQueryFacade {
 
 	public PaginationResponse<GetContentSearchRes> getContentSearchList(
 		final String keyword,
-		final List<SearchGenre> genres,
+		final SearchGenre genre,
 		final MediaType mediaType,
 		final String cursor,
 		final int size
 	) {
-		String normalizedKeyword = normalizeKeyword(keyword);
-		List<String> genreNames = toGenreNames(genres);
+		String genreName = genre == null ? null : genre.genreName();
 		ContentSearchCursor decodedCursor = ContentSearchCursor.decodeNullable(cursor);
-		if (decodedCursor != null) {
-			decodedCursor.validateSortMode(StringUtils.hasText(normalizedKeyword));
-		}
 		ContentSearchCondition condition = ContentSearchCondition.of(
-			normalizedKeyword,
-			genreNames,
+			keyword,
+			genreName,
 			mediaType,
 			decodedCursor,
 			size
 		);
+		if (decodedCursor != null) {
+			decodedCursor.validateSortMode(condition.hasKeyword());
+			if (condition.hasKeyword()) {
+				decodedCursor.validateKeywordVersion(contentQueryRepository.localizedSearchEnabled());
+			}
+		}
 		List<ContentSearchRow> page =
 			contentQueryRepository.searchContents(condition);
 		boolean hasNext = page.size() > size;
@@ -112,34 +112,16 @@ public class ContentQueryFacade {
 		List<GetContentSearchRes> data = rows.stream()
 			.map(ContentSearchRow::toResponse)
 			.toList();
-		String nextCursor = hasNext ? createNextCursor(rows, StringUtils.hasText(normalizedKeyword)) : null;
+		String nextCursor = hasNext ? createNextCursor(rows, condition.hasKeyword()) : null;
 		return PaginationResponse.ofCursor(data, nextCursor);
 	}
 
 	private String createNextCursor(List<ContentSearchRow> rows, boolean keywordSearch) {
 		ContentSearchRow last = rows.get(rows.size() - 1);
 		return keywordSearch
-			? ContentSearchCursor.keyword(last.exactMatchRank(), last.relevanceScore(), last.id()).encode()
+			? ContentSearchCursor.keyword(last.exactMatchRank(), last.relevanceScore(), last.id(),
+				contentQueryRepository.localizedSearchEnabled()).encode()
 			: ContentSearchCursor.popular(last.bookmarkCount(), last.id()).encode();
-	}
-
-	private String normalizeKeyword(String keyword) {
-		if (!StringUtils.hasText(keyword)) {
-			return null;
-		}
-		return keyword.trim();
-	}
-
-	private List<String> toGenreNames(List<SearchGenre> genres) {
-		if (genres == null || genres.isEmpty()) {
-			return List.of();
-		}
-
-		return genres.stream()
-			.filter(Objects::nonNull)
-			.map(SearchGenre::genreName)
-			.distinct()
-			.toList();
 	}
 
 }

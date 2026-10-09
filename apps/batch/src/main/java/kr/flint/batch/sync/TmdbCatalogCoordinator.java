@@ -19,6 +19,7 @@ import org.springframework.batch.core.repository.JobInstanceAlreadyCompleteExcep
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
@@ -32,6 +33,7 @@ import kr.flint.batch.job.ott.TmdbOttSyncJobConfig;
 import kr.flint.batch.job.refresh.TmdbCatalogRefreshJobConfig;
 import kr.flint.batch.job.tv.TmdbTvImportJobConfig;
 import kr.flint.batch.repository.TmdbSyncRunJdbcRepository;
+import kr.flint.batch.repository.TmdbContentAdmissionJdbcRepository;
 import kr.flint.batch.repository.TmdbSyncRunJdbcRepository.PreparedRun;
 import kr.flint.batch.service.TmdbOttProviderMasterService;
 import kr.flint.batch.service.TmdbChangeWindowService;
@@ -58,8 +60,11 @@ public class TmdbCatalogCoordinator {
 	private final Job catalogRefreshJob;
 	private final TmdbOttProviderMasterService providerMasterService;
 	private final TmdbChangeWindowService changeWindowService;
+    private final TmdbContentAdmissionJdbcRepository admissionRepository;
     private final String ownerId = UUID.randomUUID().toString();
     private final AtomicBoolean shuttingDown = new AtomicBoolean(false);
+    @Value("${flint.content.search-document-backfill-enabled:false}")
+    private boolean searchBackfillEnabled;
 
     public TmdbCatalogCoordinator(
         TmdbSyncRunJdbcRepository runRepository,
@@ -73,7 +78,8 @@ public class TmdbCatalogCoordinator {
 		@Qualifier(TmdbDailyDeltaJobConfig.JOB_NAME) Job dailyDeltaJob,
 		@Qualifier(TmdbCatalogRefreshJobConfig.JOB_NAME) Job catalogRefreshJob,
 		TmdbOttProviderMasterService providerMasterService,
-		TmdbChangeWindowService changeWindowService
+		TmdbChangeWindowService changeWindowService,
+		TmdbContentAdmissionJdbcRepository admissionRepository
     ) {
         this.runRepository = runRepository;
         this.asyncJobLauncher = asyncJobLauncher;
@@ -87,6 +93,7 @@ public class TmdbCatalogCoordinator {
 		this.catalogRefreshJob = catalogRefreshJob;
 		this.providerMasterService = providerMasterService;
 		this.changeWindowService = changeWindowService;
+		this.admissionRepository = admissionRepository;
     }
 
     public TmdbSyncRun startDaily(LocalDate businessDate) {
@@ -120,14 +127,15 @@ public class TmdbCatalogCoordinator {
 
     @Scheduled(fixedDelay = 30_000)
 	public void heartbeat() {
-		if (!shuttingDown.get() && runRepository.schemaReady()) {
+		if (!searchBackfillEnabled && !shuttingDown.get() && runRepository.schemaReady()) {
             runRepository.heartbeat(ownerId, LEASE_DURATION);
         }
     }
 
     @EventListener(ApplicationReadyEvent.class)
 	public void resumeInterruptedRuns() {
-		if (!runRepository.schemaReady()) {
+		if (searchBackfillEnabled) return;
+		if (!runRepository.schemaReady() || !admissionRepository.schemaReady()) {
 			log.info("TMDB coordinator resume is disabled until manual DDL is applied");
 			return;
 		}
@@ -143,7 +151,7 @@ public class TmdbCatalogCoordinator {
     @EventListener(ContextClosedEvent.class)
 	public void stopRunningJobs() {
 		shuttingDown.set(true);
-		if (!runRepository.schemaReady()) {
+		if (searchBackfillEnabled || !runRepository.schemaReady()) {
 			return;
 		}
         runRepository.markStoppingByOwner(ownerId);
@@ -161,6 +169,9 @@ public class TmdbCatalogCoordinator {
         TmdbSyncRunType runType,
         LocalDate businessDate
 	) {
+		if (searchBackfillEnabled) {
+			throw new GeneralException(ErrorCode.CONFLICT, "검색 문서 백필 중에는 TMDB 동기화를 실행할 수 없습니다.");
+		}
 		ensureSchemaReady();
 		PreparedRun prepared = runRepository.prepare(runKey, runType, businessDate, ownerId, LEASE_DURATION);
         if (prepared.launch()) {
@@ -274,8 +285,8 @@ public class TmdbCatalogCoordinator {
 	}
 
 	private void ensureSchemaReady() {
-		if (!runRepository.schemaReady()) {
-			throw new GeneralException(ErrorCode.CONFLICT, "TMDB coordinator DDL이 적용되지 않았습니다.");
+		if (!runRepository.schemaReady() || !admissionRepository.schemaReady()) {
+			throw new GeneralException(ErrorCode.CONFLICT, "TMDB coordinator/admission DDL이 적용되지 않았습니다.");
 		}
 	}
 

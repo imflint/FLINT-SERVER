@@ -19,6 +19,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import kr.flint.content.domain.Content;
 import kr.flint.content.domain.Genre;
+import kr.flint.content.domain.GenreCode;
 import kr.flint.content.domain.MediaType;
 import kr.flint.content.dto.ContentUpdateCommand;
 import kr.flint.content.exception.ContentErrorCode;
@@ -49,7 +50,8 @@ class ContentServiceTest {
         ReflectionTestUtils.setField(content, "id", 1L);
         content.increaseBookmarkCount();
         when(contentRepository.findById(1L)).thenReturn(Optional.of(content));
-        when(genreRepository.findByName("SF")).thenReturn(Optional.of(Genre.create("SF")));
+        when(genreRepository.findAllByCodeIn(java.util.Set.of(GenreCode.SCIENCE_FICTION)))
+            .thenReturn(List.of(Genre.create("SF")));
 
         Content result = contentService.updateByAdmin(1L, ContentUpdateCommand.of(
             "새 제목",
@@ -81,5 +83,28 @@ class ContentServiceTest {
             .isInstanceOf(ContentException.class)
             .extracting("errorCode")
             .isEqualTo(ContentErrorCode.CONTENT_NOT_FOUND);
+    }
+
+    @Test
+    void adminGenreAliasesResolveOnceWithoutCreatingNewMasters() {
+        Content content = Content.create(100L, MediaType.MOVIE,"title",2020,null,null,"poster");
+        ReflectionTestUtils.setField(content,"id",1L);
+        when(contentRepository.findById(1L)).thenReturn(Optional.of(content));
+        Genre action=Genre.create("액션");
+        when(genreRepository.findAllByCodeIn(java.util.Set.of(GenreCode.ACTION))).thenReturn(List.of(action));
+        contentService.updateByAdmin(1L,ContentUpdateCommand.of(null,null,null,null,null,
+            List.of("Action & Adventure","ACTION","액션")));
+        var captor=org.mockito.ArgumentCaptor.forClass(Iterable.class);
+        verify(contentGenreRepository).saveAll(captor.capture());
+        assertThat(captor.getValue()).hasSize(1);
+        org.mockito.Mockito.verify(genreRepository,org.mockito.Mockito.never()).save(any());
+    }
+
+    @Test
+    void unknownGenreRejectsBeforeChangingMetadata() {
+        assertThatThrownBy(() -> contentService.updateByAdmin(1L,ContentUpdateCommand.of(
+            "changed",null,null,null,null,List.of("unregistered"))))
+            .isInstanceOf(kr.flint.shared.exception.GeneralException.class);
+        org.mockito.Mockito.verifyNoInteractions(contentRepository,contentGenreRepository,genreRepository);
     }
 }

@@ -55,7 +55,7 @@ public class SearchController implements SearchControllerDocs {
 	@GetMapping("/bookmarked-contents")
 	public ResponseEntity<SuccessResponse<PaginationResponse<BookmarkedContentSearchRes>>> searchBookmarkedContents(
 		@CurrentUser Long userId,
-		@RequestParam("keyword") String keyword,
+		@RequestParam(value = "keyword", required = false) String keyword,
 		@RequestParam(value = "cursor", required = false) Long cursor,
 		@RequestParam(value = "size", defaultValue = "20") int size
 	) {

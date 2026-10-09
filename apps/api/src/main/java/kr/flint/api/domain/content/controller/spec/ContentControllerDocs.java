@@ -1,7 +1,5 @@
 package kr.flint.api.domain.content.controller.spec;
 
-import java.util.List;
-
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -81,27 +79,30 @@ public interface ContentControllerDocs {
 	@Operation(
 		summary = "콘텐츠 검색 - 재민",
 		description = """
-			- 로컬 DB에 저장된 콘텐츠를 인기순(북마크 많은 순)으로 페이지네이션해 반환합니다.
-			- `keyword`는 콘텐츠 제목에 대해 검색합니다. 2자 이상 검색어는 FULLTEXT 인덱스를 사용하고, 1자 검색어는 기존 호환을 위해 부분 검색합니다.
-			- `genre`는 `?genre=ACTION&genre=ROMANCE`처럼 반복 파라미터로 여러 개 지정할 수 있으며, 요청한 모든 장르를 가진 콘텐츠만 반환합니다.
+			- 로컬 DB에 저장된 콘텐츠를 커서 페이지네이션으로 반환합니다.
+			- `keyword`는 NFKC·소문자·공백 및 특수문자 제거 후 유니코드 코드포인트 2자 이상이어야 합니다. 미입력 또는 공백만 입력하면 검색어 필터를 적용하지 않습니다.
+			- 검색어가 있으면 완전 일치, FULLTEXT 관련도, 콘텐츠 ID 내림차순으로 정렬합니다. 검색어가 없으면 인기순(북마크 수, 콘텐츠 ID 내림차순)으로 정렬합니다.
+			- `genre`는 `?genre=ACTION`처럼 단일 장르를 지정합니다. 기존 반복 파라미터나 쉼표 입력은 첫 값만 적용하며 이후 값은 검증하지 않습니다.
+			- `genre` 미입력 또는 첫 값이 비어 있으면 장르 필터를 적용하지 않습니다. 첫 값이 유효하지 않으면 400을 반환합니다.
 			- `mediaType` 미입력 시 MOVIE/TV 전체를 대상으로 검색합니다.
 			- 조건이 없으면 로컬 DB 콘텐츠를 인기순으로 반환합니다.
 			- `cursor`는 이전 응답의 `meta.nextCursor`를 그대로 전달하는 cursor token입니다.
+			- localized 검색 전환 시 keyword 커서는 v2로 변경되며 이전 keyword 커서는 400을 반환합니다. 인기순 커서는 v1을 유지합니다.
 			"""
 	)
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "검색 성공", useReturnTypeSchema = true),
 		@ApiResponse(
 			responseCode = "400",
-			description = "cursor 또는 size가 허용 범위를 벗어난 경우",
+			description = "keyword가 2자 미만이거나 genre 또는 cursor가 유효하지 않거나 size가 허용 범위를 벗어난 경우",
 			content = @Content(schema = @Schema(implementation = ProblemDetail.class))
 		)
 	})
 	ResponseEntity<?> searchContent(
-		@Parameter(description = "검색 키워드", example = "눈물의 여왕")
+		@Parameter(description = "검색 키워드. NFKC·소문자·문자와 숫자 외 제거 후 2자 이상. 미입력 또는 공백만 입력하면 필터 없음", example = "눈물의 여왕")
 		String keyword,
-		@Parameter(description = "장르 필터. 반복 파라미터로 여러 개 지정 가능하며 AND 조건으로 검색합니다.", example = "ACTION")
-		List<SearchGenre> genres,
+		@Parameter(description = "단일 장르 필터. 복수 입력은 첫 값만 적용하며 검색어·미디어 타입과 AND 조건으로 검색합니다.", example = "ACTION")
+		SearchGenre genre,
 		@Parameter(description = "미디어 타입 필터. 미입력 시 전체 타입을 검색합니다.", example = "MOVIE")
 		MediaType mediaType,
 		@Parameter(description = "이전 응답의 nextCursor token. 첫 페이지는 미입력", example = "MzoxMjM0NTY3ODkw")

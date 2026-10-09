@@ -59,3 +59,7 @@ override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
+
+docs/*
+!docs/content-search-performance.md
+!docs/content-search-genre-normalization.sql
