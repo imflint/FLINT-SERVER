@@ -25,7 +25,19 @@ public record ContentSearchKeyword(String raw, String normalized) {
     }
 
     public String booleanQuery(boolean localized) {
-        return localized ? "\"" + normalized + "\"" : legacyQuery();
+        if (!localized) {
+            return legacyQuery();
+        }
+        int[] points = normalized.codePoints().toArray();
+        StringBuilder query = new StringBuilder();
+        // Repeated bigrams retain their contribution to the original relevance score.
+        for (int i = 0; i < points.length - 1; i++) {
+            if (!query.isEmpty()) {
+                query.append(' ');
+            }
+            query.append('+').appendCodePoint(points[i]).appendCodePoint(points[i + 1]);
+        }
+        return query.toString();
     }
 
     public String scoreQuery(boolean localized) {

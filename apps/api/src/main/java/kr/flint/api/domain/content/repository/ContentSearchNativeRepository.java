@@ -86,7 +86,9 @@ public class ContentSearchNativeRepository {
         ContentSearchKeyword keyword = ContentSearchKeyword.ofNullable(condition.keyword());
         query.setParameter("normalizedKeyword", keyword.exactKey(localizedSearchEnabled));
         query.setParameter("fullTextKeyword", keyword.booleanQuery(localizedSearchEnabled));
-        query.setParameter("scoreKeyword", keyword.scoreQuery(localizedSearchEnabled));
+        if (!localizedSearchEnabled) {
+            query.setParameter("scoreKeyword", keyword.scoreQuery(false));
+        }
     }
 
     // Preserve index order through the join so LIMIT stops after matching size + 1 rows.
@@ -103,7 +105,7 @@ public class ContentSearchNativeRepository {
         return sql.append(" ORDER BY c.bookmark_count DESC, c.id DESC LIMIT :queryLimit").toString();
     }
 
-    // UNION deduplicates IDs before filtering/ranking; no branch truncates candidate rows.
+    // UNION and ID aggregation preserve exact hits and scores without truncating candidates.
     private String keywordSql(ContentSearchCondition condition, Long genreId) {
         return keywordSql(condition, genreId, true);
     }
@@ -114,26 +116,37 @@ public class ContentSearchNativeRepository {
             ? "c.normalized_title_ko=:normalizedKeyword OR c.normalized_title_en=:normalizedKeyword"
             : "LOWER(c.title)=:normalizedKeyword";
         String candidates = localizedSearchEnabled ? """
-            SELECT id FROM content FORCE INDEX (idx_content_normalized_title_ko)
+            SELECT id, MAX(relevanceScore) AS relevanceScore FROM (
+            SELECT id, 0.0 AS relevanceScore FROM content FORCE INDEX (idx_content_normalized_title_ko)
             WHERE normalized_title_ko=:normalizedKeyword
-            UNION SELECT id FROM content FORCE INDEX (idx_content_normalized_title_en)
+            UNION SELECT id, 0.0 AS relevanceScore FROM content FORCE INDEX (idx_content_normalized_title_en)
             WHERE normalized_title_en=:normalizedKeyword
+            UNION SELECT id, MATCH(search_title) AGAINST (:fullTextKeyword IN BOOLEAN MODE) AS relevanceScore
+            FROM content WHERE MATCH(search_title) AGAINST (:fullTextKeyword IN BOOLEAN MODE)>0
+            ) hits GROUP BY id
             """ : """
             SELECT id FROM content FORCE INDEX (idx_content_title_lower)
             WHERE LOWER(title)=:normalizedKeyword
             """;
+        if (!localizedSearchEnabled) {
+            candidates += " UNION SELECT id FROM content WHERE MATCH(title) AGAINST (:fullTextKeyword IN BOOLEAN MODE)>0";
+        }
+        String score = localizedSearchEnabled ? "candidates.relevanceScore"
+            : "MATCH(c." + title + ") AGAINST (:scoreKeyword IN NATURAL LANGUAGE MODE)";
         StringBuilder sql = new StringBuilder("SELECT ranked.* FROM (SELECT ").append(CONTENT_COLUMNS)
             .append(", CASE WHEN ").append(exactMatch).append(" THEN 0 ELSE 1 END AS exactMatchRank,")
-            .append(" MATCH(c.").append(title)
-            .append(") AGAINST (:scoreKeyword IN NATURAL LANGUAGE MODE) AS relevanceScore FROM (")
-            .append(candidates).append(" UNION SELECT id FROM content WHERE MATCH(").append(title)
-            .append(") AGAINST (:fullTextKeyword IN BOOLEAN MODE)>0")
+            .append(score).append(" AS relevanceScore FROM (").append(candidates)
             .append(") candidates STRAIGHT_JOIN content c ON c.id=candidates.id");
         if (genreId != null) {
             sql.append(" STRAIGHT_JOIN content_genre cg FORCE INDEX (uk_content_genre)")
                 .append(" ON cg.content_id=c.id AND cg.genre_id=:genreId");
         }
         sql.append(" WHERE 1=1");
+        if (localizedSearchEnabled) {
+            // AND finds all bigrams; substring verification rejects reordered or split-token matches.
+            sql.append(" AND (LOCATE(:normalizedKeyword,c.normalized_title_ko)>0")
+                .append(" OR LOCATE(:normalizedKeyword,c.normalized_title_en)>0)");
+        }
         appendMediaFilter(sql, condition);
         sql.append(") ranked");
         if (condition.cursor() != null) {

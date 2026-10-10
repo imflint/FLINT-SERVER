@@ -533,6 +533,48 @@ class ContentQueryRepositoryTest {
 		return new ContentQueryRepository(new JPAQueryFactory(entityManager),
 			new ContentSearchNativeRepository(entityManager, localized));
 	}
+
+	@ParameterizedTest
+	@ValueSource(strings = {"banana", "harrypotter", "aaaa"})
+	void requiredBigramsPreserveNaturalScoresAndKeywordCursor(String keyword) {
+		for (int i = 0; i < 3; i++) {
+			Content candidate = Content.createLocalized(91001L + i, MediaType.MOVIE, "영문 작품 " + i,
+				keyword.repeat(i + 1) + (i == 0 ? "" : " sequel"), 2020, null, null, "poster");
+			entityManager.persist(candidate);
+		}
+		Content split = Content.createLocalized(91004L, MediaType.MOVIE, "일치하지 않는 작품",
+			"ba an na ha ar rr ry yp po ot tt te er aa", 2020, null, null, "poster");
+		entityManager.persist(split);
+		commitFullTextFixtures();
+		List<ContentSearchRow> all = repository(true).searchContents(condition(keyword, null, null, 10));
+		assertThat(all).hasSize(3).extracting(ContentSearchRow::id).doesNotContain(split.getId());
+		List<?> expected = entityManager.createNativeQuery("""
+			SELECT id, CASE WHEN normalized_title_en=:keyword THEN 0 ELSE 1 END exactRank,
+			MATCH(search_title) AGAINST (:keyword IN NATURAL LANGUAGE MODE) score FROM content
+			WHERE LOCATE(:keyword,normalized_title_en)>0 ORDER BY exactRank,score DESC,id DESC
+			""", Tuple.class).setParameter("keyword", keyword).getResultList();
+		for (int i = 0; i < all.size(); i++) {
+			Tuple original = (Tuple) expected.get(i);
+			assertThat(all.get(i).id()).isEqualTo(((Number) original.get("id")).longValue());
+			assertThat(all.get(i).relevanceScore()).isEqualTo(((Number) original.get("score")).doubleValue());
+		}
+		ContentSearchCursor cursor = null;
+		for (ContentSearchRow expectedRow : all) {
+			List<ContentSearchRow> page = repository(true).searchContents(condition(keyword, null, null, cursor, 1));
+			assertThat(page.getFirst().id()).isEqualTo(expectedRow.id());
+			cursor = ContentSearchCursor.keyword(expectedRow.exactMatchRank(), expectedRow.relevanceScore(), expectedRow.id(), true);
+		}
+		assertThat(repository(true).searchContents(condition(keyword, null, null, cursor, 1))).isEmpty();
+		assertThat(new ContentSearchNativeRepository(entityManager, true).searchAllKeywords(keyword))
+			.extracting(ContentSearchProjection::getId).containsExactlyElementsOf(all.stream().map(ContentSearchRow::id).toList());
+		TestTransaction.start();
+		entityManager.persist(ContentBookmark.create(1L, all.getFirst().id()));
+		entityManager.persist(ContentBookmark.create(1L, split.getId()));
+		entityManager.flush();
+		assertThat(searchQueryRepository.searchBookmarkedContents(1L, keyword, null, 10))
+			.extracting(kr.flint.api.domain.search.dto.response.BookmarkedContentSearchRes::contentId)
+			.containsExactly(all.getFirst().id());
+	}
 	@Test
 	@DisplayName("다국어 검색은 영문 정확 일치를 포함하고 양쪽 제목의 일치 후보를 중복 제거")
 	void localizedKeywordMatchesEnglishAndDeduplicatesBothTitles() {
