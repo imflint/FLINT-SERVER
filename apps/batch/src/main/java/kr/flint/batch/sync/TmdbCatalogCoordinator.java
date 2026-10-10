@@ -65,6 +65,8 @@ public class TmdbCatalogCoordinator {
     private final AtomicBoolean shuttingDown = new AtomicBoolean(false);
     @Value("${flint.content.search-document-backfill-enabled:false}")
     private boolean searchBackfillEnabled;
+    @Value("${flint.batch.execution-enabled:true}")
+    private boolean executionEnabled = true;
 
     public TmdbCatalogCoordinator(
         TmdbSyncRunJdbcRepository runRepository,
@@ -127,14 +129,14 @@ public class TmdbCatalogCoordinator {
 
     @Scheduled(fixedDelay = 30_000)
 	public void heartbeat() {
-		if (!searchBackfillEnabled && !shuttingDown.get() && runRepository.schemaReady()) {
+		if (executionEnabled && !searchBackfillEnabled && !shuttingDown.get() && runRepository.schemaReady()) {
             runRepository.heartbeat(ownerId, LEASE_DURATION);
         }
     }
 
     @EventListener(ApplicationReadyEvent.class)
 	public void resumeInterruptedRuns() {
-		if (searchBackfillEnabled) return;
+		if (!executionEnabled || searchBackfillEnabled) return;
 		if (!runRepository.schemaReady() || !admissionRepository.schemaReady()) {
 			log.info("TMDB coordinator resume is disabled until manual DDL is applied");
 			return;
@@ -169,6 +171,9 @@ public class TmdbCatalogCoordinator {
         TmdbSyncRunType runType,
         LocalDate businessDate
 	) {
+		if (!executionEnabled) {
+			throw new GeneralException(ErrorCode.CONFLICT, "TMDB 배치 실행이 비활성화되어 있습니다.");
+		}
 		if (searchBackfillEnabled) {
 			throw new GeneralException(ErrorCode.CONFLICT, "검색 문서 백필 중에는 TMDB 동기화를 실행할 수 없습니다.");
 		}

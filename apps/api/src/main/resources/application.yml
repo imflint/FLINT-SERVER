@@ -82,6 +82,7 @@ flint:
   content:
     localized-search-enabled: ${FLINT_LOCALIZED_SEARCH_ENABLED:false}
   batch:
+    execution-enabled: true
     scheduling:
       enabled: false
     s3-cleanup:

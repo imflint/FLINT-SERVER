@@ -161,6 +161,39 @@ class TmdbCatalogCoordinatorTest {
             jobOperator, workflowExecutor, providerMasterService);
     }
 
+    @Test
+    void disabledExecutionRejectsStartsAndDoesNotResumeOrHeartbeat() {
+        ReflectionTestUtils.setField(coordinator, "executionEnabled", false);
+        for (Runnable trigger : new Runnable[] {
+            () -> coordinator.startDaily(LocalDate.of(2026, 10, 10)),
+            () -> coordinator.startMonthly(YearMonth.of(2026, 10)),
+            () -> coordinator.startClassification(YearMonth.of(2026, 10))
+        }) {
+            assertThatThrownBy(trigger::run).isInstanceOf(GeneralException.class)
+                .extracting(error -> ((GeneralException) error).getErrorCode())
+                .isEqualTo(kr.flint.shared.exception.ErrorCode.CONFLICT);
+        }
+        coordinator.resumeInterruptedRuns();
+        coordinator.heartbeat();
+        verifyNoInteractions(runRepository, admissionRepository, jobLauncher, jobExplorer,
+            jobOperator, workflowExecutor, providerMasterService);
+    }
+
+    @Test
+    void disabledExecutionStillStopsOwnedJobsOnShutdown() throws Exception {
+        ReflectionTestUtils.setField(coordinator, "executionEnabled", false);
+        when(runRepository.schemaReady()).thenReturn(true);
+        when(jobOperator.getRunningExecutions(TmdbMovieImportJobConfig.JOB_NAME))
+            .thenReturn(Set.of(10L)).thenReturn(Set.of());
+
+        coordinator.stopRunningJobs();
+
+        InOrder order = org.mockito.Mockito.inOrder(runRepository, jobOperator);
+        order.verify(runRepository).markStoppingByOwner(anyString());
+        order.verify(jobOperator).stop(10L);
+        order.verify(runRepository).markStoppedByOwner(anyString());
+    }
+
 	private TmdbSyncRun run(TmdbSyncRunStatus status) {
 		return new TmdbSyncRun(
 			1L,
