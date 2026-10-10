@@ -87,7 +87,7 @@ public interface ContentControllerDocs {
 			- `mediaType` 미입력 시 MOVIE/TV 전체를 대상으로 검색합니다.
 			- 조건이 없으면 로컬 DB 콘텐츠를 인기순으로 반환합니다.
 			- `cursor`는 이전 응답의 `meta.nextCursor`를 그대로 전달하는 cursor token입니다.
-			- localized 검색 전환 시 keyword 커서는 v2로 변경되며 이전 keyword 커서는 400을 반환합니다. 인기순 커서는 v1을 유지합니다.
+			- localized 검색은 keyword v2, 검색 read model은 keyword v3 커서를 사용합니다. 현재 모드와 다른 keyword 커서는 400을 반환하므로 첫 페이지부터 다시 조회해야 합니다. 인기순 커서는 v1을 유지합니다.
 			"""
 	)
 	@ApiResponses({

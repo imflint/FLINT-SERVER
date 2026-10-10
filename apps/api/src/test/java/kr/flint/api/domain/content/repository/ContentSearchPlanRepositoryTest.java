@@ -114,6 +114,9 @@ class ContentSearchPlanRepositoryTest {
                     "Full-text index search on content using ft_content_search_title_ngram");
             } else {
                 assertThat(plan).contains(value.mediaType() == null ? "idx_content_popular" : "idx_content_media_popular");
+                assertThat(plan).containsPattern("(?i)covering index (?:scan|range scan|lookup) on c using idx_content_");
+                String sql = nativeRepository.searchSql(value, genreId);
+                assertThat(sql.indexOf("LIMIT :queryLimit")).isLessThan(sql.indexOf(") page STRAIGHT_JOIN content c"));
             }
             if (genreId != null) {
                 assertThat(plan).contains("Single-row covering index lookup on cg using uk_content_genre");

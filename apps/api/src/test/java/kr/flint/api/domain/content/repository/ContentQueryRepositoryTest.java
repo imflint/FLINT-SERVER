@@ -473,7 +473,7 @@ class ContentQueryRepositoryTest {
 			assertThat(page).hasSize(Math.min(2, all.size() - i));
 			ContentSearchRow first = page.getFirst();
 			pageIds.add(first.id());
-			cursor = ContentSearchCursor.keyword(first.exactMatchRank(), first.relevanceScore(), first.id(), localized);
+			cursor = ContentSearchCursor.keyword(first.exactMatchRank(), first.relevanceScore(), first.id(), localized, true);
 		}
 		assertThat(pageIds).doesNotHaveDuplicates().containsExactlyElementsOf(all.stream().map(ContentSearchRow::id).toList());
 		assertThat(repository.searchContents(condition("해리포터", null, null, cursor, 1))).isEmpty();
@@ -565,7 +565,7 @@ class ContentQueryRepositoryTest {
 		for (ContentSearchRow expectedRow : all) {
 			List<ContentSearchRow> page = repository(true).searchContents(condition(keyword, null, null, cursor, 1));
 			assertThat(page.getFirst().id()).isEqualTo(expectedRow.id());
-			cursor = ContentSearchCursor.keyword(expectedRow.exactMatchRank(), expectedRow.relevanceScore(), expectedRow.id(), true);
+			cursor = ContentSearchCursor.keyword(expectedRow.exactMatchRank(), expectedRow.relevanceScore(), expectedRow.id(), true, true);
 		}
 		assertThat(repository(true).searchContents(condition(keyword, null, null, cursor, 1))).isEmpty();
 		assertThat(new ContentSearchNativeRepository(entityManager, true).searchAllKeywords(keyword))

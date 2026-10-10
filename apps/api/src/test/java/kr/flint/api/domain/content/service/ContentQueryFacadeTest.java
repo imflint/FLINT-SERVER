@@ -245,6 +245,28 @@ class ContentQueryFacadeTest {
 		}
 
 		@Test
+		void readModelReturnsV3CursorAndRejectsEarlierKeywordVersions() {
+			when(contentQueryRepository.localizedSearchEnabled()).thenReturn(true);
+			when(contentQueryRepository.searchReadModelEnabled()).thenReturn(true);
+			var condition = ContentSearchCondition.of("해리", null, null, null, 1);
+			when(contentQueryRepository.searchContents(condition)).thenReturn(List.of(
+				new ContentSearchRow(2L, "해리", null, null, 2026, 0, 0, 2.5),
+				new ContentSearchRow(1L, "해리 포터", null, null, 2026, 0, 1, 1.5)
+			));
+			var result = contentQueryFacade.getContentSearchList("해리", null, null, null, 1);
+			var cursor = ContentSearchCursor.decode(result.meta().nextCursor());
+			assertThat(cursor.version()).isEqualTo(3);
+			assertThat(cursor.contentId()).isEqualTo(2L);
+			cursor.validateKeywordVersion(true, true);
+			for (boolean localized : List.of(false, true)) {
+				String oldCursor = ContentSearchCursor.keyword(0, 2.5, 2L, localized).encode();
+				assertThatThrownBy(() -> contentQueryFacade.getContentSearchList("해리", null, null, oldCursor, 1))
+					.isInstanceOf(GeneralException.class);
+			}
+			verify(contentQueryRepository).searchContents(condition);
+		}
+
+		@Test
 		@DisplayName("한 글자 keyword는 DB 조회 전에 거절한다")
 		void rejectsOneCharacterKeyword() {
 			for (String keyword : List.of("눈", " 눈 ", "\uD83D\uDE00")) {

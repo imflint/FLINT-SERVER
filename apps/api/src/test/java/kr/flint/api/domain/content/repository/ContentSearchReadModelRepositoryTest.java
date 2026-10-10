@@ -1,9 +1,11 @@
 package kr.flint.api.domain.content.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import javax.sql.DataSource;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -22,9 +24,11 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import jakarta.persistence.EntityManager;
 import kr.flint.api.domain.content.dto.ContentSearchCondition;
+import kr.flint.api.domain.content.dto.ContentSearchCursor;
 import kr.flint.content.domain.Content;
 import kr.flint.content.domain.MediaType;
 import kr.flint.shared.config.QueryDslConfig;
+import kr.flint.shared.exception.GeneralException;
 
 @DataJpaTest
 @Testcontainers(disabledWithoutDocker = true)
@@ -127,9 +131,14 @@ class ContentSearchReadModelRepositoryTest {
 
     @Test
     void candidateUsesCoveringFullTextAndPageLimitPrecedesContentHydration() {
+        entityManager.persist(Content.createLocalized(103L, MediaType.MOVIE, null, "It Follows", 2014, null, null, null));
+        commit();
         var repository = new ContentSearchNativeRepository(entityManager, true, true);
-        String sql = repository.searchSql(ContentSearchCondition.of("it", null, null, null, 20), null);
-        assertThat(sql.indexOf("LIMIT :queryLimit")).isLessThan(sql.indexOf("STRAIGHT_JOIN content c"));
+        var condition = ContentSearchCondition.of("it", null, null, null, 20);
+        String sql = repository.searchSql(condition, null);
+        assertThat(sql).doesNotContain("STRAIGHT_JOIN content c");
+        assertThat(sql).endsWith("LIMIT :queryLimit");
+        assertThat(sql.split("LIMIT", -1)).hasSize(2);
         List<?> plan = entityManager.createNativeQuery("""
             EXPLAIN SELECT FTS_DOC_ID,MATCH(search_title) AGAINST('+it' IN BOOLEAN MODE) score
             FROM content_search_document WHERE MATCH(search_title) AGAINST('+it' IN BOOLEAN MODE)>0
@@ -137,6 +146,49 @@ class ContentSearchReadModelRepositoryTest {
         Object[] row = (Object[]) plan.getFirst();
         assertThat(row[4]).isEqualTo("fulltext");
         assertThat(String.valueOf(row[row.length - 1])).contains("Using index");
+        var query = entityManager.createNativeQuery("EXPLAIN " + sql);
+        repository.bindParameters(query, condition, null);
+        List<?> fullPlan = query.getResultList();
+        List<Object[]> documentReads = fullPlan.stream().map(value -> (Object[]) value)
+            .filter(value -> "d".equals(value[2])).toList();
+        assertThat(documentReads).isNotEmpty().allSatisfy(value -> {
+            assertThat(value[6]).isEqualTo("idx_search_document_rank");
+            assertThat(String.valueOf(value[value.length - 1])).contains("Using index");
+        });
+        assertThat(fullPlan.stream().map(value -> (Object[]) value)
+            .filter(value -> "fulltext".equals(value[4])).toList())
+            .isNotEmpty().allSatisfy(value ->
+                assertThat(String.valueOf(value[value.length - 1])).contains("Using index"));
+        assertThat(repository.search(condition, null)).hasSize(1)
+            .first().satisfies(value -> assertThat(value.getTitle()).isEqualTo("It Follows"));
+    }
+
+    @Test
+    void v3CursorTraversesExactAndRelevanceResultsWithoutDuplicates() {
+        for (int i = 0; i < 6; i++) {
+            entityManager.persist(Content.createLocalized(200L + i, MediaType.MOVIE,
+                i == 0 ? "그것" : null, i < 2 ? "It" : "It Follows " + i, 2014, null, null, null));
+        }
+        commit();
+        var repository = new ContentSearchNativeRepository(entityManager, true, true);
+        var expected = repository.searchAllKeywords("it");
+        assertThat(expected).hasSize(6);
+        assertThat(expected.subList(0, 2)).allSatisfy(value -> assertThat(value.getExactMatchRank()).isZero());
+        var seen = new ArrayList<Long>();
+        ContentSearchCursor cursor = null;
+        for (int page = 0; page < 4; page++) {
+            var rows = repository.search(ContentSearchCondition.of("Ｉ!Ｔ", null, MediaType.MOVIE, cursor, 2), null);
+            if (rows.isEmpty()) break;
+            var visible = rows.subList(0, Math.min(2, rows.size()));
+            visible.forEach(value -> seen.add(value.getId()));
+            var last = visible.getLast();
+            cursor = ContentSearchCursor.decode(ContentSearchCursor.keyword(last.getExactMatchRank(), last.getRelevanceScore(), last.getId(), true, true).encode());
+        }
+        assertThat(seen).containsExactlyElementsOf(expected.stream().map(ContentSearchProjection::getId).toList());
+        assertThat(seen).doesNotHaveDuplicates();
+        assertThatThrownBy(() -> repository.search(
+            ContentSearchCondition.of("it", null, null, ContentSearchCursor.keyword(0, 1, 1L, true), 2), null))
+            .isInstanceOf(GeneralException.class);
     }
 
     private void assertDocument(Content content) {
@@ -167,5 +219,6 @@ class ContentSearchReadModelRepositoryTest {
         TestTransaction.flagForCommit();
         TestTransaction.end();
         entityManager.clear();
+        entityManager.createNativeQuery("ANALYZE TABLE content_search_document").getResultList();
     }
 }

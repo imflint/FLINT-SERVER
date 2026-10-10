@@ -20,6 +20,7 @@ final class ContentSearchReadModelFixture {
                     normalized_title_ko VARCHAR(255), normalized_title_en VARCHAR(255), search_title TEXT,
                     UNIQUE KEY FTS_DOC_ID_INDEX(FTS_DOC_ID), UNIQUE KEY uk_search_document_content(content_id),
                     KEY idx_search_document_title_ko(normalized_title_ko), KEY idx_search_document_title_en(normalized_title_en),
+                    KEY idx_search_document_rank(FTS_DOC_ID,content_id,media_type,normalized_title_ko,normalized_title_en),
                     FULLTEXT KEY ft_search_document_title(search_title) WITH PARSER ngram
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
                 """);

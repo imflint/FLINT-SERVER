@@ -25,7 +25,7 @@ public record ContentSearchCursor(
     }
 
     public ContentSearchCursor {
-        if ((version != 1 && version != 2) || sortMode == null || contentId == null || contentId <= 0) {
+        if ((version < 1 || version > 3) || sortMode == null || contentId == null || contentId <= 0) {
             throw invalidCursor();
         }
         if (sortMode == SortMode.POPULAR && (version != 1 || bookmarkCount == null || bookmarkCount < 0)) {
@@ -47,13 +47,25 @@ public record ContentSearchCursor(
     }
 
     public static ContentSearchCursor keyword(int rank, double score, Long id, boolean localized) {
-        return new ContentSearchCursor(localized ? 2 : 1, SortMode.KEYWORD, null, rank, score, id);
+        return keyword(rank, score, id, localized, false);
+    }
+
+    public static ContentSearchCursor keyword(int rank, double score, Long id, boolean localized, boolean readModel) {
+        return new ContentSearchCursor(keywordVersion(localized, readModel), SortMode.KEYWORD, null, rank, score, id);
     }
 
     public void validateKeywordVersion(boolean localized) {
-        if (sortMode != SortMode.KEYWORD || version != (localized ? 2 : 1)) {
+        validateKeywordVersion(localized, false);
+    }
+
+    public void validateKeywordVersion(boolean localized, boolean readModel) {
+        if (sortMode != SortMode.KEYWORD || version != keywordVersion(localized, readModel)) {
             throw invalidCursor();
         }
+    }
+
+    private static int keywordVersion(boolean localized, boolean readModel) {
+        return localized ? (readModel ? 3 : 2) : 1;
     }
 
     public static ContentSearchCursor of(int bookmarkCount, Long contentId) {
@@ -76,7 +88,7 @@ public record ContentSearchCursor(
             }
 
             int version = Integer.parseInt(parts[0]);
-            if (version != 1 && version != 2) {
+            if (version < 1 || version > 3) {
                 throw invalidCursor();
             }
             SortMode mode = SortMode.valueOf(parts[1]);

@@ -34,6 +34,10 @@ public class ContentQueryRepository {
 		return contentSearchNativeRepository.localizedSearchEnabled();
 	}
 
+	public boolean searchReadModelEnabled() {
+		return contentSearchNativeRepository.searchReadModelEnabled();
+	}
+
 	public ContentQueryRepository(
 		JPAQueryFactory jpaQueryFactory,
 		ContentSearchNativeRepository contentSearchNativeRepository

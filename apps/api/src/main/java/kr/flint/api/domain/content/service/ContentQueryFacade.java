@@ -6,6 +6,7 @@ import java.util.Set;
 
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
 
 import kr.flint.api.domain.content.dto.ContentSearchCondition;
 import kr.flint.api.domain.content.dto.ContentSearchCursor;
@@ -83,6 +84,7 @@ public class ContentQueryFacade {
 		return GetBookmarkedContentCountRes.from(bookmarkQueryService.getContentBookmarkCount(userId));
 	}
 
+	@Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
 	public PaginationResponse<GetContentSearchRes> getContentSearchList(
 		final String keyword,
 		final SearchGenre genre,
@@ -102,7 +104,8 @@ public class ContentQueryFacade {
 		if (decodedCursor != null) {
 			decodedCursor.validateSortMode(condition.hasKeyword());
 			if (condition.hasKeyword()) {
-				decodedCursor.validateKeywordVersion(contentQueryRepository.localizedSearchEnabled());
+				decodedCursor.validateKeywordVersion(contentQueryRepository.localizedSearchEnabled(),
+					contentQueryRepository.searchReadModelEnabled());
 			}
 		}
 		List<ContentSearchRow> page =
@@ -120,7 +123,7 @@ public class ContentQueryFacade {
 		ContentSearchRow last = rows.get(rows.size() - 1);
 		return keywordSearch
 			? ContentSearchCursor.keyword(last.exactMatchRank(), last.relevanceScore(), last.id(),
-				contentQueryRepository.localizedSearchEnabled()).encode()
+				contentQueryRepository.localizedSearchEnabled(), contentQueryRepository.searchReadModelEnabled()).encode()
 			: ContentSearchCursor.popular(last.bookmarkCount(), last.id()).encode();
 	}
 
