@@ -39,7 +39,8 @@ public class ContentSearchDocumentService {
             }
             int updated = jdbcTemplate.update("""
                 UPDATE content SET normalized_title_ko=?, normalized_title_en=?, search_title=?
-                WHERE id=? AND title_ko <=> ? AND title_en <=> ?
+                WHERE id=? AND CAST(title_ko AS BINARY) <=> CAST(? AS BINARY)
+                    AND CAST(title_en AS BINARY) <=> CAST(? AS BINARY)
                 """, ContentTitleNormalizer.normalizeNullable(source.titleKo()),
                 ContentTitleNormalizer.normalizeNullable(source.titleEn()), searchTitle,
                 source.id(), source.titleKo(), source.titleEn());

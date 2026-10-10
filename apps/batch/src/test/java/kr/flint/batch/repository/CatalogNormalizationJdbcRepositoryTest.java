@@ -47,11 +47,12 @@ class CatalogNormalizationJdbcRepositoryTest {
             MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword()), true);
         jdbc = new JdbcTemplate(dataSource);
         manager = new DataSourceTransactionManager(dataSource);
-        for (String routine : List.of("flint_genre_prepare", "flint_genre_chunk", "flint_genre_finish", "flint_genre_restore")) {
+        for (String routine : List.of("flint_genre_backup", "flint_genre_prepare", "flint_genre_chunk", "flint_genre_finish", "flint_genre_restore")) {
             jdbc.execute("DROP PROCEDURE IF EXISTS " + routine);
         }
         for (String table : List.of("tmdb_genre_mapping", "content_genre", "genre", "genre_normalization_relation_backup",
-            "genre_normalization_genre_backup", "genre_normalization_tmdb_backup", "genre_normalization_run", "content", "tmdb_sync_lock")) {
+            "genre_normalization_genre_backup", "genre_normalization_tmdb_backup", "genre_normalization_schema_backup",
+            "genre_normalization_run", "content", "tmdb_sync_lock")) {
             jdbc.execute("DROP TABLE IF EXISTS " + table);
         }
         jdbc.execute("""
@@ -96,6 +97,7 @@ class CatalogNormalizationJdbcRepositoryTest {
         jdbc.execute("SET @expected_database=NULL");
         assertThatThrownBy(() -> jdbc.execute("CALL flint_genre_prepare('test')")).hasMessageContaining("database");
         jdbc.execute("SET @expected_database='flint'");
+        jdbc.execute("SET @genre_backup_exported=1");
         jdbc.execute("CALL flint_genre_prepare('test')");
         jdbc.execute("CALL flint_genre_chunk('test')");
         assertThat(count("content_genre")).isEqualTo(502);
@@ -121,6 +123,153 @@ class CatalogNormalizationJdbcRepositoryTest {
     }
 
     @Test
+    void backupOnlyRunCanRestoreWithoutMappingTableOrReplacingOriginalSnapshot() throws Exception {
+        for (GenreCode code : GenreCode.values()) {
+            jdbc.update("INSERT INTO genre VALUES(?,?)", 100L + code.ordinal(), code.displayName());
+        }
+        executeManualDefinitions();
+        jdbc.execute("SET @genre_apply=1");
+        jdbc.execute("SET @maintenance_confirmed=1");
+        jdbc.execute("SET @genre_commit_chunk=1");
+        jdbc.execute("CALL flint_genre_backup('early')");
+        jdbc.execute("CALL flint_genre_backup('early')");
+        jdbc.execute("CALL flint_genre_restore('early')");
+        assertThat(count("genre")).isEqualTo(24);
+        assertThat(count("genre_normalization_genre_backup")).isEqualTo(24);
+        assertThat(count("tmdb_genre_mapping")).isZero();
+        assertThat(jdbc.queryForObject("SELECT status FROM genre_normalization_run", String.class)).isEqualTo("RESTORED");
+        assertThatThrownBy(() -> jdbc.execute("CALL flint_genre_backup('early')")).hasMessageContaining("new run key");
+    }
+
+    @Test
+    void enumCodesAreBackedUpBeforeConversionAndFailedStagesResumeWithoutReplacingSnapshots() throws Exception {
+        List<String> names = List.of("action, action & adventure", "adventure", "animation", "comedy", "crime",
+            "documentary", "drama", "family", "fantasy", "history", "horror", "music", "mystery", "romance",
+            "Science Fiction, Sci-fi & Fantasy", "TV Movie", "Thriller", "War, War & Politics", "Kids", "Action",
+            "Science Fiction", "War", "Western", "Sci-Fi & Fantasy", "Reality", "Action & Adventure", "War & Politics",
+            "코미디", "가족", "로맨스", "드라마", "범죄", "스릴러", "액션", "다큐멘터리", "SF", "모험",
+            "애니메이션", "미스터리", "공포", "판타지", "전쟁", "음악", "서부", "역사", "TV 영화", "Talk", "Soap", "News");
+        for (int i=0;i<names.size();i++) jdbc.update("INSERT INTO genre VALUES(?,?)",i+1,names.get(i));
+        String members = java.util.Arrays.stream(GenreCode.values()).map(Enum::name)
+            .collect(java.util.stream.Collectors.joining("','"));
+        jdbc.execute("ALTER TABLE genre ADD code ENUM('"+members+"') NOT NULL, ADD INDEX idx_genre_name_audit(name)");
+        jdbc.execute("""
+            CREATE TABLE tmdb_genre_mapping(media_type VARCHAR(16),tmdb_genre_id BIGINT,genre_id BIGINT,
+            PRIMARY KEY(media_type,tmdb_genre_id),FOREIGN KEY(genre_id) REFERENCES genre(id)) ENGINE=InnoDB
+            """);
+        jdbc.update("INSERT INTO tmdb_genre_mapping VALUES('MOVIE',18,7)");
+        for (long id=1;id<=501;id++) {
+            insertContent(id);
+            jdbc.update("INSERT INTO content_genre VALUES(?,?,7)",id,id);
+        }
+        jdbc.update("INSERT INTO content_genre VALUES(900,1,31)");
+        executeManualDefinitions();
+        jdbc.execute("SET @genre_apply=1");
+        jdbc.execute("SET @maintenance_confirmed=1");
+        jdbc.execute("CALL flint_genre_backup('enum')");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM genre WHERE code='ACTION'",Long.class)).isEqualTo(49);
+        assertThat(stage()).isEqualTo("BACKED_UP");
+        assertThatThrownBy(() -> jdbc.execute("CALL flint_genre_prepare('enum')")).hasMessageContaining("Export");
+        jdbc.execute("SET @genre_backup_exported=1");
+        jdbc.execute("ALTER TABLE genre ADD CONSTRAINT chk_prepare_fail CHECK(code IS NULL OR code='ACTION')");
+        assertThatThrownBy(() -> jdbc.execute("CALL flint_genre_prepare('enum')"))
+            .hasRootCauseInstanceOf(java.sql.SQLException.class)
+            .satisfies(error -> assertThat(((java.sql.SQLException) error.getCause()).getErrorCode()).isEqualTo(3819));
+        assertThat(stage()).isEqualTo("BACKED_UP");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM genre WHERE code='ACTION'",Long.class)).isEqualTo(49);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM genre_normalization_genre_backup WHERE old_code='ACTION'",Long.class))
+            .isEqualTo(49);
+        jdbc.execute("ALTER TABLE genre DROP CHECK chk_prepare_fail");
+        jdbc.execute("CALL flint_genre_prepare('enum')");
+        jdbc.execute("CALL flint_genre_prepare('enum')");
+        assertThat(stage()).isEqualTo("PREPARED");
+        jdbc.execute("SET @genre_commit_chunk=1");
+        jdbc.execute("CALL flint_genre_chunk('enum')");
+        jdbc.execute("CALL flint_genre_chunk('enum')");
+        assertThat(stage()).isEqualTo("RELATIONS_DONE");
+        jdbc.execute("CREATE INDEX uk_genre_code ON genre(name)");
+        assertThatThrownBy(() -> jdbc.execute("CALL flint_genre_finish('enum')")).hasMessageContaining("definition differs");
+        assertThat(stage()).isEqualTo("FINALIZING");
+        jdbc.execute("DROP INDEX uk_genre_code ON genre");
+        jdbc.execute("CALL flint_genre_finish('enum')");
+        jdbc.execute("CALL flint_genre_finish('enum')");
+        assertThat(stage()).isEqualTo("COMPLETED");
+        assertThat(count("genre")).isEqualTo(24);
+        assertThat(count("tmdb_genre_mapping")).isEqualTo(35);
+        assertThat(jdbc.queryForObject("SELECT genre_id FROM content_genre WHERE content_id=1",Long.class)).isEqualTo(31);
+        assertThat(jdbc.queryForObject("SELECT id FROM content_genre WHERE content_id=1",Long.class)).isEqualTo(900);
+        jdbc.execute("CALL flint_genre_restore('enum')");
+        assertThat(count("genre")).isEqualTo(49);
+        assertThat(count("content_genre")).isEqualTo(502);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM genre WHERE code='ACTION'",Long.class)).isEqualTo(49);
+        assertThat(jdbc.queryForObject("SELECT genre_id FROM tmdb_genre_mapping WHERE tmdb_genre_id=18",Long.class)).isEqualTo(7);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='genre' AND index_name='idx_genre_name_audit'",Long.class))
+            .isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='genre' AND index_name='uk_genre_code'",Long.class))
+            .isZero();
+    }
+
+    @Test
+    void symbolOnlyTitlesRemainNullableWithoutDeletingOrChangingTheirSource() {
+        insertContent(1);
+        jdbc.update("UPDATE content SET title_ko='🔥!?',title_en='!!!' WHERE id=1");
+        service.preflight();
+        new TransactionTemplate(manager).executeWithoutResult(status ->
+            service.rewrite(List.of(new DocumentSource(1,"🔥!?","!!!"))));
+        assertThat(jdbc.queryForMap("SELECT title_ko,title_en,normalized_title_ko,normalized_title_en,search_title,bookmark_count FROM content WHERE id=1"))
+            .containsEntry("title_ko","🔥!?").containsEntry("title_en","!!!")
+            .containsEntry("normalized_title_ko",null).containsEntry("normalized_title_en",null)
+            .containsEntry("search_title","🔥!? !!!").containsEntry("bookmark_count",7);
+    }
+
+    @Test
+    void existingFullTextStopwordsRequireRebuildingTheTableToRefreshBothIndexes() throws Exception {
+        insertContent(1);
+        jdbc.update("UPDATE content SET title='It Follows',title_ko=NULL,title_en='It Follows',normalized_title_ko=NULL,normalized_title_en='itfollows',search_title='It Follows itfollows' WHERE id=1");
+        jdbc.update("INSERT INTO genre VALUES(1,'공포')");
+        jdbc.update("INSERT INTO content_genre VALUES(1,1,1)");
+        var original = jdbc.queryForMap("SELECT * FROM content WHERE id=1");
+        jdbc.execute("CREATE FULLTEXT INDEX ft_content_title_ngram ON content(title) WITH PARSER ngram");
+        jdbc.execute("CREATE FULLTEXT INDEX ft_content_search_title_ngram ON content(search_title) WITH PARSER ngram");
+        assertThat(partialEnglishMatches()).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM content WHERE MATCH(title) AGAINST('\"it\"' IN BOOLEAN MODE)>0",Long.class))
+            .isZero();
+        jdbc.execute("CREATE TABLE IF NOT EXISTS content_search_stopword(value VARCHAR(30)) ENGINE=InnoDB");
+        jdbc.execute("SET SESSION innodb_ft_user_stopword_table='flint/content_search_stopword'");
+        jdbc.execute("ALTER TABLE content DROP INDEX ft_content_search_title_ngram, ADD FULLTEXT INDEX ft_content_search_title_ngram(search_title) WITH PARSER ngram");
+        assertThat(partialEnglishMatches()).isZero();
+        jdbc.execute("ALTER TABLE content DROP INDEX ft_content_search_title_ngram");
+        jdbc.execute("ALTER TABLE content ADD FULLTEXT INDEX ft_content_search_title_ngram(search_title) WITH PARSER ngram");
+        assertThat(partialEnglishMatches()).isZero();
+        jdbc.execute("ALTER TABLE content FORCE, ALGORITHM=COPY, LOCK=SHARED");
+        assertThat(partialEnglishMatches()).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM content WHERE MATCH(title) AGAINST('\"it\"' IN BOOLEAN MODE)>0",Long.class))
+            .isEqualTo(1);
+        jdbc.execute("SET SESSION innodb_ft_user_stopword_table=NULL");
+        try (var connection = DriverManager.getConnection(MYSQL.getJdbcUrl(),MYSQL.getUsername(),MYSQL.getPassword());
+             var statement = connection.createStatement();
+             var matches = statement.executeQuery("SELECT COUNT(*) FROM content WHERE MATCH(search_title) AGAINST('\"it\"' IN BOOLEAN MODE)>0")) {
+            assertThat(matches.next()).isTrue();
+            assertThat(matches.getLong(1)).isEqualTo(1);
+        }
+        var actual = jdbc.queryForMap("SELECT * FROM content WHERE id=1");
+        assertThat(actual.keySet()).isEqualTo(original.keySet());
+        original.forEach((key,value) -> {
+            if (value instanceof byte[] binary) assertThat((byte[])actual.get(key)).containsExactly(binary);
+            else assertThat(actual.get(key)).isEqualTo(value);
+        });
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='content' AND index_name='ft_content_title_ngram'",Long.class))
+            .isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT bookmark_count FROM content WHERE id=1",Integer.class)).isEqualTo(7);
+        assertThat(jdbc.queryForMap("SELECT id,content_id,genre_id FROM content_genre"))
+            .containsEntry("id",1L).containsEntry("content_id",1L).containsEntry("genre_id",1L);
+    }
+
+    private long partialEnglishMatches() {
+        return jdbc.queryForObject("SELECT COUNT(*) FROM content WHERE MATCH(search_title) AGAINST('\"it\"' IN BOOLEAN MODE)>0",Long.class);
+    }
+
+    @Test
     void searchBackfillRollsBackStaleTitlesAndDoesNotAlterSourceOrCounters() {
         insertContent(1);
         insertContent(2);
@@ -137,6 +286,25 @@ class CatalogNormalizationJdbcRepositoryTest {
             .containsEntry("bookmark_count",7);
         jdbc.update("UPDATE content SET title_ko=NULL,title_en=NULL WHERE id=2");
         assertThatThrownBy(service::preflight).hasMessageContaining("missing localized titles=1");
+    }
+
+    @Test
+    void caseOrAccentOnlySourceChangesRollBackTheEntireBackfillChunk() {
+        insertContent(1);
+        insertContent(2);
+        jdbc.update("UPDATE content SET title_en='Café' WHERE id=2");
+        DocumentSource first = new DocumentSource(1, "해리 포터!", "ＨＡＲＲＹ ＰＯＴＴＥＲ");
+        DocumentSource stale = new DocumentSource(2, "해리 포터!", "Café");
+        TransactionTemplate tx = new TransactionTemplate(manager);
+        for (String changedTitle : List.of("CAFE", "Cafe", "Café ")) {
+            jdbc.update("UPDATE content SET title_en=? WHERE id=2", changedTitle);
+            assertThatThrownBy(() -> tx.executeWithoutResult(status -> service.rewrite(List.of(first, stale))))
+                .hasMessageContaining("Title changed");
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM content WHERE search_title='old'", Long.class))
+                .isEqualTo(2);
+            assertThat(jdbc.queryForObject("SELECT title_en FROM content WHERE id=2", String.class))
+                .isEqualTo(changedTitle);
+        }
     }
 
     @Test
@@ -176,6 +344,10 @@ class CatalogNormalizationJdbcRepositoryTest {
 
     private long count(String table) {
         return jdbc.queryForObject("SELECT COUNT(*) FROM " + table,Long.class);
+    }
+
+    private String stage() {
+        return jdbc.queryForObject("SELECT status FROM genre_normalization_run",String.class);
     }
 
     private void executeManualDefinitions() throws Exception {

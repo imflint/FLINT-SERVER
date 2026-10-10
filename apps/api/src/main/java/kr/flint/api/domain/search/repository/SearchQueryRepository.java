@@ -99,7 +99,9 @@ public class SearchQueryRepository {
                     ? content.normalizedTitleKo.eq(value.normalized())
                         .or(content.normalizedTitleEn.eq(value.normalized()))
                         .or(Expressions.booleanTemplate("function('match_against_boolean', {0}, {1})",
-                            content.searchTitle, value.booleanQuery(true)).isTrue())
+                            content.searchTitle, value.booleanQuery(true)).isTrue()
+                            .and(content.normalizedTitleKo.contains(value.normalized())
+                                .or(content.normalizedTitleEn.contains(value.normalized()))))
                     : content.title.containsIgnoreCase(value.raw())),
                 onCondition(cursor, contentBookmark.id::lt)
             )
