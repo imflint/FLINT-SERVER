@@ -81,6 +81,7 @@ flint:
     snapshot-enabled: ${FLINT_EXPLORATION_SNAPSHOT_ENABLED:false}
   content:
     localized-search-enabled: ${FLINT_LOCALIZED_SEARCH_ENABLED:false}
+    search-read-model-enabled: ${FLINT_SEARCH_READ_MODEL_ENABLED:false}
   batch:
     execution-enabled: true
     scheduling:

@@ -70,6 +70,7 @@ class ContentQueryRepositoryTest {
 
 	@Container
 	static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4.8")
+		.withCommand("--log-bin-trust-function-creators=1")
 		.withDatabaseName("flint_test")
 		.withUsername("flint")
 		.withPassword("flint");
@@ -100,10 +101,12 @@ class ContentQueryRepositoryTest {
 		registry.add("spring.jpa.hibernate.ddl-auto", () -> "create");
 		registry.add("spring.jpa.properties.hibernate.dialect", () -> "org.hibernate.dialect.MySQLDialect");
 		registry.add("flint.content.localized-search-enabled", () -> "true");
+		registry.add("flint.content.search-read-model-enabled", () -> "true");
 	}
 
 	@BeforeEach
 	void ensureFullTextIndex() throws SQLException {
+		ContentSearchReadModelFixture.install(dataSource);
 		for (String ddl : List.of(
 			"CREATE FULLTEXT INDEX ft_content_search_title_ngram ON content (search_title) WITH PARSER ngram",
 			"CREATE FULLTEXT INDEX ft_content_title_ngram ON content (title) WITH PARSER ngram",
@@ -531,7 +534,7 @@ class ContentQueryRepositoryTest {
 
 	private ContentQueryRepository repository(boolean localized) {
 		return new ContentQueryRepository(new JPAQueryFactory(entityManager),
-			new ContentSearchNativeRepository(entityManager, localized));
+			new ContentSearchNativeRepository(entityManager, localized, true));
 	}
 
 	@ParameterizedTest
@@ -758,6 +761,7 @@ class ContentQueryRepositoryTest {
 		TestTransaction.end();
 		// Stabilize FULLTEXT document statistics after replacing the small fixture.
 		entityManager.createNativeQuery("ANALYZE TABLE content").getResultList();
+		entityManager.createNativeQuery("ANALYZE TABLE content_search_document").getResultList();
 	}
 
 	private ContentSearchCondition condition(

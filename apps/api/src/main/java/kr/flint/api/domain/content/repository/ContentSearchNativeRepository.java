@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.projection.ProjectionFactory;
 import org.springframework.data.projection.SpelAwareProxyProjectionFactory;
 import org.springframework.stereotype.Repository;
@@ -24,14 +25,22 @@ public class ContentSearchNativeRepository {
 
     private final EntityManager entityManager;
     private final boolean localizedSearchEnabled;
+    private final boolean searchReadModelEnabled;
     private final ProjectionFactory projectionFactory = new SpelAwareProxyProjectionFactory();
 
+    @Autowired
     public ContentSearchNativeRepository(
         EntityManager entityManager,
-        @Value("${flint.content.localized-search-enabled:false}") boolean localizedSearchEnabled
+        @Value("${flint.content.localized-search-enabled:false}") boolean localizedSearchEnabled,
+        @Value("${flint.content.search-read-model-enabled:false}") boolean searchReadModelEnabled
     ) {
         this.entityManager = entityManager;
         this.localizedSearchEnabled = localizedSearchEnabled;
+        this.searchReadModelEnabled = searchReadModelEnabled;
+    }
+
+    public ContentSearchNativeRepository(EntityManager entityManager, boolean localizedSearchEnabled) {
+        this(entityManager, localizedSearchEnabled, false);
     }
 
     public List<ContentSearchProjection> search(ContentSearchCondition condition, Long genreId) {
@@ -111,6 +120,9 @@ public class ContentSearchNativeRepository {
     }
 
     private String keywordSql(ContentSearchCondition condition, Long genreId, boolean paginated) {
+        if (localizedSearchEnabled && searchReadModelEnabled) {
+            return readModelKeywordSql(condition, genreId, paginated);
+        }
         String title = localizedSearchEnabled ? "search_title" : "title";
         String exactMatch = localizedSearchEnabled
             ? "c.normalized_title_ko=:normalizedKeyword OR c.normalized_title_en=:normalizedKeyword"
@@ -161,6 +173,50 @@ public class ContentSearchNativeRepository {
             sql.append(" LIMIT :queryLimit");
         }
         return sql.toString();
+    }
+
+    // FTS_DOC_ID and rank are covered by FULLTEXT; hydrate wide content rows only after page selection.
+    private String readModelKeywordSql(ContentSearchCondition condition, Long genreId, boolean paginated) {
+        StringBuilder sql = new StringBuilder("SELECT ").append(CONTENT_COLUMNS)
+            .append(", page.exactMatchRank, page.relevanceScore FROM (SELECT ranked.* FROM (")
+            .append("""
+                SELECT d.content_id AS id,
+                    CASE WHEN d.normalized_title_ko=:normalizedKeyword OR d.normalized_title_en=:normalizedKeyword
+                        THEN 0 ELSE 1 END AS exactMatchRank, candidates.relevanceScore
+                FROM (
+                    SELECT FTS_DOC_ID, MAX(relevanceScore) AS relevanceScore FROM (
+                        SELECT FTS_DOC_ID, 0.0 AS relevanceScore FROM content_search_document
+                            FORCE INDEX (idx_search_document_title_ko) WHERE normalized_title_ko=:normalizedKeyword
+                        UNION SELECT FTS_DOC_ID, 0.0 AS relevanceScore FROM content_search_document
+                            FORCE INDEX (idx_search_document_title_en) WHERE normalized_title_en=:normalizedKeyword
+                        UNION SELECT FTS_DOC_ID, MATCH(search_title) AGAINST (:fullTextKeyword IN BOOLEAN MODE) AS relevanceScore
+                            FROM content_search_document WHERE MATCH(search_title) AGAINST (:fullTextKeyword IN BOOLEAN MODE)>0
+                    ) hits GROUP BY FTS_DOC_ID
+                ) candidates STRAIGHT_JOIN content_search_document d ON d.FTS_DOC_ID=candidates.FTS_DOC_ID
+                """);
+        if (genreId != null) {
+            sql.append(" STRAIGHT_JOIN content_genre cg FORCE INDEX (uk_content_genre)")
+                .append(" ON cg.content_id=d.content_id AND cg.genre_id=:genreId");
+        }
+        sql.append(" WHERE (LOCATE(:normalizedKeyword,d.normalized_title_ko)>0")
+            .append(" OR LOCATE(:normalizedKeyword,d.normalized_title_en)>0)");
+        if (condition.mediaType() != null) {
+            sql.append(" AND d.media_type=:mediaType");
+        }
+        sql.append(") ranked");
+        if (condition.cursor() != null) {
+            sql.append("""
+                 WHERE (ranked.exactMatchRank>:cursorRank
+                    OR (ranked.exactMatchRank=:cursorRank AND ranked.relevanceScore<:cursorScore)
+                    OR (ranked.exactMatchRank=:cursorRank AND ranked.relevanceScore=:cursorScore AND ranked.id<:cursorId))
+                """);
+        }
+        sql.append(" ORDER BY ranked.exactMatchRank, ranked.relevanceScore DESC, ranked.id DESC");
+        if (paginated) {
+            sql.append(" LIMIT :queryLimit");
+        }
+        return sql.append(") page STRAIGHT_JOIN content c ON c.id=page.id")
+            .append(" ORDER BY page.exactMatchRank, page.relevanceScore DESC, page.id DESC").toString();
     }
 
     private void appendMediaFilter(StringBuilder sql, ContentSearchCondition condition) {
