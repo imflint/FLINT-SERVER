@@ -35,6 +35,17 @@ public final class ContentTitleNormalizer {
             .orElse(null);
     }
 
+    public static String normalizeWordsNullable(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        String normalized = Normalizer.normalize(value, Normalizer.Form.NFKC)
+            .toLowerCase(Locale.ROOT)
+            .replaceAll("(?U)[^\\p{L}\\p{N}\\s]", "")
+            .replaceAll("(?U)\\s+", " ").trim();
+        return normalized.isEmpty() ? null : normalized;
+    }
+
     public static String displayTitle(String titleKo, String titleEn) {
         String korean = trimNullable(titleKo);
         return korean != null ? korean : trimNullable(titleEn);

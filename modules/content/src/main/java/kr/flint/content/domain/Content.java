@@ -57,6 +57,12 @@ public class Content extends BaseTime {
 	@Column(name = "search_title", columnDefinition = "TEXT")
 	private String searchTitle;
 
+	@Column(name = "word_title_ko", columnDefinition = "TEXT")
+	private String wordTitleKo;
+
+	@Column(name = "word_title_en", columnDefinition = "TEXT")
+	private String wordTitleEn;
+
 	@Column(nullable = true)
 	private int year;
 
@@ -137,6 +143,8 @@ public class Content extends BaseTime {
 		this.normalizedTitleKo = ContentTitleNormalizer.normalizeNullable(this.titleKo);
 		this.normalizedTitleEn = ContentTitleNormalizer.normalizeNullable(this.titleEn);
 		this.searchTitle = ContentTitleNormalizer.buildSearchTitle(this.titleKo, this.titleEn);
+		this.wordTitleKo = ContentTitleNormalizer.normalizeWordsNullable(this.titleKo);
+		this.wordTitleEn = ContentTitleNormalizer.normalizeWordsNullable(this.titleEn);
 		return this;
 	}
 

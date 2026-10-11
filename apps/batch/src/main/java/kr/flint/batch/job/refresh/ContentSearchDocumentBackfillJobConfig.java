@@ -35,6 +35,12 @@ import kr.flint.batch.service.ContentSearchDocumentService.DocumentSource;
 public class ContentSearchDocumentBackfillJobConfig {
     public static final String JOB_NAME = "contentSearchDocumentBackfillJob";
 
+    @Value("${flint.content.search-document-backfill-words-only:false}")
+    private boolean wordsOnly;
+
+    @Value("${flint.content.search-document-backfill-characters-only:false}")
+    private boolean charactersOnly;
+
     @Bean
     public ApplicationRunner searchDocumentBackfillRunner(JobRepository repository,
         @Qualifier(JOB_NAME) Job job, ConfigurableApplicationContext context,
@@ -43,8 +49,9 @@ public class ContentSearchDocumentBackfillJobConfig {
             TaskExecutorJobLauncher launcher = new TaskExecutorJobLauncher();
             launcher.setJobRepository(repository);
             launcher.afterPropertiesSet();
-            var execution = launcher.run(job, new JobParametersBuilder()
-                .addString("backfillVersion",version).toJobParameters());
+            var parameters = new JobParametersBuilder().addString("backfillVersion",version);
+            if (charactersOnly) parameters.addString("documentMode", "CHARACTERS");
+            var execution = launcher.run(job, parameters.toJobParameters());
             if (execution.getStatus() != BatchStatus.COMPLETED) {
                 throw new IllegalStateException("Search backfill failed: execution=" + execution.getId());
             }
@@ -61,13 +68,35 @@ public class ContentSearchDocumentBackfillJobConfig {
     public Step contentSearchDocumentBackfillStep(JobRepository repository, PlatformTransactionManager manager,
         @Qualifier("contentSearchDocumentReader") JdbcPagingItemReader<DocumentSource> reader,
         ContentSearchDocumentService service) {
+        if (wordsOnly && charactersOnly) {
+            throw new IllegalStateException("Word-only and character-only backfill cannot be selected together");
+        }
         return new StepBuilder("contentSearchDocumentBackfillStep", repository)
             .<DocumentSource, DocumentSource>chunk(500, manager).reader(reader)
-            .writer(chunk -> service.rewrite(chunk.getItems().stream().toList()))
+            .writer(chunk -> {
+                if (charactersOnly) service.rewriteCharacters(chunk.getItems().stream().toList());
+                else if (wordsOnly) service.rewriteWords(chunk.getItems().stream().toList());
+                else service.rewrite(chunk.getItems().stream().toList());
+            })
             .listener(new StepExecutionListener() {
                 @Override
                 public void beforeStep(StepExecution execution) {
-                    service.preflight();
+                    if (charactersOnly) service.preflightCharacters();
+                    else service.preflight();
+                }
+
+                @Override
+                public org.springframework.batch.core.ExitStatus afterStep(StepExecution execution) {
+                    if (charactersOnly && execution.getStatus() == BatchStatus.COMPLETED) {
+                        try {
+                            service.verifyCharacterOrphans();
+                        } catch (RuntimeException failure) {
+                            execution.setStatus(BatchStatus.FAILED);
+                            execution.addFailureException(failure);
+                            return org.springframework.batch.core.ExitStatus.FAILED.addExitDescription(failure);
+                        }
+                    }
+                    return null;
                 }
             }).build();
     }

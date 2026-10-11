@@ -306,6 +306,26 @@ class ContentBatchJdbcRepositoryTest {
 			.contains("Unmapped TMDB genre: MOVIE:999999");
 	}
 
+    @Test
+    void wordTitlesFollowUpsertPromotionAndPreservedTitleUpdates() {
+        var original = ContentUpsertCommand.localized(950L, MediaType.MOVIE, "해리  포터!", "ＨＡＲＲＹ\tＰＯＴＴＥＲ🔥",
+            2001, null, null, null, List.of("Drama"));
+        repository.upsertAll(List.of(original));
+        assertThat(jdbcTemplate.queryForMap("SELECT word_title_ko,word_title_en FROM content WHERE tmdb_id=950"))
+            .containsEntry("word_title_ko", "해리 포터").containsEntry("word_title_en", "harry potter");
+        var changed = ContentUpsertCommand.localized(950L, MediaType.MOVIE, "바뀐 제목", "A Man", 2001,
+            "changed author", null, null, List.of("Drama"));
+        repository.upsertClassified(List.of(changed), java.util.Set.of(new ContentBatchJdbcRepository.ContentIdentity(950L, MediaType.MOVIE)));
+        assertThat(jdbcTemplate.queryForMap("SELECT title,word_title_en,author FROM content WHERE tmdb_id=950"))
+            .containsEntry("title", "해리  포터!").containsEntry("word_title_en", "harry potter").containsEntry("author", "changed author");
+        repository.promoteTitles(List.of(changed));
+        assertThat(jdbcTemplate.queryForMap("SELECT word_title_ko,word_title_en FROM content WHERE tmdb_id=950"))
+            .containsEntry("word_title_ko", "바뀐 제목").containsEntry("word_title_en", "a man");
+        repository.upsertAll(List.of(original));
+        assertThat(jdbcTemplate.queryForObject("SELECT word_title_en FROM content WHERE tmdb_id=950", String.class))
+            .isEqualTo("harry potter");
+    }
+
 	private void recreateSchema() {
 		jdbcTemplate.execute("DROP TABLE IF EXISTS ott_content");
 		jdbcTemplate.execute("DROP TABLE IF EXISTS tmdb_sync_lock");
@@ -347,6 +367,7 @@ class ContentBatchJdbcRepositoryTest {
 				normalized_title_ko VARCHAR(255),
 				normalized_title_en VARCHAR(255),
 				search_title TEXT,
+				word_title_ko TEXT, word_title_en TEXT,
 				`year` INT,
 				author VARCHAR(255),
 				description TEXT,

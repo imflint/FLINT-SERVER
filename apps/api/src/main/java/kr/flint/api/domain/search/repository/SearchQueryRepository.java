@@ -11,12 +11,14 @@ import static kr.flint.shared.util.QueryDslUtil.onCondition;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.core.types.dsl.StringPath;
+import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
 import kr.flint.api.common.query.ContentSearchKeyword;
@@ -28,11 +30,29 @@ public class SearchQueryRepository {
 
     private final JPAQueryFactory jpaQueryFactory;
     private final boolean localizedSearchEnabled;
+    private final boolean englishWordSearchEnabled;
+    private final boolean singleCharacterInfixSearchEnabled;
 
+    @Autowired
     public SearchQueryRepository(JPAQueryFactory jpaQueryFactory,
-        @Value("${flint.content.localized-search-enabled:false}") boolean localizedSearchEnabled) {
+        @Value("${flint.content.localized-search-enabled:false}") boolean localizedSearchEnabled,
+        @Value("${flint.content.english-word-search-enabled:false}") boolean englishWordSearchEnabled,
+        @Value("${flint.content.single-character-infix-search-enabled:false}") boolean singleCharacterInfixSearchEnabled) {
         this.jpaQueryFactory = jpaQueryFactory;
         this.localizedSearchEnabled = localizedSearchEnabled;
+        this.englishWordSearchEnabled = englishWordSearchEnabled;
+        this.singleCharacterInfixSearchEnabled = singleCharacterInfixSearchEnabled;
+        if (singleCharacterInfixSearchEnabled && !localizedSearchEnabled) {
+            throw new IllegalStateException("Single character search requires localized search");
+        }
+    }
+
+    public SearchQueryRepository(JPAQueryFactory factory, boolean localized, boolean words) {
+        this(factory, localized, words, false);
+    }
+
+    public SearchQueryRepository(JPAQueryFactory factory, boolean localized) {
+        this(factory, localized, false);
     }
 
     /**
@@ -95,19 +115,42 @@ public class SearchQueryRepository {
             .join(content).on(content.id.eq(contentBookmark.contentId))
             .where(
                 contentBookmark.userId.eq(userId),
-                onCondition(prepared, value -> localizedSearchEnabled
-                    ? content.normalizedTitleKo.eq(value.normalized())
-                        .or(content.normalizedTitleEn.eq(value.normalized()))
-                        .or(Expressions.booleanTemplate("function('match_against_boolean', {0}, {1})",
-                            content.searchTitle, value.booleanQuery(true)).isTrue()
-                            .and(content.normalizedTitleKo.contains(value.normalized())
-                                .or(content.normalizedTitleEn.contains(value.normalized()))))
-                    : content.title.containsIgnoreCase(value.raw())),
+                onCondition(prepared, this::matchesContent),
                 onCondition(cursor, contentBookmark.id::lt)
             )
             .orderBy(contentBookmark.id.desc())
             .limit(size + 1L)
             .fetch();
+    }
+
+    private BooleanExpression matchesContent(ContentSearchKeyword value) {
+        if (value.isSingleCharacter()) {
+            if (singleCharacterInfixSearchEnabled) {
+                String pattern = "%" + value.normalized() + "%";
+                return Expressions.booleanTemplate("function('title_contains_binary', {0}, {1})",
+                    content.normalizedTitleKo, pattern).isTrue()
+                    .or(Expressions.booleanTemplate("function('title_contains_binary', {0}, {1})",
+                        content.normalizedTitleEn, pattern).isTrue());
+            }
+            return localizedSearchEnabled
+                ? content.normalizedTitleKo.eq(value.normalized()).or(content.normalizedTitleEn.eq(value.normalized()))
+                : content.title.lower().eq(value.exactKey(false));
+        }
+        if (value.usesEnglishWords(englishWordSearchEnabled)) {
+            String words = value.wordKey();
+            return content.wordTitleKo.eq(words).or(content.wordTitleEn.eq(words))
+                .or(Expressions.booleanTemplate("function('match_against_words_boolean', {0}, {1}, {2})",
+                    content.wordTitleKo, content.wordTitleEn, value.wordPhraseQuery()).isTrue()
+                    .and(content.wordTitleKo.prepend(" ").append(" ").contains(" " + words + " ")
+                        .or(content.wordTitleEn.prepend(" ").append(" ").contains(" " + words + " "))));
+        }
+        return localizedSearchEnabled
+            ? content.normalizedTitleKo.eq(value.normalized()).or(content.normalizedTitleEn.eq(value.normalized()))
+                .or(Expressions.booleanTemplate("function('match_against_boolean', {0}, {1})",
+                    content.searchTitle, value.booleanQuery(true)).isTrue()
+                    .and(content.normalizedTitleKo.contains(value.normalized())
+                        .or(content.normalizedTitleEn.contains(value.normalized()))))
+            : content.title.containsIgnoreCase(value.raw());
     }
 
     private BooleanBuilder containsKeyword(final String keyword, final StringPath field) {

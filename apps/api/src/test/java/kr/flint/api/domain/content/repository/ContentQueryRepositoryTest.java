@@ -70,7 +70,7 @@ class ContentQueryRepositoryTest {
 
 	@Container
 	static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4.8")
-		.withCommand("--log-bin-trust-function-creators=1")
+		.withCommand("--log-bin-trust-function-creators=1", "--innodb-ft-min-token-size=1")
 		.withDatabaseName("flint_test")
 		.withUsername("flint")
 		.withPassword("flint");
@@ -108,6 +108,7 @@ class ContentQueryRepositoryTest {
 	void ensureFullTextIndex() throws SQLException {
 		ContentSearchReadModelFixture.install(dataSource);
 		for (String ddl : List.of(
+			"CREATE FULLTEXT INDEX ft_content_words ON content (word_title_ko,word_title_en)",
 			"CREATE FULLTEXT INDEX ft_content_search_title_ngram ON content (search_title) WITH PARSER ngram",
 			"CREATE FULLTEXT INDEX ft_content_title_ngram ON content (title) WITH PARSER ngram",
 			"CREATE INDEX idx_content_popular ON content (bookmark_count DESC, id DESC)",
@@ -128,6 +129,71 @@ class ContentQueryRepositoryTest {
 			}
 		}
 	}
+
+    @Test
+    void englishPhraseMatchingIsSharedAndKeepsBookmarkOwnership() {
+        Content exact = Content.createLocalized(91001L, MediaType.MOVIE, "해리 포터", "Harry Potter", 2001, null, null, null);
+        Content sequel = Content.createLocalized(91002L, MediaType.MOVIE, null, "Harry Potter and the Fire", 2002, null, null, null);
+        Content separated = Content.createLocalized(91003L, MediaType.TV, null, "Harry and Potter", 2003, null, null, null);
+        Content crossTitles = Content.createLocalized(91004L, MediaType.MOVIE, "Harry", "Potter", 2004, null, null, null);
+        for (Content value : List.of(exact, sequel, separated, crossTitles)) entityManager.persist(value);
+        Genre action = persistGenre("액션");
+        persistContentGenres(sequel, action);
+        entityManager.persist(ContentBookmark.create(11L, exact.getId()));
+        entityManager.persist(ContentBookmark.create(12L, sequel.getId()));
+        commitFullTextFixtures();
+        var nativeSearch = new ContentSearchNativeRepository(entityManager, true, true, true);
+        var bookmarkedSearch = new kr.flint.api.domain.search.repository.SearchQueryRepository(new JPAQueryFactory(entityManager), true, true);
+        for (String keyword : List.of("Harry Potter", "ＨＡＲＲＹ　ＰＯＴＴＥＲ!🔥", "harry\t   potter")) {
+            assertThat(nativeSearch.search(ContentSearchCondition.of(keyword, null, null, null, 20), null))
+                .extracting(ContentSearchProjection::getId).containsExactly(exact.getId(), sequel.getId());
+            assertThat(nativeSearch.searchAllKeywords(keyword)).extracting(ContentSearchProjection::getId)
+                .containsExactly(exact.getId(), sequel.getId());
+            assertThat(bookmarkedSearch.searchBookmarkedContents(11L, keyword, null, 10))
+                .extracting(kr.flint.api.domain.search.dto.response.BookmarkedContentSearchRes::contentId)
+                .containsExactly(exact.getId());
+            assertThat(bookmarkedSearch.searchBookmarkedContents(13L, keyword, null, 10)).isEmpty();
+        }
+        for (String keyword : List.of("harrypotter", "ha rry pot ter", "arry", "harry pot", "potter harry", "harry fire")) {
+            assertThat(nativeSearch.searchAllKeywords(keyword)).isEmpty();
+            assertThat(bookmarkedSearch.searchBookmarkedContents(11L, keyword, null, 10)).isEmpty();
+        }
+        assertThat(nativeSearch.searchAllKeywords("해 리 포 터")).extracting(ContentSearchProjection::getId)
+            .containsExactly(exact.getId());
+        assertThat(nativeSearch.search(ContentSearchCondition.of("harry potter", null, MediaType.MOVIE, null, 1), action.getId()))
+            .extracting(ContentSearchProjection::getId).containsExactly(sequel.getId());
+        assertThat(nativeSearch.search(ContentSearchCondition.of("harry potter", null, MediaType.TV, null, 1), action.getId()))
+            .isEmpty();
+        assertThat(nativeSearch.usesEnglishWords("1917")).isFalse();
+        assertThat(nativeSearch.usesEnglishWords("해리 harry")).isFalse();
+    }
+
+    @Test
+    void englishWordsIncludeShortAndRepeatedTokensAndKeepNumericBookmarkCursor() {
+        Content it = Content.createLocalized(92001L, MediaType.MOVIE, "그것", "It", 2017, null, null, null);
+        Content follows = Content.createLocalized(92002L, MediaType.MOVIE, null, "It Follows", 2014, null, null, null);
+        Content british = Content.createLocalized(92003L, MediaType.MOVIE, null, "British Story", 2014, null, null, null);
+        Content man = Content.createLocalized(92004L, MediaType.TV, null, "A Man and I", 2014, null, null, null);
+        Content repeated = Content.createLocalized(92005L, MediaType.TV, null, "Go Go Home", 2014, null, null, null);
+        for (Content value : List.of(it, follows, british, man, repeated)) entityManager.persist(value);
+        var first = ContentBookmark.create(21L, it.getId());
+        var second = ContentBookmark.create(21L, follows.getId());
+        entityManager.persist(first);
+        entityManager.persist(second);
+        commitFullTextFixtures();
+        var search = new ContentSearchNativeRepository(entityManager, true, true, true);
+        assertThat(search.searchAllKeywords("it")).extracting(ContentSearchProjection::getId)
+            .containsExactly(it.getId(), follows.getId());
+        assertThat(search.searchAllKeywords("a man")).extracting(ContentSearchProjection::getId).containsExactly(man.getId());
+        assertThat(search.searchAllKeywords("and i")).extracting(ContentSearchProjection::getId).containsExactly(man.getId());
+        assertThat(search.searchAllKeywords("go go")).extracting(ContentSearchProjection::getId).containsExactly(repeated.getId());
+        var bookmarks = new kr.flint.api.domain.search.repository.SearchQueryRepository(new JPAQueryFactory(entityManager), true, true);
+        assertThat(bookmarks.searchBookmarkedContents(21L, "it", null, 1))
+            .extracting(kr.flint.api.domain.search.dto.response.BookmarkedContentSearchRes::contentId)
+            .containsExactly(follows.getId(), it.getId());
+        assertThat(bookmarks.searchBookmarkedContents(21L, "it", second.getId(), 1))
+            .extracting(kr.flint.api.domain.search.dto.response.BookmarkedContentSearchRes::contentId).containsExactly(it.getId());
+    }
 
 	@Test
 	void threeSearchPathsShareNormalizedMatchingAndBookmarkOwnership() {
@@ -151,8 +217,8 @@ class ContentQueryRepositoryTest {
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = {"눈🔥", "a!", "!!", "🔥🔥", "Ａ!"})
-	void normalizedShortKeywordsAreRejected(String keyword) {
+	@ValueSource(strings = {"!!", "🔥🔥"})
+	void normalizedEmptyKeywordsAreRejected(String keyword) {
 		assertThatThrownBy(() -> repository(true).searchContents(condition(keyword, null, null, 10)))
 			.isInstanceOf(GeneralException.class);
 		assertThatThrownBy(() -> searchQueryRepository.searchBookmarkedContents(1L, keyword, null, 10))
@@ -259,9 +325,10 @@ class ContentQueryRepositoryTest {
 	}
 
 	@Test
-	@DisplayName("1자 keyword는 부분 검색하지 않고 거절")
+	@DisplayName("1자 keyword는 제목 전체 일치만 조회하고 부분 검색하지 않음")
 	void searchContentsByOneCharacterKeyword() {
 		// given
+		Content exact = persistContent(3100L, "눈", 0);
 		persistContent(3101L, "눈물의 여왕", 7);
 		persistContent(3102L, "반짝이는 워터멜론", 10);
 		persistContent(3103L, "눈부신 하루", 3);
@@ -269,10 +336,70 @@ class ContentQueryRepositoryTest {
 		entityManager.clear();
 
 		// when
-		assertThatThrownBy(() -> contentQueryRepository.searchContents(condition("눈", null, null, 10)))
-			.isInstanceOf(GeneralException.class)
-			.hasMessageContaining("keyword는 2자 이상이어야 합니다.");
+		assertThat(contentQueryRepository.searchContents(condition("눈🔥", null, null, 10)))
+			.extracting(ContentSearchRow::id).containsExactly(exact.getId());
 	}
+
+    @ParameterizedTest
+    @ValueSource(strings = {"봄", "a", "1", "\uD801\uDC00"})
+    void singleCharacterSearchUsesOnlyWholeTitlesAcrossAllPaths(String keyword) {
+        Content bothTitles = Content.createLocalized(93001L, MediaType.MOVIE, keyword, keyword, 2020, null, null, null);
+        Content tv = Content.createLocalized(93002L, MediaType.TV, keyword, null, 2020, null, null, null);
+        Content englishTitle = Content.createLocalized(93003L, MediaType.MOVIE, "다른 표시 제목", keyword, 2020, null, null, null);
+        Content longer = Content.createLocalized(93004L, MediaType.MOVIE, keyword + " story", null, 2020, null, null, null);
+        Content suffix = Content.createLocalized(93005L, MediaType.MOVIE, "story " + keyword, null, 2020, null, null, null);
+        for (Content value : List.of(bothTitles, tv, englishTitle, longer, suffix)) entityManager.persist(value);
+        Genre action = persistGenre("액션");
+        persistContentGenres(bothTitles, action);
+        persistContentGenres(tv, action);
+        ContentBookmark first = ContentBookmark.create(31L, bothTitles.getId());
+        ContentBookmark second = ContentBookmark.create(31L, tv.getId());
+        for (ContentBookmark value : List.of(first, second, ContentBookmark.create(31L, longer.getId()),
+            ContentBookmark.create(32L, englishTitle.getId()))) entityManager.persist(value);
+        commitFullTextFixtures();
+        List<Long> expected = List.of(bothTitles.getId(), tv.getId(), englishTitle.getId()).stream()
+            .sorted(java.util.Comparator.reverseOrder()).toList();
+        List<ContentSearchNativeRepository> searches = List.of(
+            new ContentSearchNativeRepository(entityManager, true, false),
+            new ContentSearchNativeRepository(entityManager, true, true),
+            new ContentSearchNativeRepository(entityManager, true, true, true));
+        for (ContentSearchNativeRepository search : searches) {
+            for (String input : List.of(keyword, "  " + keyword + "!🔥  ")) {
+                var rows = search.search(condition(input, null, null, 10), null);
+                assertThat(rows).extracting(ContentSearchProjection::getId).containsExactlyElementsOf(expected);
+                assertThat(rows).allSatisfy(row -> {
+                    assertThat(row.getExactMatchRank()).isZero();
+                    assertThat(row.getRelevanceScore()).isZero();
+                });
+                assertThat(search.searchAllKeywords(input)).extracting(ContentSearchProjection::getId)
+                    .containsExactlyElementsOf(expected);
+                assertThat(search.search(condition(input, "액션", MediaType.TV, 10), action.getId()))
+                    .extracting(ContentSearchProjection::getId).containsExactly(tv.getId());
+            }
+        }
+        var legacy = new ContentSearchNativeRepository(entityManager, false);
+        assertThat(legacy.searchAllKeywords(keyword)).extracting(ContentSearchProjection::getId)
+            .containsExactly(tv.getId(), bothTitles.getId());
+        for (boolean words : List.of(false, true)) {
+            var bookmarks = new kr.flint.api.domain.search.repository.SearchQueryRepository(new JPAQueryFactory(entityManager), true, words);
+            for (String input : List.of(keyword, "  " + keyword + "!🔥  ")) {
+                assertThat(bookmarks.searchBookmarkedContents(31L, input, null, 1))
+                    .extracting(kr.flint.api.domain.search.dto.response.BookmarkedContentSearchRes::contentId)
+                    .containsExactly(tv.getId(), bothTitles.getId());
+                assertThat(bookmarks.searchBookmarkedContents(31L, input, second.getId(), 1))
+                    .extracting(kr.flint.api.domain.search.dto.response.BookmarkedContentSearchRes::contentId)
+                    .containsExactly(bothTitles.getId());
+                assertThat(bookmarks.searchBookmarkedContents(32L, input, null, 10))
+                    .extracting(kr.flint.api.domain.search.dto.response.BookmarkedContentSearchRes::contentId)
+                    .containsExactly(englishTitle.getId());
+                assertThat(bookmarks.searchBookmarkedContents(33L, input, null, 10)).isEmpty();
+            }
+        }
+        var titleBookmarks = new kr.flint.api.domain.search.repository.SearchQueryRepository(new JPAQueryFactory(entityManager), false);
+        assertThat(titleBookmarks.searchBookmarkedContents(31L, keyword, null, 10))
+            .extracting(kr.flint.api.domain.search.dto.response.BookmarkedContentSearchRes::contentId)
+            .containsExactly(tv.getId(), bothTitles.getId());
+    }
 
 	@Test
 	@DisplayName("keyword 검색은 인기보다 정규화 완전 일치와 관련도를 우선")
@@ -473,7 +600,7 @@ class ContentQueryRepositoryTest {
 			assertThat(page).hasSize(Math.min(2, all.size() - i));
 			ContentSearchRow first = page.getFirst();
 			pageIds.add(first.id());
-			cursor = ContentSearchCursor.keyword(first.exactMatchRank(), first.relevanceScore(), first.id(), localized);
+			cursor = ContentSearchCursor.keyword(first.exactMatchRank(), first.relevanceScore(), first.id(), localized, true);
 		}
 		assertThat(pageIds).doesNotHaveDuplicates().containsExactlyElementsOf(all.stream().map(ContentSearchRow::id).toList());
 		assertThat(repository.searchContents(condition("해리포터", null, null, cursor, 1))).isEmpty();
@@ -565,7 +692,7 @@ class ContentQueryRepositoryTest {
 		for (ContentSearchRow expectedRow : all) {
 			List<ContentSearchRow> page = repository(true).searchContents(condition(keyword, null, null, cursor, 1));
 			assertThat(page.getFirst().id()).isEqualTo(expectedRow.id());
-			cursor = ContentSearchCursor.keyword(expectedRow.exactMatchRank(), expectedRow.relevanceScore(), expectedRow.id(), true);
+			cursor = ContentSearchCursor.keyword(expectedRow.exactMatchRank(), expectedRow.relevanceScore(), expectedRow.id(), true, true);
 		}
 		assertThat(repository(true).searchContents(condition(keyword, null, null, cursor, 1))).isEmpty();
 		assertThat(new ContentSearchNativeRepository(entityManager, true).searchAllKeywords(keyword))

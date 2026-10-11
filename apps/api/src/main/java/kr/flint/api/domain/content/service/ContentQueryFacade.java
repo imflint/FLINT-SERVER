@@ -6,6 +6,7 @@ import java.util.Set;
 
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
 
 import kr.flint.api.domain.content.dto.ContentSearchCondition;
 import kr.flint.api.domain.content.dto.ContentSearchCursor;
@@ -83,6 +84,7 @@ public class ContentQueryFacade {
 		return GetBookmarkedContentCountRes.from(bookmarkQueryService.getContentBookmarkCount(userId));
 	}
 
+	@Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
 	public PaginationResponse<GetContentSearchRes> getContentSearchList(
 		final String keyword,
 		final SearchGenre genre,
@@ -102,7 +104,9 @@ public class ContentQueryFacade {
 		if (decodedCursor != null) {
 			decodedCursor.validateSortMode(condition.hasKeyword());
 			if (condition.hasKeyword()) {
-				decodedCursor.validateKeywordVersion(contentQueryRepository.localizedSearchEnabled());
+				decodedCursor.validateKeywordVersion(contentQueryRepository.localizedSearchEnabled(),
+					contentQueryRepository.searchReadModelEnabled(), contentQueryRepository.usesEnglishWords(condition.keyword()),
+					contentQueryRepository.usesSingleCharacterInfix(condition.keyword()));
 			}
 		}
 		List<ContentSearchRow> page =
@@ -112,15 +116,17 @@ public class ContentQueryFacade {
 		List<GetContentSearchRes> data = rows.stream()
 			.map(ContentSearchRow::toResponse)
 			.toList();
-		String nextCursor = hasNext ? createNextCursor(rows, condition.hasKeyword()) : null;
+		String nextCursor = hasNext ? createNextCursor(rows, condition) : null;
 		return PaginationResponse.ofCursor(data, nextCursor);
 	}
 
-	private String createNextCursor(List<ContentSearchRow> rows, boolean keywordSearch) {
+	private String createNextCursor(List<ContentSearchRow> rows, ContentSearchCondition condition) {
 		ContentSearchRow last = rows.get(rows.size() - 1);
-		return keywordSearch
+		return condition.hasKeyword()
 			? ContentSearchCursor.keyword(last.exactMatchRank(), last.relevanceScore(), last.id(),
-				contentQueryRepository.localizedSearchEnabled()).encode()
+				contentQueryRepository.localizedSearchEnabled(), contentQueryRepository.searchReadModelEnabled(),
+				contentQueryRepository.usesEnglishWords(condition.keyword()),
+				contentQueryRepository.usesSingleCharacterInfix(condition.keyword())).encode()
 			: ContentSearchCursor.popular(last.bookmarkCount(), last.id()).encode();
 	}
 

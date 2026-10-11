@@ -14,14 +14,31 @@ public record ContentSearchKeyword(String raw, String normalized) {
         }
         String raw = keyword.trim();
         String normalized = ContentTitleNormalizer.normalizeNullable(raw);
-        if (normalized == null || normalized.codePointCount(0, normalized.length()) < 2) {
-            throw new GeneralException(ErrorCode.INVALID_INPUT, "keyword는 2자 이상이어야 합니다.");
+        if (normalized == null) {
+            throw new GeneralException(ErrorCode.INVALID_INPUT, "keyword는 문자 또는 숫자를 1자 이상 포함해야 합니다.");
         }
         return new ContentSearchKeyword(raw, normalized);
     }
 
     public String exactKey(boolean localized) {
         return localized ? normalized : raw.toLowerCase(Locale.ROOT);
+    }
+
+    public boolean isSingleCharacter() {
+        return normalized.codePointCount(0, normalized.length()) == 1;
+    }
+
+    public String wordKey() {
+        return ContentTitleNormalizer.normalizeWordsNullable(raw);
+    }
+
+    public boolean usesEnglishWords(boolean enabled) {
+        String words = wordKey();
+        return enabled && words != null && words.matches("[a-z0-9 ]+") && words.matches(".*[a-z].*");
+    }
+
+    public String wordPhraseQuery() {
+        return "\"" + wordKey() + "\"";
     }
 
     public String booleanQuery(boolean localized) {

@@ -1,13 +1,17 @@
 package kr.flint.api.domain.content.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import javax.sql.DataSource;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -22,9 +26,11 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import jakarta.persistence.EntityManager;
 import kr.flint.api.domain.content.dto.ContentSearchCondition;
+import kr.flint.api.domain.content.dto.ContentSearchCursor;
 import kr.flint.content.domain.Content;
 import kr.flint.content.domain.MediaType;
 import kr.flint.shared.config.QueryDslConfig;
+import kr.flint.shared.exception.GeneralException;
 
 @DataJpaTest
 @Testcontainers(disabledWithoutDocker = true)
@@ -34,7 +40,7 @@ import kr.flint.shared.config.QueryDslConfig;
 class ContentSearchReadModelRepositoryTest {
     @Container
     static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4.8")
-        .withCommand("--log-bin-trust-function-creators=1");
+        .withCommand("--log-bin-trust-function-creators=1", "--innodb-ft-min-token-size=1");
 
     @Autowired EntityManager entityManager;
     @Autowired DataSource dataSource;
@@ -65,6 +71,7 @@ class ContentSearchReadModelRepositoryTest {
         assertDocument(content);
         commit();
         assertMatches("harry potter", content.getId());
+        assertWordMatches("harry potter", content.getId());
 
         TestTransaction.start();
         Content managed = entityManager.find(Content.class, content.getId());
@@ -78,6 +85,7 @@ class ContentSearchReadModelRepositoryTest {
         entityManager.createNativeQuery("ANALYZE TABLE content_search_document").getResultList();
         assertMatches("harry potter", content.getId());
         assertMatches("banana");
+        assertWordMatches("harry potter", content.getId());
 
         TestTransaction.start();
         managed = entityManager.find(Content.class, content.getId());
@@ -85,6 +93,7 @@ class ContentSearchReadModelRepositoryTest {
         commit();
         assertMatches("harry potter");
         assertMatches("banana", content.getId());
+        assertWordMatches("banana", content.getId());
         TestTransaction.start();
         entityManager.remove(entityManager.find(Content.class, content.getId()));
         entityManager.flush();
@@ -98,6 +107,7 @@ class ContentSearchReadModelRepositoryTest {
         commit();
         assertThat(countDocuments(content.getId())).isZero();
         assertMatches("banana");
+        assertWordMatches("banana");
     }
 
     @Test
@@ -127,9 +137,14 @@ class ContentSearchReadModelRepositoryTest {
 
     @Test
     void candidateUsesCoveringFullTextAndPageLimitPrecedesContentHydration() {
+        entityManager.persist(Content.createLocalized(103L, MediaType.MOVIE, null, "It Follows", 2014, null, null, null));
+        commit();
         var repository = new ContentSearchNativeRepository(entityManager, true, true);
-        String sql = repository.searchSql(ContentSearchCondition.of("it", null, null, null, 20), null);
-        assertThat(sql.indexOf("LIMIT :queryLimit")).isLessThan(sql.indexOf("STRAIGHT_JOIN content c"));
+        var condition = ContentSearchCondition.of("it", null, null, null, 20);
+        String sql = repository.searchSql(condition, null);
+        assertThat(sql).doesNotContain("STRAIGHT_JOIN content c");
+        assertThat(sql).endsWith("LIMIT :queryLimit");
+        assertThat(sql.split("LIMIT", -1)).hasSize(2);
         List<?> plan = entityManager.createNativeQuery("""
             EXPLAIN SELECT FTS_DOC_ID,MATCH(search_title) AGAINST('+it' IN BOOLEAN MODE) score
             FROM content_search_document WHERE MATCH(search_title) AGAINST('+it' IN BOOLEAN MODE)>0
@@ -137,14 +152,158 @@ class ContentSearchReadModelRepositoryTest {
         Object[] row = (Object[]) plan.getFirst();
         assertThat(row[4]).isEqualTo("fulltext");
         assertThat(String.valueOf(row[row.length - 1])).contains("Using index");
+        var query = entityManager.createNativeQuery("EXPLAIN " + sql);
+        repository.bindParameters(query, condition, null);
+        List<?> fullPlan = query.getResultList();
+        List<Object[]> documentReads = fullPlan.stream().map(value -> (Object[]) value)
+            .filter(value -> "d".equals(value[2])).toList();
+        assertThat(documentReads).isNotEmpty().allSatisfy(value -> {
+            assertThat(value[6]).isEqualTo("idx_search_document_rank");
+            assertThat(String.valueOf(value[value.length - 1])).contains("Using index");
+        });
+        assertThat(fullPlan.stream().map(value -> (Object[]) value)
+            .filter(value -> "fulltext".equals(value[4])).toList())
+            .isNotEmpty().allSatisfy(value ->
+                assertThat(String.valueOf(value[value.length - 1])).contains("Using index"));
+        assertThat(repository.search(condition, null)).hasSize(1)
+            .first().satisfies(value -> assertThat(value.getTitle()).isEqualTo("It Follows"));
     }
+
+    @Test
+    void v3CursorTraversesExactAndRelevanceResultsWithoutDuplicates() {
+        for (int i = 0; i < 6; i++) {
+            entityManager.persist(Content.createLocalized(200L + i, MediaType.MOVIE,
+                i == 0 ? "그것" : null, i < 2 ? "It" : "It Follows " + i, 2014, null, null, null));
+        }
+        commit();
+        var repository = new ContentSearchNativeRepository(entityManager, true, true);
+        var expected = repository.searchAllKeywords("it");
+        assertThat(expected).hasSize(6);
+        assertThat(expected.subList(0, 2)).allSatisfy(value -> assertThat(value.getExactMatchRank()).isZero());
+        var seen = new ArrayList<Long>();
+        ContentSearchCursor cursor = null;
+        for (int page = 0; page < 4; page++) {
+            var rows = repository.search(ContentSearchCondition.of("Ｉ!Ｔ", null, MediaType.MOVIE, cursor, 2), null);
+            if (rows.isEmpty()) break;
+            var visible = rows.subList(0, Math.min(2, rows.size()));
+            visible.forEach(value -> seen.add(value.getId()));
+            var last = visible.getLast();
+            cursor = ContentSearchCursor.decode(ContentSearchCursor.keyword(last.getExactMatchRank(), last.getRelevanceScore(), last.getId(), true, true).encode());
+        }
+        assertThat(seen).containsExactlyElementsOf(expected.stream().map(ContentSearchProjection::getId).toList());
+        assertThat(seen).doesNotHaveDuplicates();
+        assertThatThrownBy(() -> repository.search(
+            ContentSearchCondition.of("it", null, null, ContentSearchCursor.keyword(0, 1, 1L, true), 2), null))
+            .isInstanceOf(GeneralException.class);
+    }
+
+    @Test
+    void v4EnglishCursorKeepsRankingAndRejectsOtherKeywordVersions() {
+        for (int i = 0; i < 7; i++) {
+            entityManager.persist(Content.createLocalized(400L + i, i == 6 ? MediaType.TV : MediaType.MOVIE,
+                "그것 " + i, i < 2 ? "It" : "It Follows " + i, 2014, null, null, null));
+        }
+        commit();
+        var search = new ContentSearchNativeRepository(entityManager, true, true, true);
+        var expected = search.search(ContentSearchCondition.of("it", null, MediaType.MOVIE, null, 20), null);
+        var seen = new ArrayList<Long>();
+        ContentSearchCursor cursor = null;
+        for (int page = 0; page < 4; page++) {
+            var rows = search.search(ContentSearchCondition.of("Ｉ!Ｔ", null, MediaType.MOVIE, cursor, 2), null);
+            if (rows.isEmpty()) break;
+            var visible = rows.subList(0, Math.min(2, rows.size()));
+            visible.forEach(value -> seen.add(value.getId()));
+            var last = visible.getLast();
+            cursor = ContentSearchCursor.decode(ContentSearchCursor.keyword(last.getExactMatchRank(), last.getRelevanceScore(),
+                last.getId(), true, true, true).encode());
+            assertThat(cursor.version()).isEqualTo(4);
+        }
+        assertThat(seen).containsExactlyElementsOf(expected.stream().map(ContentSearchProjection::getId).toList());
+        assertThat(seen).doesNotHaveDuplicates();
+        for (int version : List.of(1, 2, 3)) {
+            var old = new ContentSearchCursor(version, ContentSearchCursor.SortMode.KEYWORD, null, 0, 1.0, 1L);
+            assertThatThrownBy(() -> search.search(ContentSearchCondition.of("it", null, null, old, 2), null))
+                .isInstanceOf(GeneralException.class);
+        }
+        var v4 = ContentSearchCursor.keyword(0, 1, 1L, true, true, true);
+        assertThatThrownBy(() -> search.search(ContentSearchCondition.of("그것", null, null, v4, 2), null))
+            .isInstanceOf(GeneralException.class);
+        assertThat(search.usesEnglishWords("그것")).isFalse();
+        assertThat(new ContentSearchNativeRepository(entityManager, true, true).usesEnglishWords("it")).isFalse();
+    }
+
+    @Test
+    void readinessRejectsMissingWordIndexAndInvalidFeatureDependencies() throws SQLException {
+        var jdbc = new org.springframework.jdbc.core.JdbcTemplate(dataSource);
+        try (var connection = dataSource.getConnection(); var statement = connection.createStatement()) {
+            statement.execute("SET SESSION innodb_ft_user_stopword_table=CONCAT(DATABASE(),'/content_search_stopword')");
+            statement.execute("CREATE FULLTEXT INDEX ft_content_words ON content(word_title_ko,word_title_en)");
+        }
+        var schema = new ContentWordSearchSchemaRepository(jdbc);
+        schema.validate();
+        jdbc.execute("ALTER TABLE content DROP INDEX ft_content_words");
+        assertThatThrownBy(schema::validate).hasMessageContaining("Incorrect word index: ft_content_words");
+        jdbc.execute("CREATE FULLTEXT INDEX ft_content_words ON content(word_title_ko,word_title_en) WITH PARSER ngram");
+        assertThatThrownBy(schema::validate).hasMessageContaining("must use the default parser");
+        jdbc.execute("ALTER TABLE content DROP INDEX ft_content_words");
+        assertThatThrownBy(() -> new ContentSearchNativeRepository(entityManager, true, false, true))
+            .hasMessageContaining("requires localized search");
+        assertThatThrownBy(() -> new ContentSearchNativeRepository(entityManager, false, true, true))
+            .hasMessageContaining("requires localized search");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"봄", "a"})
+    void singleCharacterExactSearchKeepsIndexedCandidatesAndStableCursor(String keyword) {
+        for (int i = 0; i < 5; i++) {
+            entityManager.persist(Content.createLocalized(500L + i, MediaType.MOVIE, keyword, keyword, 2020, null, null, null));
+        }
+        entityManager.persist(Content.createLocalized(505L, MediaType.MOVIE, keyword + " story", null, 2020, null, null, null));
+        commit();
+        var search = new ContentSearchNativeRepository(entityManager, true, true, true);
+        var condition = ContentSearchCondition.of(keyword, null, null, null, 2);
+        String sql = search.searchSql(condition, null);
+        assertThat(sql).doesNotContain("MATCH(", "LOCATE(", "fullTextKeyword", "wordKeyword");
+        var explain = entityManager.createNativeQuery("EXPLAIN " + sql);
+        search.bindParameters(explain, condition, null);
+        List<?> plan = explain.getResultList();
+        assertThat(plan.stream().map(row -> ((Object[]) row)[4]).toList()).doesNotContain("fulltext");
+        assertThat(plan.stream().map(row -> ((Object[]) row)[6]).toList())
+            .contains("idx_search_document_title_ko", "idx_search_document_title_en");
+        var expected = search.searchAllKeywords(keyword);
+        assertThat(expected).hasSize(5);
+        var seen = new ArrayList<Long>();
+        ContentSearchCursor cursor = null;
+        for (int page = 0; page < 4; page++) {
+            var rows = search.search(ContentSearchCondition.of(keyword, null, null, cursor, 2), null);
+            if (rows.isEmpty()) break;
+            var visible = rows.subList(0, Math.min(2, rows.size()));
+            visible.forEach(row -> {
+                seen.add(row.getId());
+                assertThat(row.getExactMatchRank()).isZero();
+                assertThat(row.getRelevanceScore()).isZero();
+            });
+            var last = visible.getLast();
+            cursor = ContentSearchCursor.keyword(0, 0.0, last.getId(), true, true, search.usesEnglishWords(keyword));
+            assertThat(cursor.version()).isEqualTo(keyword.equals("a") ? 4 : 3);
+        }
+        assertThat(seen).doesNotHaveDuplicates()
+            .containsExactlyElementsOf(expected.stream().map(ContentSearchProjection::getId).toList());
+    }
+
+    private void assertWordMatches(String keyword, Long... ids) {
+        assertThat(new ContentSearchNativeRepository(entityManager, true, true, true).searchAllKeywords(keyword))
+            .extracting(ContentSearchProjection::getId).containsExactly(ids);
+    }
+
 
     private void assertDocument(Content content) {
         Object[] row = (Object[]) entityManager.createNativeQuery("""
-            SELECT normalized_title_ko,normalized_title_en,search_title,media_type
+            SELECT normalized_title_ko,normalized_title_en,search_title,media_type,word_title_ko,word_title_en
             FROM content_search_document WHERE content_id=:id
             """).setParameter("id", content.getId()).getSingleResult();
-        assertThat(row).containsExactly(content.getNormalizedTitleKo(), content.getNormalizedTitleEn(), content.getSearchTitle(), content.getMediaType().name());
+        assertThat(row).containsExactly(content.getNormalizedTitleKo(), content.getNormalizedTitleEn(), content.getSearchTitle(), content.getMediaType().name(),
+            content.getWordTitleKo(), content.getWordTitleEn());
     }
 
     private long docId(Long id) {
@@ -167,5 +326,6 @@ class ContentSearchReadModelRepositoryTest {
         TestTransaction.flagForCommit();
         TestTransaction.end();
         entityManager.clear();
+        entityManager.createNativeQuery("ANALYZE TABLE content_search_document").getResultList();
     }
 }

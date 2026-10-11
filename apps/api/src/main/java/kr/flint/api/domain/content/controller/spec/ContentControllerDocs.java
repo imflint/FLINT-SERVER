@@ -80,26 +80,28 @@ public interface ContentControllerDocs {
 		summary = "콘텐츠 검색 - 재민",
 		description = """
 			- 로컬 DB에 저장된 콘텐츠를 커서 페이지네이션으로 반환합니다.
-			- `keyword`는 NFKC·소문자·공백 및 특수문자 제거 후 유니코드 코드포인트 2자 이상이어야 합니다. 미입력 또는 공백만 입력하면 검색어 필터를 적용하지 않습니다.
-			- 검색어가 있으면 완전 일치, FULLTEXT 관련도, 콘텐츠 ID 내림차순으로 정렬합니다. 검색어가 없으면 인기순(북마크 수, 콘텐츠 ID 내림차순)으로 정렬합니다.
+			- `keyword`는 NFKC·소문자·문자와 숫자 외 제거 후 유니코드 코드포인트 1자 이상이어야 합니다. 한 글자 포함 검색 활성화 시 1자는 정규화 제목의 LIKE 포함 조건으로 조회하며 전체 일치 우선·ID 내림차순입니다. 한 글자 커서는 v5이며 FULLTEXT를 사용하지 않습니다. 비활성화 시 기존 전체 일치만 지원합니다. 2자 이상은 기존 검색을 유지하고 실제 영문 단어 매칭에서는 단어 사이 공백을 보존합니다. 미입력 또는 공백만 입력하면 검색어 필터를 적용하지 않습니다.
+			- 2자 이상 검색어는 완전 일치, FULLTEXT 관련도, 콘텐츠 ID 내림차순으로 정렬합니다. 검색어가 없으면 인기순(북마크 수, 콘텐츠 ID 내림차순)으로 정렬합니다.
+			- 영문 단어 검색이 활성화되면 영문 ASCII 문자·숫자 검색어는 전체 단어가 입력 순서대로 인접해야 합니다. 단어 사이 공백은 보존하며 연속 공백은 통합합니다. 접두어·단어 중간·임의 띄어쓰기 검색은 지원하지 않습니다. 한글·혼합·숫자만 입력한 검색은 기존 방식을 유지합니다.
 			- `genre`는 `?genre=ACTION`처럼 단일 장르를 지정합니다. 기존 반복 파라미터나 쉼표 입력은 첫 값만 적용하며 이후 값은 검증하지 않습니다.
 			- `genre` 미입력 또는 첫 값이 비어 있으면 장르 필터를 적용하지 않습니다. 첫 값이 유효하지 않으면 400을 반환합니다.
 			- `mediaType` 미입력 시 MOVIE/TV 전체를 대상으로 검색합니다.
 			- 조건이 없으면 로컬 DB 콘텐츠를 인기순으로 반환합니다.
 			- `cursor`는 이전 응답의 `meta.nextCursor`를 그대로 전달하는 cursor token입니다.
-			- localized 검색 전환 시 keyword 커서는 v2로 변경되며 이전 keyword 커서는 400을 반환합니다. 인기순 커서는 v1을 유지합니다.
+			- localized 검색은 keyword v2, 검색 read model은 keyword v3 커서를 사용합니다. 현재 모드와 다른 keyword 커서는 400을 반환하므로 첫 페이지부터 다시 조회해야 합니다. 인기순 커서는 v1을 유지합니다.
+			- 영문 단어 검색 활성화 시 keyword v4 커서를 사용하며 한글 검색 v3·인기순 v1은 유지합니다. 이전 영문 keyword 커서는 400을 반환합니다.
 			"""
 	)
 	@ApiResponses({
 		@ApiResponse(responseCode = "200", description = "검색 성공", useReturnTypeSchema = true),
 		@ApiResponse(
 			responseCode = "400",
-			description = "keyword가 2자 미만이거나 genre 또는 cursor가 유효하지 않거나 size가 허용 범위를 벗어난 경우",
+			description = "keyword에 정규화 후 문자와 숫자가 없거나 genre 또는 cursor가 유효하지 않거나 size가 허용 범위를 벗어난 경우",
 			content = @Content(schema = @Schema(implementation = ProblemDetail.class))
 		)
 	})
 	ResponseEntity<?> searchContent(
-		@Parameter(description = "검색 키워드. NFKC·소문자·문자와 숫자 외 제거 후 2자 이상. 미입력 또는 공백만 입력하면 필터 없음", example = "눈물의 여왕")
+		@Parameter(description = "검색 키워드. 정규화 후 1자는 포함 검색 활성화 시 정규화 제목 LIKE 검색, 비활성화 시 전체 일치만. 2자 이상은 기존 검색. 미입력 또는 공백만 입력하면 필터 없음", example = "눈물의 여왕")
 		String keyword,
 		@Parameter(description = "단일 장르 필터. 복수 입력은 첫 값만 적용하며 검색어·미디어 타입과 AND 조건으로 검색합니다.", example = "ACTION")
 		SearchGenre genre,

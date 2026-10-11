@@ -119,7 +119,7 @@ public class ContentBatchJdbcRepository {
     public void promoteTitles(List<ContentUpsertCommand> commands) {
         jdbcTemplate.batchUpdate("""
             UPDATE content SET title = ?, title_ko = ?, title_en = ?, normalized_title_ko = ?,
-                normalized_title_en = ?, search_title = ?, updated_at = UTC_TIMESTAMP()
+                normalized_title_en = ?, search_title = ?, word_title_ko = ?, word_title_en = ?, updated_at = UTC_TIMESTAMP()
             WHERE tmdb_id = ? AND media_type = ?
             """, commands, Math.max(1, commands.size()), (ps, command) -> {
             ps.setString(1, ContentTitleNormalizer.displayTitle(command.titleKo(), command.titleEn()));
@@ -128,8 +128,10 @@ public class ContentBatchJdbcRepository {
             ps.setString(4, ContentTitleNormalizer.normalizeNullable(command.titleKo()));
             ps.setString(5, ContentTitleNormalizer.normalizeNullable(command.titleEn()));
             ps.setString(6, ContentTitleNormalizer.buildSearchTitle(command.titleKo(), command.titleEn()));
-            ps.setLong(7, command.tmdbId());
-            ps.setString(8, command.mediaType().name());
+            ps.setString(7, ContentTitleNormalizer.normalizeWordsNullable(command.titleKo()));
+            ps.setString(8, ContentTitleNormalizer.normalizeWordsNullable(command.titleEn()));
+            ps.setLong(9, command.tmdbId());
+            ps.setString(10, command.mediaType().name());
         });
     }
 
@@ -188,11 +190,11 @@ public class ContentBatchJdbcRepository {
 		String sql = """
 			INSERT INTO content (
 				id, tmdb_id, media_type, title, title_ko, title_en,
-				normalized_title_ko, normalized_title_en, search_title,
+				normalized_title_ko, normalized_title_en, search_title, word_title_ko, word_title_en,
 				`year`, author, description, poster,
 				bookmark_count, created_at, updated_at
 			)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
 			ON DUPLICATE KEY UPDATE
 				updated_at = IF(
 					NOT (title <=> VALUES(title))
@@ -211,6 +213,8 @@ public class ContentBatchJdbcRepository {
 				normalized_title_ko = VALUES(normalized_title_ko),
 				normalized_title_en = VALUES(normalized_title_en),
 				search_title = VALUES(search_title),
+				word_title_ko = VALUES(word_title_ko),
+				word_title_en = VALUES(word_title_en),
 				`year` = VALUES(`year`),
 				author = VALUES(author),
 				description = VALUES(description),
@@ -228,12 +232,14 @@ public class ContentBatchJdbcRepository {
 			ps.setString(7, ContentTitleNormalizer.normalizeNullable(command.titleKo()));
 			ps.setString(8, ContentTitleNormalizer.normalizeNullable(command.titleEn()));
 			ps.setString(9, ContentTitleNormalizer.buildSearchTitle(command.titleKo(), command.titleEn()));
-			ps.setInt(10, command.year());
-			ps.setString(11, command.author());
-			ps.setString(12, command.description());
-			ps.setString(13, command.poster());
-			ps.setTimestamp(14, timestamp);
-			ps.setTimestamp(15, timestamp);
+			ps.setString(10, ContentTitleNormalizer.normalizeWordsNullable(command.titleKo()));
+			ps.setString(11, ContentTitleNormalizer.normalizeWordsNullable(command.titleEn()));
+			ps.setInt(12, command.year());
+			ps.setString(13, command.author());
+			ps.setString(14, command.description());
+			ps.setString(15, command.poster());
+			ps.setTimestamp(16, timestamp);
+			ps.setTimestamp(17, timestamp);
 		});
 	}
 
