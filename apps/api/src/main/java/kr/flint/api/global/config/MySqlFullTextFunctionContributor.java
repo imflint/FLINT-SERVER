@@ -17,6 +17,10 @@ public class MySqlFullTextFunctionContributor implements FunctionContributor {
 			.resolve(StandardBasicTypes.BOOLEAN);
 		functionContributions.getFunctionRegistry()
 			.registerPattern(FUNCTION_NAME, FUNCTION_PATTERN, booleanType);
+		functionContributions.getFunctionRegistry().registerPattern("match_against_words_boolean",
+			"match (?1, ?2) against (?3 in boolean mode) > 0", booleanType);
+		functionContributions.getFunctionRegistry().registerPattern("title_contains_binary",
+			"?1 like ?2 collate utf8mb4_0900_bin", booleanType);
 
 		var doubleType = functionContributions.getTypeConfiguration()
 			.getBasicTypeRegistry()

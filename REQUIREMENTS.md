@@ -714,7 +714,7 @@ flint-api/
 
 **[입력]**
 
-- keyword (String, optional): 한글 또는 영문 검색어
+- keyword (String, optional): 한글 또는 영문 검색어. NFKC·소문자·문자와 숫자 외 제거 후 유니코드 코드포인트 기준 최소 1자. 포함 검색 활성화 시 1자는 정규화 제목 LIKE 검색, 비활성화 시 전체 일치만. 2자 이상은 기존 검색. 미입력·빈 문자열·공백만 입력하면 검색어 필터 없음
 - genre (SearchGenre, optional): 단일 장르 필터
 - mediaType (MOVIE/TV, optional): 미디어 타입
 - cursor (String, optional): 이전 응답의 opaque cursor
@@ -730,6 +730,40 @@ flint-api/
 6. 정렬 모드·완전 일치 등급·관련도·ID 또는 북마크 수·ID를 담은 버전형 cursor로 페이지 이동
 7. 기존 `genre=ACTION&genre=ROMANCE` 또는 `genre=ACTION,ROMANCE` 입력은 첫 값인 `ACTION`만 적용하며 이후 값은 검증하지 않음
 8. 장르 미입력 또는 첫 값이 비어 있으면 장르 필터를 적용하지 않고, 첫 값이 유효하지 않으면 400 반환
+9. 정규화 후 문자와 숫자가 없는 입력은 `INVALID_INPUT`(400), `keyword는 문자 또는 숫자를 1자 이상 포함해야 합니다.`로 거절한다. 포함 검색 활성화 시 1자는 한글·영문 정규화 제목의 LIKE 포함 조건으로 조회하며 전체 일치(등급 0) 우선·부분 일치(등급 1)·ID 내림차순이다. FULLTEXT·관련도 계산을 하지 않고 점수는 0이다. 비활성화 시 기존 제목 전체 일치만 지원한다. 2자 이상은 기존 매칭·정렬을 유지한다.
+10. 검색어 없는 장르 조회는 기존 `(genre_id, content_id)` 인덱스에서 최대 2,049개 관계만 검사해 접근 경로를 선택한다. 관계가 2,048개 이하이면 장르 작품부터 읽어 인기순으로 정렬하고, 그보다 많으면 기존 인기순 작품 인덱스부터 읽고 장르 관계를 확인한다. 경로 선택용 LIMIT은 결과 후보를 잘라내지 않는다. 미디어 타입·인기순 v1 커서·size + 1 계약은 유지한다.
+11. 검색어 있는 조회는 완전 일치 ID와 FULLTEXT ID를 각 인덱스로 조회해 UNION으로 중복 제거한 뒤 장르·미디어 타입·커서를 적용하고 기존 순서대로 `size + 1`개 조회. 개별 후보 조회에는 LIMIT을 적용하지 않음
+12. `localized-search-enabled=false`에서는 기존 `LOWER(title)` 일치와 `title` FULLTEXT를 유지하고, true에서는 정규화 한글·영문 제목과 `search_title`을 사용. 이 변경으로 옵션을 자동 활성화하거나 제목을 백필하지 않음
+13. 수동 인덱스 DDL은 `docs/content-search-performance-ddl.sql`, 적용·검증·복구 절차는 `docs/content-search-performance.md`. 새 완전 일치 인덱스를 확인한 뒤 API를 배포하며 운영 DB 적용·배포·프론트엔드 수정은 로컬 구현 범위에 포함하지 않음
+14. `LOWER(title)` 함수형 인덱스는 점검 시간에 `ALGORITHM=INPLACE LOCK=SHARED`로 생성하며 작업 중 쓰기가 차단됨. 희소·빈 장르는 인기순 인덱스를 많이 읽어 기존보다 느릴 수 있으므로 운영 배포 전 해당 조건도 검증
+15. localized=true에서는 정규화 검색어를 코드포인트 기준 2글자 토큰의 필수 AND로 변환해 후보를 찾고, 정규화 한글/영문 제목의 연속 일치를 추가 검증한다. 반복 토큰의 횟수를 유지해 기존 Natural Language TF-IDF 점수와 같은 기여도를 보존하며 점수는 FULLTEXT 후보 단계에서 한 번 계산한다. 정확 일치 후보의 0점과 FULLTEXT 점수는 ID별 MAX로 합쳐 중복을 제거하고 정확 일치→관련도→ID 순서로 정렬한다. keyword 커서는 v2이며 이전 v1 keyword 커서는 400을 반환한다. false에서는 기존 phrase/Natural Language 경로와 v1 keyword 커서를 유지하며 인기순은 항상 v1이다.
+16. `/search/contents`는 같은 native 후보·정렬을 재사용하며 keyword 배열을 제한하지 않는다. `/search/bookmarked-contents`는 QueryDSL과 등록된 FULLTEXT 함수를 사용하고 사용자 조건·최신 저장순·숫자 커서를 유지한다. 세 API의 최소 입력 규칙은 동일하다.
+17. 장르 식별은 `genre.code`이며 표시명과 영문 별칭은 식별자가 아니다. 24개 표준 장르를 유지하고 `Action & Adventure → ACTION`, `Sci-Fi & Fantasy → SCIENCE_FICTION`, `War & Politics → WAR`로 연결한다. 기존 6개 검색 필터 계약은 유지한다.
+18. 배치는 Movie/TV별 TMDB 장르 ID를 `tmdb_genre_mapping`으로 연결하며 이름으로 마스터를 생성하지 않는다. 미등록 ID는 해당 작품을 RETRY 처리하고 기존 콘텐츠·장르·OTT를 보존한다. 관리자 genreNames는 표준명·고정 코드·등록 별칭만 허용하며 미등록 값은 400이다.
+19. 수동 이관 SQL은 `docs/content-search-genre-normalization.sql`이며 원본 백업·표준 ID 선택·500개 콘텐츠 단위 관계 병합·기본 ROLLBACK·명시적 복구를 지원한다. 모든 쓰기를 중지한 점검 적용이며 언어/중복 작품 삭제나 사용자 취향 재분석을 수행하지 않는다.
+20. `contentSearchDocumentBackfillJob`은 수동 옵션으로만 등록·실행한다. 기존 ko/en 제목으로 파생 검색 필드만 500건 chunk·ID 체크포인트로 재생성하고 제목 없는 행이 있으면 시작을 거절한다. 같은 backfillVersion으로 실패 실행을 재시작하며 실행 중 해당 프로세스의 TMDB 시작/자동 재개를 차단한다.
+21. 검색 인덱스는 ngram 크기 2와 빈 제목 전용 stopword 테이블을 사용한다. 인덱스 재생성은 별도 수동 점검 작업이며 글로벌 stopword와 기존 title 인덱스는 자동 변경하지 않는다. localized 옵션은 검증 전까지 false를 유지한다.
+22. 검색·장르 운영 이관은 모든 쓰기를 중지한 한 번의 점검으로 진행한다. 장르 원본/관계/매핑/컬럼·인덱스 정의를 DB 밖으로 내보내고, 기존 ENUM NOT NULL 코드는 VARCHAR(32) NULL로 전환한 뒤 명시적 이름 별칭으로 재산정한다. BACKED_UP/PREPARED/RELATIONS_DONE/FINALIZING/COMPLETED 단계를 기록하고 실패한 단계만 재개하며 원본 백업을 덮어쓰지 않는다. 최종 단계만 NOT NULL·UNIQUE를 적용하고 복원은 이번 실행 소유 UNIQUE만 제거한다.
+23. 운영 dev 프로필은 유지하되 Parameter Store에 spring.jpa.hibernate.ddl-auto=none을 명시한다. flint.batch.execution-enabled는 기본 true이며 false일 때 관리자 시작은 기존 409로 거절하고 자동 재개·heartbeat는 중지하되 graceful 종료 정리는 유지한다. 점검 중 실행·자동 스케줄·S3 정리·관리자 지표 스케줄을 끄고 검증 후 순차 활성화한다.
+24. 점검 실패·장시간 실행 시 SQL 종료를 확인하고 저장된 단계/동일 backfillVersion부터 재개한다. 자동 원복·구버전 재기동·작품 삭제·사용자 관계 정리·전체 import·RDS 스냅샷은 수행하지 않는다. 기호 전용 원문은 nullable 정규화 결과를 유지한다. 백필의 원본 제목은 NULL-safe 바이너리 비교로 대소문자·악센트·끝 공백 변경까지 검출하고 해당 chunk를 rollback한다. 배치 재활성화 실패 시 배치만 다시 중지하고 이미 검증한 API는 유지한다.
+25. MySQL 8.4.8에서 기존 title FULLTEXT가 있으면 search_title 인덱스만 재생성해도 테이블 공통 stopword 설정이 남는다. 이 경우 별도 승인된 COPY 테이블 재구성으로 컬럼·인덱스·FK 정의 및 원본·관계를 보존하면서 두 FULLTEXT 모두 빈 stopword 목록을 적용한다. 부분 매칭은 정규화 완전 일치와 분리하여 새 연결에서도 검증하고, localized flag rollback은 기존 stopword 설정까지 복원하는 것으로 간주하지 않는다. 운영 smoke test 실패 상태에서는 외부 접근과 배치를 재개하지 않는다.
+26. 승인된 검색 전용 read model `content_search_document`는 작품 ID·유형·정규화 제목·기존 검색 문서를 동일하게 복제한다. 독립 AUTO_INCREMENT FTS_DOC_ID는 작품 ID와 분리하며 삭제된 문서 ID를 재사용하지 않는다. INSERT/UPDATE/DELETE 트리거로 원본과 같은 트랜잭션에서 동기화하고 북마크 수 등 검색 외 변경은 문서를 다시 쓰지 않는다. 모든 작품의 검색 문서를 500건 체크포인트로 복제하고 빈 stopword FULLTEXT 및 일치·orphan 검증을 완료하기 전에는 `flint.content.search-read-model-enabled=false`를 유지한다.
+27. read model은 좁은 검색 문서에서 연속 일치·장르·유형·커서·정렬을 적용한 뒤 최종 페이지만 원본 작품과 연결한다. 문서 ID·점수 단독 조회가 covering이어도 실제 결합 쿼리가 covering인지는 별도로 실행계획에서 검증해야 한다. 완전 일치→관련도→ID라는 정렬 기준은 유지하지만 InnoDB 테이블 통계가 달라 실제 관련도 점수와 일부 순서는 달라질 수 있다. read model keyword 커서는 v3이며 기존 v1·v2 keyword 커서는 400으로 거절한다. 클라이언트는 첫 페이지부터 다시 조회한다. 인기순 v1·저장 작품 숫자 커서는 유지한다. 레거시 무제한 검색은 무제한 계약을 유지하므로 대량 결과 자체의 응답 비용은 남는다. 원본 FULLTEXT와 플래그 기반 읽기 복구 경로는 유지하며 RDS 사양은 늘리지 않는다. 수동 SQL은 `docs/content-search-read-model.sql`; 이후 작품 정리 SQL의 트리거 검사는 이 세 트리거를 명시적으로 인식해야 한다.
+28. 검색어 없는 장르 인기순의 빈번 장르 경로는 인기 인덱스의 ID·저장 수 covering 조회에서 장르·유형·커서·LIMIT을 먼저 적용한 뒤 상세 필드를 읽는다. 희소·빈 장르는 10번의 bounded probe로 장르 선행 경로를 선택해 전체 인기 인덱스 순회를 피한다. 두 경로는 동일한 인기순 정렬과 v1 커서를 사용하며 캐시나 검색 제한을 추가하지 않는다. 현재 외부 API의 6개 장르는 운영 데이터상 모두 경계값보다 크므로 이번 개선이 이들의 첫 페이지나 키워드 검색을 해결했다고 간주하지 않는다.
+29. 현재 인프라에서 키워드 후보 조회 PoC는 세션 임시 테이블로만 검증한다. 토큰별 FULLTEXT 점수를 합산한 실험은 일부 순서·점수가 달라 운영 경로에 반영하지 않으며, 단일 FULLTEXT 경로도 일관된 성능 개선이 없으면 채택하지 않는다. 관련도 계산·커서 계약 변경은 별도 확인이 필요하다. 기능 검증과 성능 검증을 구분하며, 잔여 지연을 확인하고 사용자가 해당 상태의 서비스 재개를 명시적으로 요청한 경우에만 최신 검증 이미지의 내부·외부 health와 API 응답을 확인해 점검을 해제한다. 이를 키워드 성능 최적화 완료로 기록하지 않는다.
+
+30. `flint.content.english-word-search-enabled`는 기본 false다. true이면 정규화된 입력이 ASCII 영문·숫자·공백만 포함하고 영문 문자가 하나 이상일 때 단어 검색으로 전환한다. 전체 단어가 입력 순서대로 인접한 구문만 일치하며 접두어·단어 중간 문자열·임의 띄어쓰기는 지원하지 않는다. 한글·혼합·숫자만 입력은 기존 ngram 경로다.
+31. 단어 정규화는 NFKC·소문자·문자/숫자/공백 외 제거·공백 통합·trim이다. 검색 경로는 공백 제거 정규화 결과의 코드포인트 수로 구분한다. 1자는 포함 검색 플래그에 따라 LIKE 검색 또는 기존 전체 일치이며, 2자 이상 영문은 기존 단어·구문 검색이다. `harry potter`는 허용하지만 `harrypotter`, `ha rry pot ter`, `arry`, `harry pot`, `potter harry`는 Harry Potter와 일치하지 않는다. 다른 작품의 실제 제목이 해당 입력과 일치하면 그 작품은 반환할 수 있다.
+32. `content`와 `content_search_document`의 nullable `word_title_ko`, `word_title_en`을 기본 파서 FULLTEXT로 인덱싱한다. `innodb_ft_min_token_size=1`과 빈 제목 전용 stopword 목록으로 `it`와 구문 내부의 `a`·`i`도 저장한다. 1자 입력에서는 이 FULLTEXT 인덱스를 조회하지 않는다. 포함 검색 활성화 시 한 글자 커서만 v5이고, 2자 이상 영문 v4·한글 v3·인기 v1은 유지한다. 제목 쓰기·배치·분류 결과 반영에서 공통 정규화를 사용하고 트리거로 문서를 동기화한다.
+33. 단어 검색의 완전 일치는 기존 정규화 제목 인덱스로 후보를 좁힌 뒤 공백을 보존한 제목도 비교한다. FULLTEXT 후보와 UNION하며 제목별 단어 경계·연속 구문을 최종 확인한다. 정확 일치→단어 관련도→ID 순서를 사용하고 개별 후보 LIMIT이나 bigram fallback은 없다. 영문 keyword cursor는 v4이며 이전 버전은 400으로 거절한다. 한글 read model v3·인기 v1·저장 작품 숫자 커서는 유지한다.
+34. 세 작품 검색 API가 같은 단어 매칭 정책을 사용한다. 저장 작품은 QueryDSL·등록된 두 필드용 Boolean 함수·사용자 조건·최신 저장순을 유지하고 레거시 keyword 결과는 무제한 배열이다. 단어 관련도 점수와 순서는 기존 bigram과 다를 수 있다.
+35. 단어 플래그 활성화에는 localized/read model 플래그와 새 컬럼·기본 파서 인덱스·동기화 트리거·토큰 설정이 필요하다. 스키마 준비가 안 됐으면 API 기동을 거부한다. 문서 백필은 기존 Job에 `search-document-backfill-words-only=true`와 새 backfillVersion을 지정해 500건씩 재개 가능하게 처리하며 TMDB·원본 제목·기존 검색 문서·북마크·사용자 관계는 변경하지 않는다. 수동 SQL은 `docs/content-english-word-search.sql`이며 기본 실행은 확인 단계에서 중단한다. 운영 설정 변경·배포는 별도 승인 범위다.
+36. 한 글자 부분 검색은 기존 `content_search_document.normalized_title_ko/normalized_title_en`의 `LIKE '%문자%'`를 사용한다. 전체 일치와 부분 일치를 별도 조회하며 중복은 NULL-safe 전체 일치 제외 조건으로 방지한다. 정규화 후 문자는 `utf8mb4_0900_bin`으로 비교해 악센트를 다른 문자로 취급한다. 문자 역색인·신규 테이블·인덱스·트리거·백필·추가 인프라는 필요 없다.
+37. `flint.content.single-character-infix-search-enabled`는 기본 false다. 활성화에는 기존 localized/read model 활성화가 필요하다. 메인 검색은 전체 일치 우선·부분 일치 ID 역순으로 필터 적용 후 size+1개를 확보하고 최종 페이지만 원본에서 읽는다. v5 커서는 이전 한 글자 커서와 호환되지 않으며 비활성화 시 v5도 거절한다. LIKE 자체는 B-tree 범위를 좁히지 못해 드문 문자·없는 결과·희소 필터에서는 대량 스캔이 가능하다.
+38. 이전 문자 역색인 SQL·문자 전용 백필은 대안 기록이며 현재 LIKE 적용에는 실행하지 않는다. 기존 정규화 검색 문서가 준비되어 있으면 코드 배포와 읽기 플래그 활성화만 필요하며 `ddl-auto=none`을 유지한다. 운영 성능 검증은 시간 제한을 둔 읽기 전용 쿼리로 수행하고 API 배포·설정 변경과 구분한다. 2자 이상 검색 정책·정렬·커서는 유지한다.
+39. 한 글자 LIKE 배포 준비에서는 수동 이관·설치 SQL 파일에 의존하는 테스트를 실행 대상에서 제거하고, 자체 fixture를 사용하는 검색·커서·사용자 격리 회귀 테스트는 유지한다. 운영 `dev` 프로필의 Parameter Store에서 `single-character-infix-search-enabled=true`를 설정하며 다음 API 기동부터 적용한다. 백필 비활성·`ddl-auto=none`·기존 2자 이상 검색 플래그를 유지하고 신규 DDL·백필·추가 인프라 없이 배포한다. 수동 SQL 자체의 설치·복원 검증은 자동 테스트 범위에서 제외된다.
+
+검색 정렬의 비용, 운영/fixture 측정 구분 및 미채택 개선 후보는 `docs/bookmark-order-search-performance.md`에 정리한다. 이 문서는 조사 기록이며 현재 정렬·API·운영 정책을 변경하지 않는다.
 
 **[응답]**
 
@@ -749,11 +783,11 @@ flint-api/
 
 **[입력]**
 
-- keyword (String, optional): 검색어
+- keyword (String, optional): 작품 제목 검색어. 정규화 후 1자는 포함 검색 활성화 시 정규화 제목 LIKE 검색·전체 일치 우선·ID 내림차순으로 최대 50개, 비활성화 시 전체 일치만. 2자 이상은 기존 무제한 검색이며 미입력·공백은 기본 인기 목록 30개
 
 **[처리 로직]**
 
-1. 검색어가 있으면 DB에 저장된 콘텐츠 중 제목 부분 일치 검색
+1. 검색어가 있으면 메인 검색의 native 완전 일치·FULLTEXT 후보 UNION을 재사용. localized=true에서는 정규화 한글/영문 제목과 search_title로 검색하고 완전 일치·관련도 내림차순·ID 내림차순으로 정렬
 2. 키워드 검색 결과는 개수 제한 없이 반환
 3. 검색어가 없으면 북마크 수 내림차순, 콘텐츠 ID 내림차순으로 30개 반환
 4. 기본 목록 정렬은 `idx_content_popular(bookmark_count DESC, id DESC)` 인덱스 순서와 일치
@@ -765,7 +799,7 @@ flint-api/
 **[현재 제한 및 클라이언트 책임]**
 
 - 콘텐츠 원산지/제작 국가 필드가 없어 국내 작품 비율을 서버에서 보장할 수 없음. 고정 비율이 필요하면 국가 메타데이터 또는 온보딩 큐레이션 테이블이 필요함
-- 이 호환 API는 정확 일치/유사도 점수 정렬과 오타 보정을 제공하지 않음. 관련도 정렬은 FULLTEXT 점수와 그 점수를 포함하는 커서 계약을 별도로 설계해야 함
+- FULLTEXT 관련도 정렬은 지원하지만 철자 유사도 비교나 오타 자동 보정은 제공하지 않음. 호환 계약상 keyword 결과는 무제한 배열이며 커서가 없음
 - 검색어 삭제 즉시 기본 목록 복원, 요청 타임아웃, 오류 팝업은 클라이언트 상태 및 네트워크 처리 영역
 
 > 신규 화면은 `GET /contents/search`를 사용한다. `GET /search/contents`는 호환을 위한 deprecated API다.
@@ -803,7 +837,7 @@ flint-api/
 
 **[입력]**
 
-- keyword (String): 검색어
+- keyword (String, optional): 작품 제목 검색어. 정규화 후 1자는 포함 검색 활성화 시 정규화 제목 LIKE 검색, 비활성화 시 전체 일치만. 2자 이상은 기존 검색이며 미입력·공백은 저장 목록. 사용자 조건·최신 저장순·북마크 ID 커서는 유지
 - cursor (Long, optional): 페이지네이션 커서
 - size (Integer, default: 20): 조회 개수
 - Authorization Header: Bearer {accessToken}
@@ -811,8 +845,8 @@ flint-api/
 **[처리 로직]**
 
 1. 사용자가 북마크한 콘텐츠 중 검색
-2. 콘텐츠 제목으로 LIKE 검색
-3. Cursor 기반 페이지네이션 적용
+2. 기존 QueryDSL 경로에서 localized=true이면 정규화 완전 일치 또는 등록된 Boolean FULLTEXT 함수로 search_title 검색. false에서는 기존 제목 LIKE 경로로 복구. 감독은 검색 대상이 아님
+3. 북마크 ID 내림차순(최신 저장순)과 숫자 Cursor 기반 페이지네이션 유지. 전체 카탈로그 후보 조회를 선행하지 않음
 
 **[응답]**
 
@@ -942,6 +976,8 @@ flint-api/
 - export 관측의 registry 등록은 짧은 별도 트랜잭션으로 커밋해 chunk 완료까지 registry 잠금을 유지하지 않는다. 콘텐츠 분류·콘텐츠·장르·OTT 저장은 기존 chunk 트랜잭션에서 함께 커밋/롤백한다.
 - 수동 DDL은 `docs/tmdb-batch-admission.sql`이며 컬럼·인덱스·잠금 행이 없으면 배치를 시작하지 않는다. 제목 반영을 포함하는 언어 정리도 삭제 전에 동일한 DDL을 검사한다. 기존 배치와 제목 반영을 중단한 뒤 DDL을 적용하고 신버전 writer만 실행한다.
 - 기존 중복 데이터 및 제목만 비교하는 삭제 SQL은 변경하지 않는다. 해당 SQL로 삭제했더라도 유형·연도가 다르거나 연도 미상이면 배치가 재수집할 수 있다. 사용자 연결의 삭제·병합과 운영 SQL 실행은 포함하지 않는다.
+- DB 제목 문자 기준 수동 정리는 `docs/content-language-cleanup.sql`로 준비한다. TMDB 분류 완료나 registry 상태와 무관하게 `title`, `title_ko`, `title_en`을 각각 검사하고 한글(자모 포함) 또는 ASCII 영문을 포함하며 다른 언어 문자·결합 악센트가 없는 제목이 하나라도 있으면 작품을 보존한다. 세 제목 모두 허용 기준을 통과하지 못하면서 다른 언어 문자·악센트가 있는 작품만 삭제 후보로 삼는다. 숫자·공백·문장부호·기호·이모지는 언어 판정에서 제외하며 세 제목이 모두 비어 있거나 숫자·기호뿐이면 별도 확인 대상으로 보류한다.
+- 위 수동 SQL은 점검 중 모든 API·배치 쓰기를 중단한 상태에서 500건씩 연결 데이터 삭제·순서/컬렉션 키워드 재계산·빈 컬렉션 soft-delete·소유 이미지 30일 삭제 대기열 등록을 수행한다. 전체 삭제 건수·보류 건수·미리보기·이번 chunk는 동일한 임시 판정 결과를 사용하며 기본값은 preview/rollback이다. Redis 추천 캐시 무효화는 별도로 필요하다. 실제 언어나 TMDB 번역 존재 여부를 확인하지 않으므로 DB에 번역이 없으면 정상 작품도 삭제될 수 있고 영문자로 표기된 다른 언어 제목은 남을 수 있다. 기존 배치가 삭제 작품을 재수집할 수도 있다. 관리자 분류·정리 API와 배치 수집 정책은 변경하지 않는다.
 
 ---
 

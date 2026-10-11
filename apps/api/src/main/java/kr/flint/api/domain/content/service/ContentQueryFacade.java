@@ -105,7 +105,8 @@ public class ContentQueryFacade {
 			decodedCursor.validateSortMode(condition.hasKeyword());
 			if (condition.hasKeyword()) {
 				decodedCursor.validateKeywordVersion(contentQueryRepository.localizedSearchEnabled(),
-					contentQueryRepository.searchReadModelEnabled());
+					contentQueryRepository.searchReadModelEnabled(), contentQueryRepository.usesEnglishWords(condition.keyword()),
+					contentQueryRepository.usesSingleCharacterInfix(condition.keyword()));
 			}
 		}
 		List<ContentSearchRow> page =
@@ -115,15 +116,17 @@ public class ContentQueryFacade {
 		List<GetContentSearchRes> data = rows.stream()
 			.map(ContentSearchRow::toResponse)
 			.toList();
-		String nextCursor = hasNext ? createNextCursor(rows, condition.hasKeyword()) : null;
+		String nextCursor = hasNext ? createNextCursor(rows, condition) : null;
 		return PaginationResponse.ofCursor(data, nextCursor);
 	}
 
-	private String createNextCursor(List<ContentSearchRow> rows, boolean keywordSearch) {
+	private String createNextCursor(List<ContentSearchRow> rows, ContentSearchCondition condition) {
 		ContentSearchRow last = rows.get(rows.size() - 1);
-		return keywordSearch
+		return condition.hasKeyword()
 			? ContentSearchCursor.keyword(last.exactMatchRank(), last.relevanceScore(), last.id(),
-				contentQueryRepository.localizedSearchEnabled(), contentQueryRepository.searchReadModelEnabled()).encode()
+				contentQueryRepository.localizedSearchEnabled(), contentQueryRepository.searchReadModelEnabled(),
+				contentQueryRepository.usesEnglishWords(condition.keyword()),
+				contentQueryRepository.usesSingleCharacterInfix(condition.keyword())).encode()
 			: ContentSearchCursor.popular(last.bookmarkCount(), last.id()).encode();
 	}
 

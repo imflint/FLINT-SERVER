@@ -25,7 +25,7 @@ public record ContentSearchCursor(
     }
 
     public ContentSearchCursor {
-        if ((version < 1 || version > 3) || sortMode == null || contentId == null || contentId <= 0) {
+        if ((version < 1 || version > 5) || sortMode == null || contentId == null || contentId <= 0) {
             throw invalidCursor();
         }
         if (sortMode == SortMode.POPULAR && (version != 1 || bookmarkCount == null || bookmarkCount < 0)) {
@@ -34,6 +34,9 @@ public record ContentSearchCursor(
         if (sortMode == SortMode.KEYWORD
             && (exactMatchRank == null || exactMatchRank < 0 || relevanceScore == null
                 || !Double.isFinite(relevanceScore) || relevanceScore < 0)) {
+            throw invalidCursor();
+        }
+        if (version == 5 && (exactMatchRank > 1 || relevanceScore != 0.0)) {
             throw invalidCursor();
         }
     }
@@ -51,7 +54,15 @@ public record ContentSearchCursor(
     }
 
     public static ContentSearchCursor keyword(int rank, double score, Long id, boolean localized, boolean readModel) {
-        return new ContentSearchCursor(keywordVersion(localized, readModel), SortMode.KEYWORD, null, rank, score, id);
+        return keyword(rank, score, id, localized, readModel, false);
+    }
+
+    public static ContentSearchCursor keyword(int rank, double score, Long id, boolean localized, boolean readModel, boolean words) {
+        return keyword(rank, score, id, localized, readModel, words, false);
+    }
+
+    public static ContentSearchCursor keyword(int rank, double score, Long id, boolean localized, boolean readModel, boolean words, boolean characters) {
+        return new ContentSearchCursor(characters ? 5 : keywordVersion(localized, readModel, words), SortMode.KEYWORD, null, rank, score, id);
     }
 
     public void validateKeywordVersion(boolean localized) {
@@ -59,13 +70,21 @@ public record ContentSearchCursor(
     }
 
     public void validateKeywordVersion(boolean localized, boolean readModel) {
-        if (sortMode != SortMode.KEYWORD || version != keywordVersion(localized, readModel)) {
+        validateKeywordVersion(localized, readModel, false);
+    }
+
+    public void validateKeywordVersion(boolean localized, boolean readModel, boolean words) {
+        validateKeywordVersion(localized, readModel, words, false);
+    }
+
+    public void validateKeywordVersion(boolean localized, boolean readModel, boolean words, boolean characters) {
+        if (sortMode != SortMode.KEYWORD || version != (characters ? 5 : keywordVersion(localized, readModel, words))) {
             throw invalidCursor();
         }
     }
 
-    private static int keywordVersion(boolean localized, boolean readModel) {
-        return localized ? (readModel ? 3 : 2) : 1;
+    private static int keywordVersion(boolean localized, boolean readModel, boolean words) {
+        return words ? 4 : localized ? (readModel ? 3 : 2) : 1;
     }
 
     public static ContentSearchCursor of(int bookmarkCount, Long contentId) {
@@ -88,7 +107,7 @@ public record ContentSearchCursor(
             }
 
             int version = Integer.parseInt(parts[0]);
-            if (version < 1 || version > 3) {
+            if (version < 1 || version > 5) {
                 throw invalidCursor();
             }
             SortMode mode = SortMode.valueOf(parts[1]);

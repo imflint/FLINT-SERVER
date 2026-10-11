@@ -68,6 +68,8 @@ class ContentSearchPlanRepositoryTest {
         Genre drama = persistGenre("드라마");
         Genre rare = persistGenre("전쟁");
         Genre empty = persistGenre("공포");
+        Genre boundary = persistGenre("역사");
+        Genre aboveBoundary = persistGenre("판타지");
         entityManager.flush();
         String digits = "(SELECT 0 n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 "
             + "UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9)";
@@ -90,19 +92,30 @@ class ContentSearchPlanRepositoryTest {
             INSERT INTO content_genre(id,content_id,genre_id)
             SELECT 3000000+id,id,:genre FROM content ORDER BY id LIMIT 5
             """).setParameter("genre", rare.getId()).executeUpdate();
+        entityManager.createNativeQuery("""
+            INSERT INTO content_genre(id,content_id,genre_id)
+            SELECT 4000000+id,id,:genre FROM content ORDER BY id LIMIT 2048
+            """).setParameter("genre", boundary.getId()).executeUpdate();
+        entityManager.createNativeQuery("""
+            INSERT INTO content_genre(id,content_id,genre_id)
+            SELECT 5000000+id,id,:genre FROM content ORDER BY id LIMIT 2049
+            """).setParameter("genre", aboveBoundary.getId()).executeUpdate();
         commitFullTextFixtures();
         var nativeRepository = new ContentSearchNativeRepository(entityManager, true);
         var conditions = List.of(condition(null, "드라마", null, 20), condition(null, "드라마", MediaType.TV, 20),
             condition(null, "전쟁", null, 20), condition(null, "공포", null, 20), condition("해리포터", null, null, 20),
             condition("해리포터", "드라마", MediaType.TV, 20),
             condition(null, "드라마", null, ContentSearchCursor.popular(100, 1049900L), 20),
-            condition(null, "드라마", null, ContentSearchCursor.popular(0, 1L), 20));
-        List<Integer> expectedSizes = List.of(21, 21, 5, 0, 21, 7, 21, 0);
+            condition(null, "드라마", null, ContentSearchCursor.popular(0, 1L), 20),
+            condition(null, "역사", null, 20), condition(null, "판타지", null, 20));
+        List<Integer> expectedSizes = List.of(21, 21, 5, 0, 21, 7, 21, 0, 21, 21);
         for (int index = 0; index < conditions.size(); index++) {
             ContentSearchCondition value = conditions.get(index);
             Long genreId = value.genreCode() == GenreCode.DRAMA ? drama.getId()
                 : value.genreCode() == GenreCode.WAR ? rare.getId()
-                : value.genreCode() == GenreCode.HORROR ? empty.getId() : null;
+                : value.genreCode() == GenreCode.HORROR ? empty.getId()
+                : value.genreCode() == GenreCode.HISTORY ? boundary.getId()
+                : value.genreCode() == GenreCode.FANTASY ? aboveBoundary.getId() : null;
             var query = entityManager.createNativeQuery("EXPLAIN ANALYZE " + nativeRepository.searchSql(value, genreId));
             nativeRepository.bindParameters(query, value, genreId);
             String plan = String.valueOf(query.getSingleResult());
@@ -113,12 +126,18 @@ class ContentSearchPlanRepositoryTest {
                     "idx_content_normalized_title_ko", "idx_content_normalized_title_en",
                     "Full-text index search on content using ft_content_search_title_ngram");
             } else {
-                assertThat(plan).contains(value.mediaType() == null ? "idx_content_popular" : "idx_content_media_popular");
-                assertThat(plan).containsPattern("(?i)covering index (?:scan|range scan|lookup) on c using idx_content_");
+                boolean small = genreId.equals(rare.getId()) || genreId.equals(empty.getId()) || genreId.equals(boundary.getId());
+                if (small) {
+                    assertThat(plan).contains("idx_content_genre_genre_content");
+                    assertThat(plan).doesNotContain("idx_content_popular", "idx_content_media_popular");
+                } else {
+                    assertThat(plan).contains(value.mediaType() == null ? "idx_content_popular" : "idx_content_media_popular");
+                    assertThat(plan).containsPattern("(?i)covering index (?:scan|range scan|lookup) on c using idx_content_");
+                }
                 String sql = nativeRepository.searchSql(value, genreId);
                 assertThat(sql.indexOf("LIMIT :queryLimit")).isLessThan(sql.indexOf(") page STRAIGHT_JOIN content c"));
             }
-            if (genreId != null) {
+            if (genreId != null && (value.hasKeyword() || genreId.equals(drama.getId()) || genreId.equals(aboveBoundary.getId()))) {
                 assertThat(plan).contains("Single-row covering index lookup on cg using uk_content_genre");
             }
             long started = System.nanoTime();
@@ -126,7 +145,44 @@ class ContentSearchPlanRepositoryTest {
             System.out.println("search-normalization-repository-ms[" + index + "]: "
                 + (System.nanoTime() - started) / 1_000_000.0);
             assertThat(results).hasSize(expectedSizes.get(index));
+            if (!value.hasKeyword()) {
+                List<?> expected = entityManager.createNativeQuery("""
+                    SELECT c.id FROM content_genre cg JOIN content c ON c.id=cg.content_id
+                    WHERE cg.genre_id=:genre AND (:media IS NULL OR c.media_type=:media)
+                        AND (:count IS NULL OR c.bookmark_count<:count OR (c.bookmark_count=:count AND c.id<:id))
+                    ORDER BY c.bookmark_count DESC,c.id DESC LIMIT :size
+                    """)
+                    .setParameter("genre", genreId)
+                    .setParameter("media", value.mediaType() == null ? null : value.mediaType().name())
+                    .setParameter("count", value.cursor() == null ? null : value.cursor().bookmarkCount())
+                    .setParameter("id", value.cursor() == null ? null : value.cursor().contentId())
+                    .setParameter("size", value.queryLimit()).getResultList();
+                assertThat(results.stream().map(row -> row.id()).toList())
+                    .containsExactlyElementsOf(expected.stream().map(row -> ((Number) row).longValue()).toList());
+            }
         }
+
+        TestTransaction.start();
+        entityManager.createNativeQuery("UPDATE content SET bookmark_count=999999 WHERE id BETWEEN 1000000 AND 1000004")
+            .executeUpdate();
+        TestTransaction.flagForCommit();
+        TestTransaction.end();
+        var seen = new java.util.ArrayList<Long>();
+        ContentSearchCursor cursor = null;
+        for (int page = 0; page < 4; page++) {
+            var rows = contentQueryRepository.searchContents(condition(null, "전쟁", null, cursor, 2));
+            if (rows.isEmpty()) break;
+            var visible = rows.subList(0, Math.min(2, rows.size()));
+            visible.forEach(row -> seen.add(row.id()));
+            var last = visible.getLast();
+            cursor = ContentSearchCursor.popular(last.bookmarkCount(), last.id());
+        }
+        assertThat(seen).containsExactly(1000004L, 1000003L, 1000002L, 1000001L, 1000000L);
+        assertThat(contentQueryRepository.searchContents(condition(null, "전쟁", MediaType.TV, 20)))
+            .extracting(ContentQueryRepository.ContentSearchRow::id).containsExactly(1000003L, 1000002L);
+        assertThat(contentQueryRepository.searchContents(condition(null, "전쟁", MediaType.TV,
+            ContentSearchCursor.popular(999999, 1000003L), 20)))
+            .extracting(ContentQueryRepository.ContentSearchRow::id).containsExactly(1000002L);
     }
 
     private Genre persistGenre(String name) {

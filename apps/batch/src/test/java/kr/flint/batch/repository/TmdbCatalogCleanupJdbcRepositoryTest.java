@@ -116,6 +116,7 @@ class TmdbCatalogCleanupJdbcRepositoryTest {
 				id BIGINT PRIMARY KEY, tmdb_id BIGINT NOT NULL, media_type VARCHAR(16) NOT NULL,
 				title VARCHAR(255), title_ko VARCHAR(255), title_en VARCHAR(255),
 				normalized_title_ko VARCHAR(255), normalized_title_en VARCHAR(255), search_title TEXT,
+				word_title_ko TEXT, word_title_en TEXT,
 				`year` INT DEFAULT 2020, updated_at DATETIME(6),
                 title_dedup_key VARBINARY(1020) AS (CAST(LOWER(TRIM(title)) AS BINARY)) STORED,
                 KEY idx_content_title_dedup (media_type, `year`, title_dedup_key)

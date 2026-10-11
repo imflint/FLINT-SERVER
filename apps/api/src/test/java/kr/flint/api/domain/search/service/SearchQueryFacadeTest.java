@@ -70,12 +70,12 @@ class SearchQueryFacadeTest {
 	}
 
 	@Test
-	@DisplayName("레거시 검색도 정규화 후 두 글자 미만은 조회 전에 거절한다")
-	void rejectsNormalizedShortKeyword() {
-		for (String keyword : List.of("Ａ!", "해🔥", "!!!")) {
+	@DisplayName("레거시 검색도 정규화 후 문자와 숫자가 없으면 조회 전에 거절한다")
+	void rejectsNormalizedEmptyKeyword() {
+		for (String keyword : List.of("!🔥", "!!!")) {
 			assertThatThrownBy(() -> searchQueryFacade.searchContent(keyword))
 				.isInstanceOf(GeneralException.class)
-				.hasMessageContaining("keyword는 2자 이상이어야 합니다.");
+				.hasMessageContaining("keyword는 문자 또는 숫자를 1자 이상 포함해야 합니다.");
 		}
 		verifyNoInteractions(contentService, contentSearchNativeRepository);
 	}

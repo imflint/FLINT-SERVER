@@ -18,17 +18,19 @@ final class ContentSearchReadModelFixture {
                     FTS_DOC_ID BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
                     content_id BIGINT NOT NULL, media_type ENUM('MOVIE','TV') NOT NULL,
                     normalized_title_ko VARCHAR(255), normalized_title_en VARCHAR(255), search_title TEXT,
+                    word_title_ko TEXT, word_title_en TEXT,
                     UNIQUE KEY FTS_DOC_ID_INDEX(FTS_DOC_ID), UNIQUE KEY uk_search_document_content(content_id),
                     KEY idx_search_document_title_ko(normalized_title_ko), KEY idx_search_document_title_en(normalized_title_en),
                     KEY idx_search_document_rank(FTS_DOC_ID,content_id,media_type,normalized_title_ko,normalized_title_en),
-                    FULLTEXT KEY ft_search_document_title(search_title) WITH PARSER ngram
+                    FULLTEXT KEY ft_search_document_title(search_title) WITH PARSER ngram,
+                    FULLTEXT KEY ft_search_document_words(word_title_ko,word_title_en)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
                 """);
             for (String ddl : List.of(
                 """
                 CREATE TRIGGER IF NOT EXISTS content_search_document_insert AFTER INSERT ON content FOR EACH ROW
-                INSERT INTO content_search_document(content_id,media_type,normalized_title_ko,normalized_title_en,search_title)
-                VALUES(NEW.id,NEW.media_type,NEW.normalized_title_ko,NEW.normalized_title_en,NEW.search_title)
+                INSERT INTO content_search_document(content_id,media_type,normalized_title_ko,normalized_title_en,search_title,word_title_ko,word_title_en)
+                VALUES(NEW.id,NEW.media_type,NEW.normalized_title_ko,NEW.normalized_title_en,NEW.search_title,NEW.word_title_ko,NEW.word_title_en)
                 """,
                 """
                 CREATE TRIGGER IF NOT EXISTS content_search_document_update AFTER UPDATE ON content FOR EACH ROW
@@ -36,10 +38,12 @@ final class ContentSearchReadModelFixture {
                     IF NOT (OLD.id <=> NEW.id) OR NOT (OLD.media_type <=> NEW.media_type)
                         OR NOT (CAST(OLD.normalized_title_ko AS BINARY) <=> CAST(NEW.normalized_title_ko AS BINARY))
                         OR NOT (CAST(OLD.normalized_title_en AS BINARY) <=> CAST(NEW.normalized_title_en AS BINARY))
-                        OR NOT (CAST(OLD.search_title AS BINARY) <=> CAST(NEW.search_title AS BINARY)) THEN
+                        OR NOT (CAST(OLD.search_title AS BINARY) <=> CAST(NEW.search_title AS BINARY))
+                        OR NOT (CAST(OLD.word_title_ko AS BINARY) <=> CAST(NEW.word_title_ko AS BINARY))
+                        OR NOT (CAST(OLD.word_title_en AS BINARY) <=> CAST(NEW.word_title_en AS BINARY)) THEN
                         DELETE FROM content_search_document WHERE content_id=OLD.id;
-                        INSERT INTO content_search_document(content_id,media_type,normalized_title_ko,normalized_title_en,search_title)
-                        VALUES(NEW.id,NEW.media_type,NEW.normalized_title_ko,NEW.normalized_title_en,NEW.search_title);
+                        INSERT INTO content_search_document(content_id,media_type,normalized_title_ko,normalized_title_en,search_title,word_title_ko,word_title_en)
+                        VALUES(NEW.id,NEW.media_type,NEW.normalized_title_ko,NEW.normalized_title_en,NEW.search_title,NEW.word_title_ko,NEW.word_title_en);
                     END IF;
                 END
                 """,

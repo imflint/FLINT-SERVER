@@ -267,12 +267,56 @@ class ContentQueryFacadeTest {
 		}
 
 		@Test
-		@DisplayName("한 글자 keyword는 DB 조회 전에 거절한다")
-		void rejectsOneCharacterKeyword() {
-			for (String keyword : List.of("눈", " 눈 ", "\uD83D\uDE00")) {
+		@DisplayName("영문 단어 검색은 v4 커서를 반환하고 이전 커서를 조회 전에 거절한다")
+		void englishWordsReturnV4AndRejectV3BeforeReading() {
+			when(contentQueryRepository.localizedSearchEnabled()).thenReturn(true);
+			when(contentQueryRepository.searchReadModelEnabled()).thenReturn(true);
+			when(contentQueryRepository.usesEnglishWords("harry potter")).thenReturn(true);
+			var condition = ContentSearchCondition.of("harry potter", null, null, null, 1);
+			when(contentQueryRepository.searchContents(condition)).thenReturn(List.of(
+				new ContentSearchRow(2L, "Harry Potter", null, null, 2026, 0, 0, 2.5),
+				new ContentSearchRow(1L, "Harry Potter 2", null, null, 2026, 0, 1, 1.5)
+			));
+			var result = contentQueryFacade.getContentSearchList("harry potter", null, null, null, 1);
+			var cursor = ContentSearchCursor.decode(result.meta().nextCursor());
+			assertThat(cursor.version()).isEqualTo(4);
+			assertThat(cursor.contentId()).isEqualTo(2L);
+			cursor.validateKeywordVersion(true, true, true);
+			String oldCursor = ContentSearchCursor.keyword(0, 2.5, 2L, true, true).encode();
+			assertThatThrownBy(() -> contentQueryFacade.getContentSearchList("harry potter", null, null, oldCursor, 1))
+				.isInstanceOf(GeneralException.class);
+			verify(contentQueryRepository, org.mockito.Mockito.times(1)).searchContents(org.mockito.ArgumentMatchers.any());
+		}
+
+		@Test
+		@DisplayName("한 글자 문자 검색은 v5를 반환하고 이전 커서를 조회 전에 거절한다")
+		void characterSearchReturnsV5AndRejectsOldPagesBeforeReading() {
+			when(contentQueryRepository.localizedSearchEnabled()).thenReturn(true);
+			when(contentQueryRepository.searchReadModelEnabled()).thenReturn(true);
+			when(contentQueryRepository.usesSingleCharacterInfix("봄")).thenReturn(true);
+			var condition = ContentSearchCondition.of("봄", null, null, null, 1);
+			when(contentQueryRepository.searchContents(condition)).thenReturn(List.of(
+				new ContentSearchRow(2L, "봄", null, null, 2026, 0, 0, 0),
+				new ContentSearchRow(3L, "봄날", null, null, 2026, 0, 1, 0)
+			));
+			var result = contentQueryFacade.getContentSearchList("봄", null, null, null, 1);
+			var cursor = ContentSearchCursor.decode(result.meta().nextCursor());
+			assertThat(cursor.version()).isEqualTo(5);
+			assertThat(cursor.exactMatchRank()).isZero();
+			assertThat(cursor.relevanceScore()).isZero();
+			String old = ContentSearchCursor.keyword(0, 0, 2L, true, true).encode();
+			assertThatThrownBy(() -> contentQueryFacade.getContentSearchList("봄", null, null, old, 1))
+				.isInstanceOf(GeneralException.class);
+			verify(contentQueryRepository, org.mockito.Mockito.times(1)).searchContents(org.mockito.ArgumentMatchers.any());
+		}
+
+		@Test
+		@DisplayName("문자와 숫자가 없는 keyword는 DB 조회 전에 거절한다")
+		void rejectsSymbolOnlyKeyword() {
+			for (String keyword : List.of("!!!", " ! ", "\uD83D\uDE00")) {
 				assertThatThrownBy(() -> contentQueryFacade.getContentSearchList(keyword, null, null, null, 20))
 					.isInstanceOf(GeneralException.class)
-					.hasMessageContaining("keyword는 2자 이상이어야 합니다.");
+					.hasMessageContaining("keyword는 문자 또는 숫자를 1자 이상 포함해야 합니다.");
 			}
 			verifyNoInteractions(contentQueryRepository);
 		}
