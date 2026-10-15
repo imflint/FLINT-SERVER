@@ -25,14 +25,14 @@ public interface UserExplorationProgressRepository extends JpaRepository<UserExp
 
 	@Modifying
 	@Query(value = """
-		INSERT IGNORE INTO user_exploration_progress (
+		INSERT INTO user_exploration_progress (
 			id, user_id, session_cursor, completed, session_version,
 			last_viewed_position, created_at, updated_at
 		) VALUES (
 			:id, :userId, NULL, FALSE, 1, 0, :now, :now
-		)
+		) ON DUPLICATE KEY UPDATE user_id = user_id
 		""", nativeQuery = true)
-	int insertInitialProgress(
+	int initializeProgress(
 		@Param("id") Long id,
 		@Param("userId") Long userId,
 		@Param("now") java.time.LocalDateTime now

@@ -6,33 +6,30 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "탐색 세션 응답")
 public record ExplorationSessionRes(
-	@Schema(description = "현재 세션 작품 목록. 숨김·삭제된 스냅샷 항목은 제외되어 30개보다 적을 수 있음")
+	@Schema(description = "현재 세션 전체 작품 목록. 숨김·삭제된 항목은 제외되어 30개보다 적을 수 있음", requiredMode = Schema.RequiredMode.REQUIRED)
 	List<ExploreContentRes> items,
-	@Schema(description = "세션 상태")
+	@Schema(description = "세션 상태. PATCH 완료 시 END이며 다음 GET에서 새 세션 생성 시 IN_PROGRESS", requiredMode = Schema.RequiredMode.REQUIRED)
 	ExplorationState state,
-	@Schema(description = "다음 세션(30개)이 준비되었는지 여부. END이면서 true이면 '다음 라운드 이용 가능'", example = "false")
+	@Schema(description = "현재 세션 이후 다음 30개가 준비되었는지 여부", requiredMode = Schema.RequiredMode.REQUIRED, example = "false")
 	boolean hasNext,
-	@Schema(description = "마지막으로 확인한 세션 내 위치. 시작 전은 0", example = "12")
-	int lastViewedPosition,
-	@Schema(description = "현재 세션을 모두 소비해 다음 세션으로 이동할 수 있는지", example = "false")
-	boolean canAdvance
+	@Schema(description = "마지막으로 확인한 세션 내 위치. 새 세션 시작 전은 0", requiredMode = Schema.RequiredMode.REQUIRED, example = "12")
+	int lastViewedPosition
 ) {
 	public static ExplorationSessionRes of(List<ExploreContentRes> items, ExplorationState state, boolean hasNext) {
-		return new ExplorationSessionRes(items, state, hasNext, 0, state == ExplorationState.END);
+		return new ExplorationSessionRes(items, state, hasNext, 0);
 	}
 
 	public static ExplorationSessionRes of(
 		List<ExploreContentRes> items,
 		ExplorationState state,
 		boolean hasNext,
-		int lastViewedPosition,
-		boolean canAdvance
+		int lastViewedPosition
 	) {
-		return new ExplorationSessionRes(items, state, hasNext, lastViewedPosition, canAdvance);
+		return new ExplorationSessionRes(items, state, hasNext, lastViewedPosition);
 	}
 
 	// 아직 완전한 세션(30개)이 없을 때
 	public static ExplorationSessionRes empty() {
-		return new ExplorationSessionRes(List.of(), ExplorationState.EMPTY, false, 0, false);
+		return new ExplorationSessionRes(List.of(), ExplorationState.EMPTY, false, 0);
 	}
 }

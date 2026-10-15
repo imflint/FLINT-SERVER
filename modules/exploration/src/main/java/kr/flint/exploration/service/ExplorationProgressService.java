@@ -23,23 +23,13 @@ public class ExplorationProgressService {
 	private final UserExplorationProgressRepository userExplorationProgressRepository;
 	private final UserExplorationSessionItemRepository userExplorationSessionItemRepository;
 
-	// 사용자의 진행 상태를 조회하고, 없으면 초기 상태로 생성한다.
-	public UserExplorationProgress getOrCreate(Long userId) {
-		return userExplorationProgressRepository.findByUserId(userId)
-			.orElseGet(() -> userExplorationProgressRepository.save(UserExplorationProgress.create(userId)));
-	}
-
 	public UserExplorationProgress getOrCreateForUpdate(Long userId) {
+		// Initialize before locking to avoid gap-lock deadlocks on concurrent first requests.
+		userExplorationProgressRepository.initializeProgress(
+			TSID.Factory.getTsid().toLong(), userId, LocalDateTime.now()
+		);
 		return userExplorationProgressRepository.findByUserIdForUpdate(userId)
-			.orElseGet(() -> {
-				userExplorationProgressRepository.insertInitialProgress(
-					TSID.Factory.getTsid().toLong(),
-					userId,
-					LocalDateTime.now()
-				);
-				return userExplorationProgressRepository.findByUserIdForUpdate(userId)
-					.orElseThrow(() -> new GeneralException(ErrorCode.INTERNAL_SERVER_ERROR));
-			});
+			.orElseThrow(() -> new GeneralException(ErrorCode.INTERNAL_SERVER_ERROR));
 	}
 
 	public List<UserExplorationSessionItem> getSessionItems(UserExplorationProgress progress) {

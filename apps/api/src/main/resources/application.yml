@@ -77,8 +77,6 @@ tmdb:
   requests-per-second: 5
 
 flint:
-  exploration:
-    snapshot-enabled: ${FLINT_EXPLORATION_SNAPSHOT_ENABLED:false}
   content:
     english-word-search-enabled: ${FLINT_ENGLISH_WORD_SEARCH_ENABLED:false}
     single-character-infix-search-enabled: ${FLINT_SINGLE_CHARACTER_INFIX_SEARCH_ENABLED:false}

@@ -5,7 +5,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.IntStream;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -36,21 +35,32 @@ public class ExplorationQueryFacade {
 	private final ExplorationProgressService explorationProgressService;
 	private final CloudFrontUrlProvider cloudFrontUrlProvider;
 
-	@Value("${flint.exploration.snapshot-enabled:false}")
-	private boolean snapshotEnabled;
-
 	public ExplorationSessionRes getSession(Long userId) {
-		if (!snapshotEnabled) {
-			return buildLegacySession(explorationProgressService.getOrCreate(userId));
-		}
-
 		UserExplorationProgress progress = explorationProgressService.getOrCreateForUpdate(userId);
 		List<UserExplorationSessionItem> items = getOrCreateSnapshot(progress);
-		return buildSnapshotSession(progress, items);
+		if (items.isEmpty()) {
+			return ExplorationSessionRes.empty();
+		}
+
+		Set<Integer> exposablePositions = findExposablePositions(items);
+		skipHiddenPositions(progress, exposablePositions);
+		if (progress.isCompleted()) {
+			Long lastContentId = items.getLast().getContentId();
+			// Prepare a complete next snapshot before changing the locked progress row.
+			List<UserExplorationSessionItem> nextItems = prepareSnapshot(
+				progress.getUserId(), progress.getSessionVersion() + 1, lastContentId
+			);
+			if (!nextItems.isEmpty()) {
+				explorationProgressService.advanceTo(progress, lastContentId);
+				items = explorationProgressService.saveSessionItems(nextItems);
+				exposablePositions = findExposablePositions(items);
+				skipHiddenPositions(progress, exposablePositions);
+			}
+		}
+		return buildSnapshotSession(progress, items, exposablePositions);
 	}
 
 	public ExplorationSessionRes updateProgress(Long userId, int lastViewedPosition) {
-		requireSnapshotEnabled();
 		UserExplorationProgress progress = explorationProgressService.getOrCreateForUpdate(userId);
 		List<UserExplorationSessionItem> items = getOrCreateSnapshot(progress);
 		if (items.isEmpty()) {
@@ -78,39 +88,20 @@ public class ExplorationQueryFacade {
 		return buildSnapshotSession(progress, items, exposablePositions);
 	}
 
-	public ExplorationSessionRes advance(Long userId) {
-		if (!snapshotEnabled) {
-			return advanceLegacy(userId);
-		}
-
-		UserExplorationProgress progress = explorationProgressService.getOrCreateForUpdate(userId);
-		List<UserExplorationSessionItem> currentItems = getOrCreateSnapshot(progress);
-		if (currentItems.isEmpty()) {
-			return ExplorationSessionRes.empty();
-		}
-
-		Set<Integer> exposablePositions = findExposablePositions(currentItems);
-		skipHiddenPositions(progress, exposablePositions);
-		if (!progress.isCompleted()) {
-			throw new ExplorationException(ExplorationErrorCode.SESSION_NOT_COMPLETED);
-		}
-
-		Long lastContentId = currentItems.getLast().getContentId();
-		if (!explorationQueryRepository.existsFullNextSession(lastContentId, SESSION_SIZE)) {
-			return buildSnapshotSession(progress, currentItems, exposablePositions);
-		}
-
-		explorationProgressService.advanceTo(progress, lastContentId);
-		return buildSnapshotSession(progress, getOrCreateSnapshot(progress));
-	}
-
 	private List<UserExplorationSessionItem> getOrCreateSnapshot(UserExplorationProgress progress) {
 		List<UserExplorationSessionItem> existing = explorationProgressService.getSessionItems(progress);
 		if (!existing.isEmpty()) {
 			return existing;
 		}
 
-		List<ExploreContentRow> rows = explorationQueryRepository.findSession(progress.getSessionCursor(), SESSION_SIZE);
+		List<UserExplorationSessionItem> items = prepareSnapshot(
+			progress.getUserId(), progress.getSessionVersion(), progress.getSessionCursor()
+		);
+		return items.isEmpty() ? List.of() : explorationProgressService.saveSessionItems(items);
+	}
+
+	private List<UserExplorationSessionItem> prepareSnapshot(Long userId, int sessionVersion, Long cursor) {
+		List<ExploreContentRow> rows = explorationQueryRepository.findSession(cursor, SESSION_SIZE);
 		if (rows.size() < SESSION_SIZE) {
 			return List.of();
 		}
@@ -122,22 +113,22 @@ public class ExplorationQueryFacade {
 			return List.of();
 		}
 
-		List<UserExplorationSessionItem> snapshotItems = IntStream.range(0, rows.size())
-			.mapToObj(index -> toSnapshotItem(progress, rows.get(index), representatives, index + 1))
+		return IntStream.range(0, rows.size())
+			.mapToObj(index -> toSnapshotItem(userId, sessionVersion, rows.get(index), representatives, index + 1))
 			.toList();
-		return explorationProgressService.saveSessionItems(snapshotItems);
 	}
 
 	private UserExplorationSessionItem toSnapshotItem(
-		UserExplorationProgress progress,
+		Long userId,
+		int sessionVersion,
 		ExploreContentRow row,
 		Map<Long, RepresentativeCollectionRow> representatives,
 		int position
 	) {
 		RepresentativeCollectionRow representative = representatives.get(row.contentId());
 		return UserExplorationSessionItem.create(
-			progress.getUserId(),
-			progress.getSessionVersion(),
+			userId,
+			sessionVersion,
 			position,
 			row.contentId(),
 			row.title(),
@@ -146,18 +137,6 @@ public class ExplorationQueryFacade {
 			representative.reason(),
 			representative.collectionId()
 		);
-	}
-
-	private ExplorationSessionRes buildSnapshotSession(
-		UserExplorationProgress progress,
-		List<UserExplorationSessionItem> items
-	) {
-		if (items.isEmpty()) {
-			return ExplorationSessionRes.empty();
-		}
-		Set<Integer> exposablePositions = findExposablePositions(items);
-		skipHiddenPositions(progress, exposablePositions);
-		return buildSnapshotSession(progress, items, exposablePositions);
 	}
 
 	private ExplorationSessionRes buildSnapshotSession(
@@ -176,8 +155,7 @@ public class ExplorationQueryFacade {
 			responses,
 			state,
 			hasNext,
-			progress.getLastViewedPosition(),
-			progress.isCompleted()
+			progress.getLastViewedPosition()
 		);
 	}
 
@@ -218,64 +196,5 @@ public class ExplorationQueryFacade {
 			item.getCollectionId(),
 			item.getPosition()
 		);
-	}
-
-	private ExplorationSessionRes advanceLegacy(Long userId) {
-		UserExplorationProgress progress = explorationProgressService.getOrCreate(userId);
-		List<ExploreContentRow> rows = explorationQueryRepository.findSession(progress.getSessionCursor(), SESSION_SIZE);
-		if (rows.size() < SESSION_SIZE) {
-			return buildLegacySession(progress);
-		}
-
-		Long lastContentId = rows.getLast().contentId();
-		if (explorationQueryRepository.existsFullNextSession(lastContentId, SESSION_SIZE)) {
-			explorationProgressService.advanceTo(progress, lastContentId);
-		} else {
-			explorationProgressService.markCompleted(progress);
-		}
-		return buildLegacySession(progress);
-	}
-
-	private ExplorationSessionRes buildLegacySession(UserExplorationProgress progress) {
-		List<ExploreContentRow> rows = explorationQueryRepository.findSession(progress.getSessionCursor(), SESSION_SIZE);
-		if (rows.size() < SESSION_SIZE) {
-			return ExplorationSessionRes.empty();
-		}
-
-		List<Long> contentIds = rows.stream().map(ExploreContentRow::contentId).toList();
-		Map<Long, RepresentativeCollectionRow> representativeMap =
-			explorationQueryRepository.findRepresentativeCollections(contentIds);
-		List<ExploreContentRes> items = IntStream.range(0, rows.size())
-			.mapToObj(index -> {
-				ExploreContentRow row = rows.get(index);
-				RepresentativeCollectionRow representative = representativeMap.get(row.contentId());
-				return new ExploreContentRes(
-					row.contentId(),
-					row.title(),
-					representative.reason(),
-					StringUtils.hasText(row.poster()) ? cloudFrontUrlProvider.resolveUrl(row.poster()) : null,
-					row.year(),
-					representative.collectionId(),
-					index + 1
-				);
-			})
-			.toList();
-
-		Long lastContentId = rows.getLast().contentId();
-		boolean hasNext = explorationQueryRepository.existsFullNextSession(lastContentId, SESSION_SIZE);
-		ExplorationState state = progress.isCompleted() ? ExplorationState.END : ExplorationState.IN_PROGRESS;
-		return ExplorationSessionRes.of(
-			items,
-			state,
-			hasNext,
-			progress.isCompleted() ? SESSION_SIZE : 0,
-			progress.isCompleted()
-		);
-	}
-
-	private void requireSnapshotEnabled() {
-		if (!snapshotEnabled) {
-			throw new ExplorationException(ExplorationErrorCode.SNAPSHOT_DISABLED);
-		}
 	}
 }

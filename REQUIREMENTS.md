@@ -472,7 +472,7 @@ flint-api/
 1. 공개 상태의 공개 컬렉션에 포함된 작품만 조회
 2. 사용자별 세션 시작 커서와 버전별 작품 30개를 스냅샷으로 저장
 3. 각 작품에는 TMDB 줄거리 대신 대표 컬렉션 작성자의 선정 이유(`CollectionContent.reason`)를 반환
-4. `PATCH /exploration/progress`로 마지막 열람 위치를 저장하고, 현재 세션이 끝난 경우에만 `POST /exploration/next`로 다음 30개 세션으로 이동
+4. `PATCH /exploration/progress`로 마지막 열람 위치를 저장하고, 현재 세션을 모두 소비한 뒤 다음 `GET /exploration`에서 새 30개 세션을 자동 생성
 
 **[세션 규칙]**
 
@@ -480,17 +480,22 @@ flint-api/
 - 신규 작품이 추가되어도 저장된 진행 중 세션은 교체하지 않음
 - 작품 ID, 위치, 제목, 포스터, 연도, 추천 사유, 대표 컬렉션을 세션 스냅샷에 저장
 - 비공개·삭제 항목은 조회 즉시 제외하되 다른 작품으로 충원하지 않음
-- 같은 위치 재전송은 멱등 성공하고 위치 회귀·건너뛰기는 거부
-- 진행 행은 비관적 잠금으로 직렬화하며 세션을 모두 소비해야 다음 세션으로 이동 가능
-- DDL 적용 및 smoke test 전에는 `FLINT_EXPLORATION_SNAPSHOT_ENABLED=false` 유지
+- 현재 세션의 같은 위치 재전송은 멱등 성공하고 위치 회귀·건너뛰기는 거부
+- PATCH 완료는 현재 세션을 END로 기록하며 다음 세션을 생성하지 않음
+- GET은 숨김 위치를 건너뛴 뒤 완료 여부를 판단하고, 한 요청에서 최대 한 번만 다음 세션으로 전환
+- 진행 행은 비관적 잠금으로 직렬화하며 다음 30개와 대표 정보가 준비된 경우에만 커서·내부 버전·스냅샷을 같은 트랜잭션에서 갱신
+- 첫 진입은 기존 상태를 덮어쓰지 않는 원자적 초기화 후 잠금 조회하여 동시 생성의 gap-lock 데드락을 방지
+- 다음 세션을 구성할 수 없으면 현재 완료 세션을 유지하고, 저장 오류는 전체 롤백
+- 기존 조회 모드·스냅샷 플래그·`POST /exploration/next` 제거. 배포 전에 탐색 스키마·유니크 제약을 확인하고 기존 클라이언트와 함께 전환
+- GET/PATCH 응답은 `Cache-Control: no-store`. 프론트는 요청을 순차 처리하고 응답 목록을 누적하지 않고 교체
+- 요청·응답에 세션 버전을 추가하지 않으므로 이전 세션의 지연된 동일 위치 요청은 식별할 수 없음
 
 **[응답]**
 
-- items: 작품 목록 (30개 또는 빈 배열)
-- state: IN_PROGRESS, END, EMPTY
+- items: 현재 세션 전체 작품 목록 (최초 30개, 숨김·삭제 시 더 적을 수 있으며 최초 후보 부족 시 빈 배열)
+- state: IN_PROGRESS (진행 중), END (현재 세션 소비 완료), EMPTY (최초 세션 후보 부족)
 - hasNext (Boolean): 다음 30개 세션 존재 여부
 - lastViewedPosition (Integer): 마지막으로 확인한 세션 내 위치, 시작 전은 0
-- canAdvance (Boolean): 현재 세션을 모두 소비해 다음 세션으로 이동 가능한지
 - items[].position (Integer): 세션 내 고정 위치 (1~30)
 
 ---
@@ -1116,7 +1121,6 @@ flint-api/
 | GET | /collections/recent | 최근 본 목록 | O |
 | GET | /exploration | 현재 탐색 세션 조회 | O |
 | PATCH | /exploration/progress | 탐색 진행 위치 저장 | O |
-| POST | /exploration/next | 다음 탐색 세션 이동 | O |
 
 ### 6.4 북마크 관련
 

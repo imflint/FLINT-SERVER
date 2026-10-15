@@ -3,7 +3,6 @@ package kr.flint.exploration.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -27,19 +26,19 @@ class ExplorationProgressServiceTest {
 	@Mock private UserExplorationSessionItemRepository itemRepository;
 
 	@Test
-	@DisplayName("초기 진행 행은 INSERT IGNORE 후 비관적 잠금으로 다시 조회")
+	@DisplayName("초기 진행 행은 원자적으로 생성한 뒤 비관적 잠금으로 조회")
 	void createsInitialProgressThenLocksIt() {
 		ExplorationProgressService service = new ExplorationProgressService(progressRepository, itemRepository);
 		UserExplorationProgress progress = UserExplorationProgress.create(1L);
 		when(progressRepository.findByUserIdForUpdate(1L))
-			.thenReturn(Optional.empty())
 			.thenReturn(Optional.of(progress));
 
 		UserExplorationProgress result = service.getOrCreateForUpdate(1L);
 
 		assertThat(result).isSameAs(progress);
-		verify(progressRepository).insertInitialProgress(anyLong(), org.mockito.ArgumentMatchers.eq(1L), any(LocalDateTime.class));
-		verify(progressRepository, times(2)).findByUserIdForUpdate(1L);
+		org.mockito.InOrder order = org.mockito.Mockito.inOrder(progressRepository);
+		order.verify(progressRepository).initializeProgress(anyLong(), org.mockito.ArgumentMatchers.eq(1L), any(LocalDateTime.class));
+		order.verify(progressRepository).findByUserIdForUpdate(1L);
 	}
 
 	@Test

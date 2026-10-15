@@ -1,8 +1,8 @@
 package kr.flint.api.domain.exploration.controller;
 
+import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,18 +30,8 @@ public class ExplorationController implements ExplorationControllerDocs {
 	public ResponseEntity<SuccessResponse<ExplorationSessionRes>> getExplorationSession(
 		@CurrentUser Long userId
 	) {
-		return ResponseEntity.ok(
+		return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(
 			SuccessResponse.of(SuccessCode.SUCCESS_FETCH, explorationQueryFacade.getSession(userId))
-		);
-	}
-
-	@Override
-	@PostMapping("/next")
-	public ResponseEntity<SuccessResponse<ExplorationSessionRes>> advanceExplorationSession(
-		@CurrentUser Long userId
-	) {
-		return ResponseEntity.ok(
-			SuccessResponse.of(SuccessCode.SUCCESS_FETCH, explorationQueryFacade.advance(userId))
 		);
 	}
 
@@ -51,7 +41,7 @@ public class ExplorationController implements ExplorationControllerDocs {
 		@CurrentUser Long userId,
 		@Valid @RequestBody UpdateExplorationProgressReq request
 	) {
-		return ResponseEntity.ok(
+		return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(
 			SuccessResponse.of(
 				SuccessCode.SUCCESS_FETCH,
 				explorationQueryFacade.updateProgress(userId, request.lastViewedPosition())
