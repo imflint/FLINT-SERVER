@@ -32,7 +32,7 @@ import lombok.NoArgsConstructor;
 )
 public class Content extends BaseTime {
 
-	@Column(name = "tmdb_id", nullable = false)
+	@Column(name = "tmdb_id")
 	private Long tmdbId;
 
 	@Enumerated(EnumType.STRING)
@@ -89,6 +89,17 @@ public class Content extends BaseTime {
 		String poster
 	) {
 		return createLocalized(tmdbId, mediaType, title, null, year, author, description, poster);
+	}
+
+	public static Content createManual(
+		MediaType mediaType,
+		String title,
+		int year,
+		String author,
+		String description,
+		String poster
+	) {
+		return createLocalized(null, mediaType, title, null, year, author, description, poster);
 	}
 
 	public static Content createLocalized(

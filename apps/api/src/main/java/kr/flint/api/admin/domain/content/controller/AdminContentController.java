@@ -4,6 +4,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
 import kr.flint.api.admin.domain.content.controller.spec.AdminContentControllerDocs;
+import kr.flint.api.admin.domain.content.dto.request.AdminContentCreateReq;
 import kr.flint.api.admin.domain.content.dto.request.AdminContentUpdateReq;
 import kr.flint.api.admin.domain.content.dto.response.AdminContentRes;
 import kr.flint.api.admin.domain.content.service.AdminContentFacade;
@@ -40,6 +42,18 @@ public class AdminContentController implements AdminContentControllerDocs {
         return ResponseEntity.ok(SuccessResponse.of(
             SuccessCode.SUCCESS_FETCH,
             adminContentFacade.getContents(adminId, keyword, mediaType, cursor, size)
+        ));
+    }
+
+    @Override
+    @PostMapping
+    public ResponseEntity<SuccessResponse<AdminContentRes>> createContent(
+        @CurrentAdmin Long adminId,
+        @Valid @RequestBody AdminContentCreateReq request
+    ) {
+        return ResponseEntity.status(SuccessCode.SUCCESS_CREATE.getHttpStatus()).body(SuccessResponse.of(
+            SuccessCode.SUCCESS_CREATE,
+            adminContentFacade.createContent(adminId, request)
         ));
     }
 

@@ -912,6 +912,10 @@ flint-api/
 - 관리자 인증은 일반 사용자 인증과 분리된 `ADMIN` audience JWT와 `AdminPrincipal`을 사용한다.
 - `/api/v1/admin/**`는 우선순위 1 SecurityFilterChain, 일반 API는 우선순위 2 SecurityFilterChain으로 처리한다.
 - 관리자 로그인·refresh 외 요청은 ADMIN 토큰만 허용하고, 일반 API는 USER 토큰만 허용한다.
+- `POST /api/v1/admin/contents`는 TMDB에 없는 영화/TV를 수동 등록한다. 종류·제목은 필수이며 연도(미입력 0)·감독/작가·설명·포스터·표준 장르는 선택이다. 관리자 권한 확인 후 새 ID와 저장 수 0, `tmdb_id=NULL`로 콘텐츠·장르를 원자적으로 저장하고 201 공통 응답을 반환한다. 제목은 기존 검색 정규화 로직으로 가공하며 같은 제목의 기존 작품을 병합하거나 덮어쓰지 않는다. 장르 별칭은 기존 표준 ID로 연결하고 알 수 없는 장르는 400, 마스터 이관 미완료는 409다.
+- 수동 콘텐츠는 기존 검색·컬렉션·북마크에서 사용하며 TMDB 동기화·제목 승격·언어 정리 및 TMDB 제목 중복 소유권 판정에서 제외한다. 기존 TMDB 작품 간 중복 규칙은 유지하고 수동 작품의 TMDB 연결·OTT 직접 등록은 추가하지 않는다. 전역 non-null 정책에 따라 수동 응답의 `tmdbId`는 생략하고 프런트는 nullable/optional 문자열로 수용한다.
+- 어드민 `/admin/content`에서 추가 Drawer로 등록하며 실패 시 입력을 유지하고 저장 중 중복 제출을 막는다. 기존 수정 요청 중에는 새 등록을 막아 지연 응답으로 두 Drawer가 겹치지 않도록 한다. 성공 시 목록 필터·커서를 초기화하고 생성 작품의 상세를 표시한다. 수동/TMDB 등록 경로를 목록·상세에서 구분한다. 서버 멱등 키는 추가하지 않으므로 응답 유실 후 재등록 전 목록 확인이 필요하다.
+- `content.tmdb_id` NULL 허용은 수동 SQL `docs/admin-manual-content.sql`로 적용하며 기존 `(tmdb_id, media_type)` 유니크 키는 유지한다. 2026-10-13 dev DB 적용 및 범위 한정 API·어드민 배포를 완료했고 기존 콘텐츠 946,275건의 데이터 해시·인덱스·검색 트리거·관계 수 보존을 확인했다. 자동 DDL/Flyway·검색 백필은 수행하지 않는다. `docs/admin-manual-content.md`에 DB 승인·복구·유지보수·배포 결과와 실제 인증 등록 미검증 범위를 기록한다. 기존 언어 정리·제목 병합 SQL도 수동 작품을 제외한다.
 - `admin.token_valid_after` 이전에 발급된 ADMIN Access/Refresh Token은 거부해 전환 시 전원 재로그인한다.
 - `apps/admin-api`, 관리자 전용 배포 workflow/script 및 EC2/EIP/SG/ECR/IAM/DNS는 폐기하고 관리자 프론트 S3·CloudFront는 유지한다.
 

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import kr.flint.api.admin.common.AdminAuthorizationService;
+import kr.flint.api.admin.domain.content.dto.request.AdminContentCreateReq;
 import kr.flint.api.admin.domain.content.dto.request.AdminContentUpdateReq;
 import kr.flint.api.admin.domain.content.dto.response.AdminContentRes;
 import kr.flint.api.admin.domain.content.repository.AdminContentQueryRepository;
@@ -70,9 +71,19 @@ public class AdminContentFacade {
     }
 
     @Transactional
+    public AdminContentRes createContent(Long adminId, AdminContentCreateReq request) {
+        adminAuthorizationService.validateAdmin(adminId);
+        return toContentRes(contentService.createByAdmin(request.toCommand()));
+    }
+
+    @Transactional
     public AdminContentRes updateContent(Long adminId, Long contentId, AdminContentUpdateReq request) {
         adminAuthorizationService.validateAdmin(adminId);
         Content content = contentService.updateByAdmin(contentId, request.toCommand());
+        return toContentRes(content);
+    }
+
+    private AdminContentRes toContentRes(Content content) {
         List<String> genreNames = contentService.getContentsWithGenres(List.of(content.getId()))
             .stream()
             .findFirst()

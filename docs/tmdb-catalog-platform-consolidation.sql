@@ -79,6 +79,7 @@ INSERT INTO tmdb_catalog_entry (
 )
 SELECT id, media_type, tmdb_id, 'PENDING', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6)
 FROM content
+WHERE tmdb_id IS NOT NULL
 ON DUPLICATE KEY UPDATE updated_at = VALUES(updated_at);
 
 -- Run after initial classification to spread recurring refresh load over 30 days.
@@ -171,7 +172,7 @@ SELECT COUNT(*) AS unresolved_content_count
 FROM content c
 LEFT JOIN tmdb_catalog_entry e
   ON e.tmdb_id = c.tmdb_id AND e.media_type = c.media_type
-WHERE e.id IS NULL OR e.status IN ('PENDING', 'RETRY');
+WHERE c.tmdb_id IS NOT NULL AND (e.id IS NULL OR e.status IN ('PENDING', 'RETRY'));
 
 SELECT COUNT(*) AS missing_localized_title_count
 FROM content
