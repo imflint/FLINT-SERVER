@@ -21,10 +21,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
 
-import feign.FeignException;
 import kr.flint.batch.config.BatchProperties;
 import kr.flint.batch.config.TmdbBatchAsyncConfig;
-import kr.flint.batch.config.TmdbRetryPolicyFactory;
+import kr.flint.batch.service.TmdbApiExecutor;
 import kr.flint.batch.job.ContentUpsertWriter;
 import kr.flint.batch.job.ContentSyncDraft;
 import kr.flint.batch.job.TmdbBatchSkipListener;
@@ -48,7 +47,7 @@ public class TmdbDailyDeltaJobConfig {
 	private final TmdbClient tmdbClient;
 	private final ContentUpsertWriter contentUpsertWriter;
 	private final BatchProperties batchProperties;
-	private final TmdbRetryPolicyFactory tmdbRetryPolicyFactory;
+	private final TmdbApiExecutor apiExecutor;
 	private final TmdbLocalizedTitleService localizedTitleService;
 
 	@Autowired
@@ -74,12 +73,6 @@ public class TmdbDailyDeltaJobConfig {
 			.processor(asyncDeltaProcessor)
 			.writer(asyncDeltaWriter)
 			.faultTolerant()
-			.retry(FeignException.class)
-			.noRetry(FeignException.NotFound.class)
-			.retryLimit(batchProperties.tmdb().retryAttempts())
-			.backOffPolicy(tmdbRetryPolicyFactory.fixedBackOffPolicy())
-			.skip(FeignException.NotFound.class)
-			.skipLimit(Integer.MAX_VALUE)
 			.listener(new TmdbBatchSkipListener())
 			.build();
 	}
@@ -100,7 +93,7 @@ public class TmdbDailyDeltaJobConfig {
 		String end = (endDate == null || endDate.isBlank())
 			? LocalDate.now().toString()
 			: endDate;
-		return new TmdbChangesItemReader(tmdbClient, type, start, end);
+		return new TmdbChangesItemReader(tmdbClient, type, start, end, apiExecutor);
 	}
 
 	@Bean
@@ -112,8 +105,8 @@ public class TmdbDailyDeltaJobConfig {
 			? MediaType.MOVIE
 			: MediaType.valueOf(mediaType.toUpperCase());
 		ItemProcessor<TmdbIdLine, ContentSyncDraft> delegate = type == MediaType.TV
-			? new TmdbTvDetailProcessor(tmdbClient, localizedTitleService)
-			: new TmdbMovieDetailProcessor(tmdbClient, localizedTitleService);
+			? new TmdbTvDetailProcessor(tmdbClient, localizedTitleService, apiExecutor)
+			: new TmdbMovieDetailProcessor(tmdbClient, localizedTitleService, apiExecutor);
 		AsyncItemProcessor<TmdbIdLine, ContentSyncDraft> async = new AsyncItemProcessor<>();
 		async.setDelegate(delegate);
 		async.setTaskExecutor(tmdbTaskExecutor);

@@ -35,6 +35,22 @@ public class TmdbS3DeleteQueueJdbcRepository {
             """, id);
     }
 
+    public boolean hasReferences(String objectKey, String publicUrl) {
+        return Boolean.TRUE.equals(jdbcTemplate.queryForObject("""
+            SELECT EXISTS (SELECT 1 FROM collection_content WHERE custom_image IN (?, ?))
+                OR EXISTS (SELECT 1 FROM collection_content_images WHERE image_key IN (?, ?))
+            """, Boolean.class, objectKey, publicUrl, objectKey, publicUrl));
+    }
+
+    public void deferReferenced(Long id) {
+        jdbcTemplate.update("""
+            UPDATE tmdb_s3_delete_queue
+            SET next_retry_at = DATE_ADD(UTC_TIMESTAMP(), INTERVAL 1 DAY),
+                error_message = 'Object is currently referenced', updated_at = UTC_TIMESTAMP()
+            WHERE id = ? AND status = 'PENDING'
+            """, id);
+    }
+
     public void markFailed(Long id, int currentRetryCount, String errorMessage) {
         int nextRetryCount = currentRetryCount + 1;
         String nextStatus = nextRetryCount >= 10 ? "FAILED" : "PENDING";

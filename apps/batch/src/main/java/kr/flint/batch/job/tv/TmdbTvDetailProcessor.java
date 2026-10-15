@@ -5,7 +5,8 @@ import java.util.List;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.util.StringUtils;
 
-import feign.FeignException;
+import kr.flint.batch.service.TmdbApiException;
+import kr.flint.batch.service.TmdbApiExecutor;
 import kr.flint.batch.job.TmdbIdLine;
 import kr.flint.batch.job.ContentSyncDraft;
 import kr.flint.batch.job.ott.TmdbOttSnapshot;
@@ -30,6 +31,7 @@ public class TmdbTvDetailProcessor implements ItemProcessor<TmdbIdLine, ContentS
 
 	private final TmdbClient tmdbClient;
 	private final TmdbLocalizedTitleService localizedTitleService;
+	private final TmdbApiExecutor apiExecutor;
 
 	@Override
 	public ContentSyncDraft process(TmdbIdLine line) {
@@ -37,7 +39,21 @@ public class TmdbTvDetailProcessor implements ItemProcessor<TmdbIdLine, ContentS
 			return null;
 		}
 		try {
-			TmdbTvFullDetailRes detail = tmdbClient.getTvFullDetail(line.id(), LANG, APPEND_TO_RESPONSE);
+			TmdbTvFullDetailRes detail = apiExecutor.execute("tvDetail:" + line.id(), () -> {
+				TmdbTvFullDetailRes response = tmdbClient.getTvFullDetail(line.id(), LANG, APPEND_TO_RESPONSE);
+				if (response == null || !line.id().equals(response.id()) || response.genres() == null
+					|| response.genres().stream().anyMatch(genre -> genre == null || genre.id() == null)
+					|| response.translations() == null || response.translations().translations() == null
+					|| response.translations().translations().stream().anyMatch(translation ->
+						translation == null || translation.language() == null || translation.data() == null)
+					|| response.credits() == null || response.credits().crew() == null
+					|| response.credits().crew().stream().anyMatch(crew -> crew == null)
+					|| response.created_by() == null || response.created_by().stream().anyMatch(creator -> creator == null)) {
+					throw TmdbApiException.invalidResponse("tvDetail:" + line.id());
+				}
+				TmdbOttSnapshot.from(response.watchProviders());
+				return response;
+			});
 			String poster = resolvePoster(detail.posterPath());
 			List<Long> genres = detail.genres() == null ? List.of() :
 				detail.genres().stream().map(g -> g.id() == null ? null : g.id().longValue()).toList();
@@ -73,14 +89,12 @@ public class TmdbTvDetailProcessor implements ItemProcessor<TmdbIdLine, ContentS
 				List.of()
 			).withTmdbGenreIds(genres);
 			return ContentSyncDraft.synchronizedContent(command, TmdbOttSnapshot.from(detail.watchProviders()));
-		} catch (FeignException.NotFound nf) {
-			log.debug("tv {} not found, skip", line.id());
+		} catch (TmdbApiException exception) {
+			if (!exception.notFound() && !exception.retryable()) throw exception;
 			return ContentSyncDraft.classified(ContentUpsertCommand.classified(
-				line.id(), MediaType.TV, ContentCatalogStatus.NOT_FOUND, nf.getMessage()
-			));
-		} catch (FeignException exception) {
-			return ContentSyncDraft.classified(ContentUpsertCommand.classified(
-				line.id(), MediaType.TV, ContentCatalogStatus.RETRY, exception.getMessage()
+				line.id(), MediaType.TV,
+				exception.notFound() ? ContentCatalogStatus.NOT_FOUND : ContentCatalogStatus.RETRY,
+				TmdbApiException.safeMessage(exception)
 			));
 		}
 	}

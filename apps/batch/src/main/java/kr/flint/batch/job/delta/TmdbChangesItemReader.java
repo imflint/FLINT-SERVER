@@ -9,6 +9,8 @@ import org.springframework.batch.item.ItemStreamException;
 import org.springframework.batch.item.ItemStreamReader;
 
 import kr.flint.batch.job.TmdbIdLine;
+import kr.flint.batch.service.TmdbApiException;
+import kr.flint.batch.service.TmdbApiExecutor;
 import kr.flint.content.domain.MediaType;
 import kr.flint.infra.tmdb.client.TmdbClient;
 import kr.flint.infra.tmdb.dto.TmdbChangesRes;
@@ -18,6 +20,7 @@ public class TmdbChangesItemReader implements ItemStreamReader<TmdbIdLine> {
     private static final int MAX_CHANGE_WINDOW_DAYS = 14;
 
     private final TmdbClient tmdbClient;
+    private final TmdbApiExecutor apiExecutor;
     private final MediaType mediaType;
     private final String startDate;
     private final String endDate;
@@ -32,9 +35,11 @@ public class TmdbChangesItemReader implements ItemStreamReader<TmdbIdLine> {
         TmdbClient tmdbClient,
         MediaType mediaType,
         String startDate,
-        String endDate
+        String endDate,
+        TmdbApiExecutor apiExecutor
     ) {
         this.tmdbClient = tmdbClient;
+        this.apiExecutor = apiExecutor;
         this.mediaType = mediaType;
         this.startDate = startDate;
         this.endDate = endDate;
@@ -79,9 +84,17 @@ public class TmdbChangesItemReader implements ItemStreamReader<TmdbIdLine> {
     }
 
     private void loadPage() {
-        TmdbChangesRes response = mediaType == MediaType.TV
-            ? tmdbClient.getTvChanges(startDate, endDate, page)
-            : tmdbClient.getMovieChanges(startDate, endDate, page);
+        TmdbChangesRes response = apiExecutor.execute("changes:" + mediaType + ":" + page, () -> {
+            TmdbChangesRes result = mediaType == MediaType.TV
+                ? tmdbClient.getTvChanges(startDate, endDate, page)
+                : tmdbClient.getMovieChanges(startDate, endDate, page);
+            if (result == null || result.results() == null || result.page() != page
+                || result.totalPages() < 0 || (result.totalPages() < page && !result.results().isEmpty())
+                || result.results().stream().anyMatch(item -> item == null || item.id() == null)) {
+                throw TmdbApiException.invalidResponse("changes:" + mediaType + ":" + page);
+            }
+            return result;
+        });
         totalPages = Math.max(page, response.totalPages());
         pageItems = response.results() == null ? List.of() : response.results().stream()
             .filter(result -> result.id() != null)

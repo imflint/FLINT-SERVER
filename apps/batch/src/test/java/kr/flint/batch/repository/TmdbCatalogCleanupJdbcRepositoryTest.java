@@ -3,6 +3,7 @@ package kr.flint.batch.repository;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import java.time.Duration;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,6 +30,7 @@ class TmdbCatalogCleanupJdbcRepositoryTest {
 	private TmdbCatalogCleanupJdbcRepository repository;
     private TransactionTemplate transaction;
     private TmdbContentSyncService contentSyncService;
+    private TmdbSyncRunJdbcRepository runRepository;
 
 	@BeforeEach
 	void setUp() {
@@ -42,9 +44,12 @@ class TmdbCatalogCleanupJdbcRepositoryTest {
         transaction = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
         contentSyncService = new TmdbContentSyncService(new TmdbContentAdmissionJdbcRepository(jdbcTemplate, named),
             new ContentBatchJdbcRepository(jdbcTemplate, named), new OttBatchJdbcRepository(jdbcTemplate, named));
+		runRepository = new TmdbSyncRunJdbcRepository(jdbcTemplate);
 		repository = new TmdbCatalogCleanupJdbcRepository(
 			jdbcTemplate,
-			new NamedParameterJdbcTemplate(dataSource)
+			new NamedParameterJdbcTemplate(dataSource),
+            new TmdbContentAdmissionJdbcRepository(jdbcTemplate, named),
+            runRepository
 		);
 		recreateSchema();
 		insertFixtures();
@@ -54,7 +59,9 @@ class TmdbCatalogCleanupJdbcRepositoryTest {
 	void deletesDependenciesQueuesOwnedImagesAndSoftDeletesEmptyCollections() {
 		var manifest = repository.createManifest(List.of(1L), "hash");
 
-		assertThat(repository.deleteNextChunk(manifest.id(), 500)).isEqualTo(1);
+        transaction.executeWithoutResult(s -> runRepository.acquireCleanupLease(manifest.id(), "test", Duration.ofMinutes(2)));
+		Integer deleted = transaction.execute(s -> repository.deleteNextChunk(manifest.id(), "test", 500));
+		assertThat(deleted).isEqualTo(1);
         assertThat(transaction.execute(s -> contentSyncService.promoteTitleChunk(0, 50)).promotedCount()).isEqualTo(1);
 		repository.finalizeAffectedCollections(manifest.id());
 		repository.completeManifest(manifest.id());
@@ -123,9 +130,10 @@ class TmdbCatalogCleanupJdbcRepositoryTest {
 			)
 			""");
         jdbcTemplate.execute("""
-            CREATE TABLE tmdb_sync_lock (lock_name VARCHAR(64) PRIMARY KEY)
+            CREATE TABLE tmdb_sync_lock (lock_name VARCHAR(64) PRIMARY KEY, owner_id VARCHAR(64),
+                run_key VARCHAR(255), lease_until DATETIME(6), heartbeat_at DATETIME(6))
             """);
-        jdbcTemplate.update("INSERT INTO tmdb_sync_lock VALUES ('TMDB_CONTENT_WRITE')");
+        jdbcTemplate.update("INSERT INTO tmdb_sync_lock (lock_name) VALUES ('TMDB_CONTENT_WRITE')");
 		jdbcTemplate.execute("""
 			CREATE TABLE tmdb_catalog_entry (
 				id BIGINT PRIMARY KEY, tmdb_id BIGINT NOT NULL, media_type VARCHAR(16) NOT NULL,
@@ -183,6 +191,7 @@ class TmdbCatalogCleanupJdbcRepositoryTest {
 	}
 
 	private void insertFixtures() {
+		jdbcTemplate.update("INSERT INTO tmdb_catalog_entry (id, tmdb_id, media_type, status) VALUES (1, 100, 'MOVIE', 'INELIGIBLE_LANGUAGE')");
 		jdbcTemplate.update("""
 			INSERT INTO content (id, tmdb_id, media_type, title) VALUES
 				(1, 100, 'MOVIE', '삭제 작품'),

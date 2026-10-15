@@ -13,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import io.hypersistence.tsid.TSID;
 import kr.flint.batch.sync.TmdbPruneManifest;
+import kr.flint.shared.exception.ErrorCode;
+import kr.flint.shared.exception.GeneralException;
 import lombok.RequiredArgsConstructor;
 
 @Repository
@@ -21,6 +23,8 @@ public class TmdbCatalogCleanupJdbcRepository {
 
     private final JdbcTemplate jdbcTemplate;
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+    private final TmdbContentAdmissionJdbcRepository admissionRepository;
+    private final TmdbSyncRunJdbcRepository runRepository;
 
     public long countUnclassifiedContents() {
         return jdbcTemplate.queryForObject("""
@@ -28,7 +32,8 @@ public class TmdbCatalogCleanupJdbcRepository {
             FROM content c
             LEFT JOIN tmdb_catalog_entry registry
               ON registry.tmdb_id = c.tmdb_id AND registry.media_type = c.media_type
-            WHERE registry.id IS NULL OR registry.status IN ('PENDING', 'RETRY')
+            WHERE c.tmdb_id IS NOT NULL
+              AND (registry.id IS NULL OR registry.status IN ('PENDING', 'RETRY'))
             """, Long.class);
     }
 
@@ -88,7 +93,35 @@ public class TmdbCatalogCleanupJdbcRepository {
     }
 
     @Transactional
-    public int deleteNextChunk(Long manifestId, int chunkSize) {
+    public void validateRemainingCandidates(Long manifestId, String ownerId) {
+        runRepository.assertCleanupLease(manifestId, ownerId);
+        admissionRepository.lockWrites();
+        assertRemainingEligible(manifestId);
+    }
+
+    private void assertRemainingEligible(Long manifestId) {
+        Long changed = jdbcTemplate.queryForObject("""
+            SELECT COUNT(*) FROM tmdb_content_prune_candidate candidate
+            LEFT JOIN content c ON c.id = candidate.content_id
+            LEFT JOIN tmdb_catalog_entry registry
+                ON registry.tmdb_id = c.tmdb_id AND registry.media_type = c.media_type
+            WHERE candidate.manifest_id = ? AND candidate.processed = FALSE
+                AND (c.id IS NULL OR registry.id IS NULL OR registry.status IS NULL OR registry.status <> 'INELIGIBLE_LANGUAGE')
+            """, Long.class, manifestId);
+        if (changed == null || changed > 0) {
+            throw new GeneralException(ErrorCode.CONFLICT, "정리 후보가 변경되었습니다. 새 preview를 생성해주세요.");
+        }
+    }
+
+    @Transactional
+    public int deleteNextChunk(Long manifestId, String ownerId, int chunkSize) {
+        runRepository.assertCleanupLease(manifestId, ownerId);
+        admissionRepository.lockWrites();
+        List<String> statuses = jdbcTemplate.queryForList(
+            "SELECT status FROM tmdb_content_prune_manifest WHERE id = ? FOR UPDATE", String.class, manifestId);
+        if (statuses.isEmpty() || !("PREVIEW".equals(statuses.getFirst()) || "EXECUTING".equals(statuses.getFirst()))) {
+            throw new GeneralException(ErrorCode.CONFLICT, "정리 manifest가 실행 가능한 상태가 아닙니다.");
+        }
         List<Long> contentIds = jdbcTemplate.queryForList("""
             SELECT content_id
             FROM tmdb_content_prune_candidate
@@ -104,6 +137,20 @@ public class TmdbCatalogCleanupJdbcRepository {
         MapSqlParameterSource params = new MapSqlParameterSource()
             .addValue("manifestId", manifestId)
             .addValue("contentIds", contentIds);
+
+        Long eligible = namedParameterJdbcTemplate.queryForObject("""
+            SELECT COUNT(*) FROM content c
+            JOIN tmdb_catalog_entry registry ON registry.tmdb_id = c.tmdb_id AND registry.media_type = c.media_type
+            WHERE c.id IN (:contentIds) AND registry.status = 'INELIGIBLE_LANGUAGE'
+            """, params, Long.class);
+        if (eligible == null || eligible != contentIds.size()) {
+            throw new GeneralException(ErrorCode.CONFLICT, "정리 후보가 변경되었습니다. 새 preview를 생성해주세요.");
+        }
+
+        namedParameterJdbcTemplate.update("""
+            INSERT IGNORE INTO tmdb_content_prune_collection (manifest_id, collection_id)
+            SELECT :manifestId, collection_id FROM collection_content WHERE content_id IN (:contentIds)
+            """, params);
 
 			namedParameterJdbcTemplate.update("""
 			INSERT IGNORE INTO tmdb_s3_delete_queue (

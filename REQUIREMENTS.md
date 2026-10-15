@@ -921,11 +921,15 @@ flint-api/
 - DB lease를 획득한 단일 인스턴스만 실행한다. 같은 업무 키는 기존 실행을 반환하고 다른 업무가 실행 중이면 409를 반환한다.
 - 일간 동기화는 05:00 KST, 월간 조정은 매월 1일 02:00 KST에 시작한다. 자동 스케줄은 dev에서만 활성화하고 prod는 검증 전까지 비활성화한다.
 - TMDB 상세 요청은 동시성 3, 전역 5req/s, chunk 50으로 제한한다.
+- TMDB 호출은 비동기 delegate 내부에서 초기 시도를 포함한 `retry-attempts`(기본 3회), `retry-back-off-ms`(기본 2000ms)를 적용한다. 바깥 Step은 중복 재시도하지 않는다. 404는 NOT_FOUND, 429/5xx/네트워크 오류와 잘못된 응답은 제한적으로 재시도하고 상세 항목 실패 시 RETRY로 기존 데이터를 보존한다. 400/401/403 등 비일시적 오류는 workflow를 실패시킨다.
+- 로그·카탈로그 오류·배치 실패 메타데이터에는 안전한 오류 종류·HTTP 상태·식별자만 기록한다. TMDB 원문 예외, URL·쿼리·헤더·본문 및 원본 예외 원인은 전파하지 않는다.
 - changes reader는 페이지와 항목 위치를 ExecutionContext에 저장하고 요청 날짜 범위는 최대 14일이다.
 - 종료 시 실행 중 Job에 STOP을 요청하고 최대 5분간 chunk checkpoint 완료를 기다린다. 새 인스턴스는 같은 JobInstance를 checkpoint부터 재개한다.
 - 상세 조회는 `translations,credits,watch/providers`를 한 번에 받고 콘텐츠·장르·`KR.flatrate` OTT 관계를 같은 chunk에서 멱등 upsert/reconciliation한다.
 - TMDB에 포스터가 없는 콘텐츠는 `content.poster=NULL`로 보존하며 임의 이미지나 placeholder URL을 원본 데이터로 저장하지 않는다. 표시용 placeholder는 클라이언트가 처리한다.
 - Movie/TV provider master는 `watch_region=KR` 결과의 합집합으로 동기화하며 누락 provider는 삭제하지 않고 비활성화한다.
+- 영화/TV provider 목록을 모두 정상 수신·검증한 경우에만 합집합을 원자적으로 갱신한다. OTT 응답의 누락/잘못된 구조는 정상 빈 목록과 구분하고 기존 관계를 보존한다. 정상 응답에 KR 또는 flatrate가 없으면 구독 OTT 관계를 비울 수 있다.
+- export는 임시 파일의 다운로드·압축 해제 및 CRC 확인 후 원자적으로 게시한다. 완료 메타데이터의 크기·SHA-256이 일치하는 캐시만 재사용하며 기존 미검증 파일은 다시 받는다.
 - 기존 6개 provider는 명시적 이름 alias로 TMDB provider ID를 연결해 사용자 구독 FK를 보존한다.
 - 월간 export는 유효 ID registry를 갱신하되 신규·PENDING·RETRY·갱신기한 경과 ID만 상세 조회한다.
 - 일간 작업은 `next_refresh_at` 만료 대상을 나눠 처리해 최초 동기화 후 약 30일 주기로 제목과 OTT를 갱신한다.
@@ -940,9 +944,13 @@ flint-api/
 - cleanup preview는 현재 콘텐츠의 PENDING/RETRY/미등록 상태가 0일 때만 후보 ID·건수·SHA-256 해시를 고정한다.
 - cleanup execute는 preview manifest와 해시가 일치하고 운영자가 RDS 수동 스냅샷 생성을 확인한 경우에만 실행한다.
 - cleanup execute는 `PREVIEW` 또는 중단된 `EXECUTING` manifest를 동일 해시로 재개할 수 있다.
+- cleanup은 동기화와 같은 TMDB_CATALOG 임대를 획득·갱신하며, 실행/재개 전 미처리 후보 전체와 각 삭제 청크의 현재 INELIGIBLE_LANGUAGE 자격을 확인한다. 변경 후보는 409와 새 preview를 요구한다. TMDB_CONTENT_WRITE 잠금과 청크별 manifest 잠금으로 삭제를 보호하고 중단 시 후처리 복구가 가능하도록 체크포인트를 유지한다.
 - 500건 트랜잭션으로 `collection_content_images → collection_content → content_bookmark → ott_content → content_keywords → content_genre → content` 순서로 삭제한다.
 - 삭제 후 작품 순서를 재정렬하고 빈 컬렉션은 soft-delete하며 컬렉션 키워드와 추천 Redis 캐시를 갱신한다.
 - `collection/content/` S3 key만 대기열에 기록하고 30일 뒤 별도 정리 스케줄에서 삭제한다.
+- S3 삭제 직전 legacy custom_image와 collection_content_images의 키/CloudFront URL 참조를 확인하고 현재 참조 중인 객체는 재시도 횟수를 소모하지 않고 하루 보류한다.
+- 2026-10-12 운영 결정: 이미지 버킷 Versioning은 기존 비활성 상태를 유지한다. 승인된 객체 복구 수단이 없으므로 dev S3 자동 정리도 비활성으로 유지한다.
+- dev 복구는 안전장치 배포 → 관리자 프런트 배포 → 누락 지표 복구 → TMDB 실행/정기 스케줄 → S3 정리 순서이며 백업·중단 작업·복구 수단 확인 후 진행한다. prod 활성화·전체 import·언어 일괄 삭제·검색 백필·배포 workflow 재활성화는 포함하지 않는다. 운영 절차는 `docs/admin-tmdb-recovery.md`를 따른다.
 - 수동 DDL과 운영 점검 SQL은 `docs/tmdb-catalog-platform-consolidation.sql`을 기준으로 한다.
 
 **[완료 조건]**

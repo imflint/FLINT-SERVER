@@ -3,6 +3,7 @@ package kr.flint.batch.job.ott;
 import java.util.List;
 
 import kr.flint.infra.tmdb.dto.TmdbOttRes;
+import kr.flint.batch.service.TmdbApiException;
 
 public record TmdbOttSnapshot(
 	String contentUrl,
@@ -16,17 +17,25 @@ public record TmdbOttSnapshot(
 	}
 
 	public static TmdbOttSnapshot from(TmdbOttRes response) {
-		TmdbOttRes.CountryProvider country = response == null || response.results() == null
-			? null
-			: response.results().get(COUNTRY);
+		if (response == null || response.results() == null) {
+			throw TmdbApiException.invalidResponse("watchProviders");
+		}
+		TmdbOttRes.CountryProvider country = response.results().get(COUNTRY);
+		if (country == null && response.results().containsKey(COUNTRY)) {
+			throw TmdbApiException.invalidResponse("watchProviders");
+		}
 		if (country == null) {
 			return new TmdbOttSnapshot(null, List.of());
 		}
 
+		if (country.flatrate() != null && country.flatrate().stream().anyMatch(provider ->
+			provider == null || provider.providerId() == null || provider.providerId() <= 0
+				|| provider.providerName() == null || provider.providerName().isBlank())) {
+			throw TmdbApiException.invalidResponse("watchProviders");
+		}
 		List<OttSyncDraft.Provider> providers = country.flatrate() == null
 			? List.of()
 			: country.flatrate().stream()
-				.filter(provider -> provider.providerId() != null)
 				.map(provider -> new OttSyncDraft.Provider(
 					provider.providerId(),
 					provider.providerName(),

@@ -8,6 +8,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -23,6 +26,7 @@ import kr.flint.api.admin.domain.batch.dto.request.LanguageCleanupExecuteReq;
 import kr.flint.api.domain.home.service.CollectionKeywordSyncService;
 import kr.flint.api.domain.home.service.RecommendationCacheService;
 import kr.flint.batch.repository.TmdbCatalogCleanupJdbcRepository;
+import kr.flint.batch.repository.TmdbSyncRunJdbcRepository;
 import kr.flint.batch.sync.TmdbPruneManifest;
 import kr.flint.batch.service.TmdbContentSyncService;
 import kr.flint.batch.service.TmdbContentSyncService.TitlePromotionProgress;
@@ -42,6 +46,8 @@ class TmdbLanguageCleanupServiceTest {
 	private RecommendationCacheService recommendationCacheService;
     @Mock
     private TmdbContentSyncService contentSyncService;
+    @Mock
+    private TmdbSyncRunJdbcRepository runRepository;
 
 	private TmdbLanguageCleanupService service;
 
@@ -51,7 +57,8 @@ class TmdbLanguageCleanupServiceTest {
 			cleanupRepository,
 			collectionKeywordSyncService,
 			recommendationCacheService,
-            contentSyncService
+            contentSyncService,
+            runRepository
 		);
 	}
 
@@ -74,7 +81,7 @@ class TmdbLanguageCleanupServiceTest {
 			.isInstanceOfSatisfying(GeneralException.class, exception ->
 				assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.CONFLICT)
 			);
-		verify(cleanupRepository, never()).deleteNextChunk(1L, 500);
+		verify(cleanupRepository, never()).deleteNextChunk(eq(1L), anyString(), eq(500));
 	}
 
 	@Test
@@ -86,7 +93,7 @@ class TmdbLanguageCleanupServiceTest {
 			.isInstanceOfSatisfying(GeneralException.class, exception ->
 				assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.CONFLICT)
 			);
-		verify(cleanupRepository, never()).deleteNextChunk(1L, 500);
+		verify(cleanupRepository, never()).deleteNextChunk(eq(1L), anyString(), eq(500));
 	}
 
 	@Test
@@ -96,7 +103,8 @@ class TmdbLanguageCleanupServiceTest {
 		when(cleanupRepository.findManifest(1L))
 			.thenReturn(java.util.Optional.of(preview))
 			.thenReturn(java.util.Optional.of(completed));
-		when(cleanupRepository.deleteNextChunk(1L, 500)).thenReturn(500, 1, 0);
+		when(runRepository.renewCleanupLease(eq(1L), anyString(), any())).thenReturn(true);
+		when(cleanupRepository.deleteNextChunk(eq(1L), anyString(), eq(500))).thenReturn(500, 1, 0);
 		when(cleanupRepository.findActiveAffectedCollectionIds(1L)).thenReturn(List.of(10L, 11L));
         when(contentSyncService.promoteTitleChunk(0, 50)).thenReturn(new TitlePromotionProgress(0, 0, 0));
 
@@ -105,7 +113,7 @@ class TmdbLanguageCleanupServiceTest {
 		assertThat(response.status()).isEqualTo("COMPLETED");
 		InOrder order = inOrder(cleanupRepository, collectionKeywordSyncService, recommendationCacheService, contentSyncService);
 		order.verify(contentSyncService).ensureSchemaReady();
-		order.verify(cleanupRepository, times(3)).deleteNextChunk(1L, 500);
+		order.verify(cleanupRepository, times(3)).deleteNextChunk(eq(1L), anyString(), eq(500));
 		order.verify(contentSyncService).promoteTitleChunk(0, 50);
 		order.verify(cleanupRepository).finalizeAffectedCollections(1L);
 		order.verify(cleanupRepository).findActiveAffectedCollectionIds(1L);
@@ -119,7 +127,8 @@ class TmdbLanguageCleanupServiceTest {
 	void executeDoesNotCompleteManifestWhenCollectionRebuildFails() {
 		TmdbPruneManifest executing = manifest("EXECUTING", 1, 1, null);
 		when(cleanupRepository.findManifest(1L)).thenReturn(java.util.Optional.of(executing));
-		when(cleanupRepository.deleteNextChunk(1L, 500)).thenReturn(0);
+		when(runRepository.renewCleanupLease(eq(1L), anyString(), any())).thenReturn(true);
+		when(cleanupRepository.deleteNextChunk(eq(1L), anyString(), eq(500))).thenReturn(0);
 		when(cleanupRepository.findActiveAffectedCollectionIds(1L)).thenReturn(List.of(10L));
         when(contentSyncService.promoteTitleChunk(0, 50)).thenReturn(new TitlePromotionProgress(0, 0, 0));
 		doThrow(new IllegalStateException("sync failed")).when(collectionKeywordSyncService).fullSync(10L);

@@ -25,10 +25,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
 
-import feign.FeignException;
 import kr.flint.batch.config.BatchProperties;
 import kr.flint.batch.config.TmdbBatchAsyncConfig;
-import kr.flint.batch.config.TmdbRetryPolicyFactory;
+import kr.flint.batch.service.TmdbApiExecutor;
 import kr.flint.batch.job.ContentSyncDraft;
 import kr.flint.batch.job.ContentUpsertWriter;
 import kr.flint.batch.job.TmdbBatchSkipListener;
@@ -54,7 +53,7 @@ public class TmdbCatalogRefreshJobConfig {
 	private final TmdbLocalizedTitleService localizedTitleService;
 	private final ContentUpsertWriter contentUpsertWriter;
 	private final BatchProperties batchProperties;
-	private final TmdbRetryPolicyFactory retryPolicyFactory;
+	private final TmdbApiExecutor apiExecutor;
 	private final @Qualifier(TmdbBatchAsyncConfig.TMDB_TASK_EXECUTOR) TaskExecutor tmdbTaskExecutor;
 
 	@Bean(name = JOB_NAME)
@@ -74,12 +73,6 @@ public class TmdbCatalogRefreshJobConfig {
 			.processor(processor)
 			.writer(writer)
 			.faultTolerant()
-			.retry(FeignException.class)
-			.noRetry(FeignException.NotFound.class)
-			.retryLimit(batchProperties.tmdb().retryAttempts())
-			.backOffPolicy(retryPolicyFactory.fixedBackOffPolicy())
-			.skip(FeignException.NotFound.class)
-			.skipLimit(Integer.MAX_VALUE)
 			.listener(new TmdbBatchSkipListener())
 			.build();
 	}
@@ -115,8 +108,8 @@ public class TmdbCatalogRefreshJobConfig {
 	) {
 		MediaType type = parseMediaType(mediaType);
 		ItemProcessor<TmdbIdLine, ContentSyncDraft> delegate = type == MediaType.TV
-			? new TmdbTvDetailProcessor(tmdbClient, localizedTitleService)
-			: new TmdbMovieDetailProcessor(tmdbClient, localizedTitleService);
+			? new TmdbTvDetailProcessor(tmdbClient, localizedTitleService, apiExecutor)
+			: new TmdbMovieDetailProcessor(tmdbClient, localizedTitleService, apiExecutor);
 		AsyncItemProcessor<TmdbIdLine, ContentSyncDraft> processor = new AsyncItemProcessor<>();
 		processor.setDelegate(delegate);
 		processor.setTaskExecutor(tmdbTaskExecutor);
