@@ -7,6 +7,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import kr.flint.shared.domain.Base;
+import kr.flint.shared.exception.ErrorCode;
+import kr.flint.shared.exception.GeneralException;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -19,11 +21,13 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class CollectionContentImage extends Base {
 
+	public static final int MAX_IMAGE_KEY_LENGTH = 1024;
+
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(nullable = false)
 	private CollectionContent collectionContent;
 
-	@Column(nullable = false)
+	@Column(nullable = false, length = MAX_IMAGE_KEY_LENGTH)
 	private String imageKey;
 
 	@Column(nullable = false)
@@ -34,6 +38,9 @@ public class CollectionContentImage extends Base {
 		String imageKey,
 		int sortOrder
 	) {
+		if (imageKey != null && imageKey.length() > MAX_IMAGE_KEY_LENGTH) {
+			throw new GeneralException(ErrorCode.INVALID_INPUT, "커스텀 이미지 값은 1024자 이하여야 합니다.");
+		}
 		return new CollectionContentImage(collectionContent, imageKey, sortOrder);
 	}
 }

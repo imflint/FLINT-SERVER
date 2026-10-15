@@ -918,6 +918,9 @@ flint-api/
 - `content.tmdb_id` NULL 허용은 수동 SQL `docs/admin-manual-content.sql`로 적용하며 기존 `(tmdb_id, media_type)` 유니크 키는 유지한다. 2026-10-13 dev DB 적용 및 범위 한정 API·어드민 배포를 완료했고 기존 콘텐츠 946,275건의 데이터 해시·인덱스·검색 트리거·관계 수 보존을 확인했다. 자동 DDL/Flyway·검색 백필은 수행하지 않는다. `docs/admin-manual-content.md`에 DB 승인·복구·유지보수·배포 결과와 실제 인증 등록 미검증 범위를 기록한다. 기존 언어 정리·제목 병합 SQL도 수동 작품을 제외한다.
 - `admin.token_valid_after` 이전에 발급된 ADMIN Access/Refresh Token은 거부해 전환 시 전원 재로그인한다.
 - `apps/admin-api`, 관리자 전용 배포 workflow/script 및 EC2/EIP/SG/ECR/IAM/DNS는 폐기하고 관리자 프론트 S3·CloudFront는 유지한다.
+- 관리자 컬렉션 수정은 각 콘텐츠의 `customImages` 배열을 필수로 받는다. 누락/null/단일 필드만 있는 요청은 저장 전에 400이며 빈 배열만 전체 이미지 삭제를 의미한다. 응답 `customImageUrls`와 배열 별칭 입력은 유지하고 프런트는 모든 이미지와 순서를 보존한다.
+- 컬렉션 콘텐츠별 커스텀 이미지 key/URL 값은 1024자 이하로 저장한다. 관리자 수정과 사용자 생성/수정 요청에서 항목별 길이를 검증해 초과 입력은 DB 쓰기 전에 400으로 거절하고 도메인 생성 경로도 같은 한도를 적용한다. `collection_content_images.image_key`는 `VARCHAR(1024) NOT NULL`이며 기존 문자셋·collation·인덱스·데이터와 배열 순서를 유지한다. 프런트는 초과 입력을 자르지 않고 폼 오류로 표시한다. dev 컬럼 확장·범위 한정 배포·검증 절차는 `docs/collection-image-storage-fix.md`에 기록하며 자동 DDL·TMDB/S3 스케줄 활성화는 수행하지 않는다.
+- Bean Validation 입력 검증 실패 로그에는 오류 코드와 오류 건수만 남기고 거절된 입력값이 포함될 수 있는 예외 원문은 기록하지 않는다. 400 응답의 기존 필드별 오류 메시지는 유지한다.
 
 #### 3.8.2 TMDB 실행 조정
 

@@ -8,6 +8,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import kr.flint.collection.domain.CollectionContentImage;
 import kr.flint.collection.dto.CollectionCreateCommand.ContentInput;
 
 @Schema(description = "컬렉션에 추가할 작품 정보")
@@ -24,10 +26,10 @@ public record AddContentReq(
 	@NotBlank(message = "작품 선정 이유는 필수 입력 값입니다")
 	String reason,
 
-	@Schema(description = "작품별 커스텀 이미지 S3 key 목록 (선택)", example = "[\"collection/content/260505/abc123.jpg\"]")
+	@Schema(description = "작품별 커스텀 이미지 S3 key 또는 URL 목록. 각 값은 1024자 이하 (선택)", example = "[\"collection/content/260505/abc123.jpg\"]", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
 	@JsonAlias("customImageUrls")
 	@Nullable
-	List<String> customImages
+	List<@Size(max = CollectionContentImage.MAX_IMAGE_KEY_LENGTH, message = "커스텀 이미지 값은 1024자 이하여야 합니다.") String> customImages
 ) {
 
 	public ContentInput toInput() {
