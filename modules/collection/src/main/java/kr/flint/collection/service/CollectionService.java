@@ -219,6 +219,12 @@ public class CollectionService {
     }
 
     @Transactional
+    public CollectionReport getReportByIdForUpdate(final Long reportId) {
+        return collectionReportRepository.findByIdForUpdate(reportId)
+            .orElseThrow(() -> new CollectionException(CollectionErrorCode.COLLECTION_REPORT_NOT_FOUND));
+    }
+
+    @Transactional
     public Long reportCollection(final Long reporterId, final Long collectionId, final ReportCollectionCommand command) {
         // 컬렉션 존재 확인 (없는 컬렉션은 신고할 수 없음 → 404)
         getCollectionById(collectionId);

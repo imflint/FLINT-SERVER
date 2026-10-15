@@ -61,4 +61,17 @@ public interface AdminCollectionControllerDocs {
         Long collectionId,
         AdminCollectionUpdateReq request
     );
+
+    @Operation(summary = "컬렉션 삭제", description = "관리자가 소유자와 관계없이 컬렉션을 소프트 삭제합니다. 포함 콘텐츠와 이미지는 보존하며 삭제된 컬렉션은 사용자 조회에서 제외됩니다. 이미 삭제된 컬렉션의 재요청도 성공하고 기존 삭제 시각은 유지합니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "컬렉션 삭제 성공", useReturnTypeSchema = true),
+        @ApiResponse(responseCode = "401", description = "유효한 관리자 인증 필요"),
+        @ApiResponse(responseCode = "403", description = "관리자 접근 권한 없음"),
+        @ApiResponse(responseCode = "404", description = "컬렉션 없음")
+    })
+    ResponseEntity<SuccessResponse<Void>> deleteCollection(
+        @Parameter(hidden = true) Long adminId,
+        Long collectionId
+    );
 }
