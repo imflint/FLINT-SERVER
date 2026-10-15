@@ -24,18 +24,24 @@ public class ContentWordSearchSchemaRepository {
                     AND IS_NULLABLE='YES'
                 """, Integer.class, table);
             require(Integer.valueOf(2).equals(columns), "Missing word columns: " + table);
-            String index = table.equals("content") ? "ft_content_words" : "ft_search_document_words";
+        }
+        String table = "content_search_document";
+        for (String index : List.of("ft_search_document_title", "ft_search_document_words")) {
             List<String> fields = jdbcTemplate.queryForList("""
                 SELECT COLUMN_NAME FROM information_schema.STATISTICS
                 WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND INDEX_NAME=?
                     AND INDEX_TYPE='FULLTEXT' AND IS_VISIBLE='YES'
                 ORDER BY SEQ_IN_INDEX
                 """, String.class, table, index);
-            require(fields.equals(List.of("word_title_ko", "word_title_en")), "Incorrect word index: " + index);
+            List<String> expected = index.equals("ft_search_document_words")
+                ? List.of("word_title_ko", "word_title_en") : List.of("search_title");
+            require(fields.equals(expected), "Incorrect search index: " + index);
             String ddl = (String) jdbcTemplate.queryForMap("SHOW CREATE TABLE `" + table + "`").get("Create Table");
             String definition = ddl.lines().filter(line -> line.contains("`" + index + "`")).findFirst().orElse("");
-            require(!definition.isEmpty() && !definition.toUpperCase(java.util.Locale.ROOT).contains("WITH PARSER"),
-                "Word index must use the default parser: " + index);
+            boolean ngram = definition.toUpperCase(java.util.Locale.ROOT).contains("WITH PARSER `NGRAM`");
+            require(!definition.isEmpty() && (index.equals("ft_search_document_title") ? ngram
+                    : !definition.toUpperCase(java.util.Locale.ROOT).contains("WITH PARSER")),
+                "Incorrect search parser: " + index);
         }
         Long stopwords = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM content_search_stopword", Long.class);
         require(Long.valueOf(0).equals(stopwords), "Title stopword table must be empty");

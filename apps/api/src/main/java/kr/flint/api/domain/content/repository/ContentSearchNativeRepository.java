@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.projection.ProjectionFactory;
 import org.springframework.data.projection.SpelAwareProxyProjectionFactory;
 import org.springframework.stereotype.Repository;
@@ -28,49 +27,24 @@ public class ContentSearchNativeRepository {
         """;
 
     private final EntityManager entityManager;
-    private final boolean localizedSearchEnabled;
-    private final boolean searchReadModelEnabled;
     private final boolean englishWordSearchEnabled;
     private final boolean singleCharacterInfixSearchEnabled;
     private final ProjectionFactory projectionFactory = new SpelAwareProxyProjectionFactory();
 
-    @Autowired
     public ContentSearchNativeRepository(
         EntityManager entityManager,
-        @Value("${flint.content.localized-search-enabled:false}") boolean localizedSearchEnabled,
-        @Value("${flint.content.search-read-model-enabled:false}") boolean searchReadModelEnabled,
         @Value("${flint.content.english-word-search-enabled:false}") boolean englishWordSearchEnabled,
         @Value("${flint.content.single-character-infix-search-enabled:false}") boolean singleCharacterInfixSearchEnabled
     ) {
         this.entityManager = entityManager;
-        this.localizedSearchEnabled = localizedSearchEnabled;
-        this.searchReadModelEnabled = searchReadModelEnabled;
         this.englishWordSearchEnabled = englishWordSearchEnabled;
         this.singleCharacterInfixSearchEnabled = singleCharacterInfixSearchEnabled;
-        if (englishWordSearchEnabled && (!localizedSearchEnabled || !searchReadModelEnabled)) {
-            throw new IllegalStateException("English word search requires localized search and the search read model");
-        }
-        if (singleCharacterInfixSearchEnabled && (!localizedSearchEnabled || !searchReadModelEnabled)) {
-            throw new IllegalStateException("Single character search requires localized search and the search read model");
-        }
-    }
-
-    public ContentSearchNativeRepository(EntityManager entityManager, boolean localized, boolean readModel, boolean words) {
-        this(entityManager, localized, readModel, words, false);
-    }
-
-    public ContentSearchNativeRepository(EntityManager entityManager, boolean localized, boolean readModel) {
-        this(entityManager, localized, readModel, false);
-    }
-
-    public ContentSearchNativeRepository(EntityManager entityManager, boolean localizedSearchEnabled) {
-        this(entityManager, localizedSearchEnabled, false);
     }
 
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public List<ContentSearchProjection> search(ContentSearchCondition condition, Long genreId) {
         if (condition.hasKeyword() && condition.cursor() != null) {
-            condition.cursor().validateKeywordVersion(localizedSearchEnabled, searchReadModelEnabled,
+            condition.cursor().validateKeywordVersion(true, true,
                 usesEnglishWords(condition.keyword()), usesSingleCharacterInfix(condition.keyword()));
         }
         if (usesSingleCharacterInfix(condition.keyword())) {
@@ -79,18 +53,10 @@ public class ContentSearchNativeRepository {
         Query query = entityManager.createNativeQuery(searchSql(condition, genreId), Tuple.class);
         bindParameters(query, condition, genreId);
         List<?> rows = query.getResultList();
-        if (condition.hasKeyword() && localizedSearchEnabled && searchReadModelEnabled) {
+        if (condition.hasKeyword()) {
             return hydratePage(rows);
         }
         return rows.stream().map(row -> toProjection((Tuple) row)).toList();
-    }
-
-    public boolean localizedSearchEnabled() {
-        return localizedSearchEnabled;
-    }
-
-    public boolean searchReadModelEnabled() {
-        return localizedSearchEnabled && searchReadModelEnabled;
     }
 
     public boolean usesEnglishWords(String keyword) {
@@ -212,17 +178,14 @@ public class ContentSearchNativeRepository {
 
     private void bindKeyword(Query query, ContentSearchCondition condition) {
         ContentSearchKeyword keyword = ContentSearchKeyword.ofNullable(condition.keyword());
-        query.setParameter("normalizedKeyword", keyword.exactKey(localizedSearchEnabled));
+        query.setParameter("normalizedKeyword", keyword.normalized());
         if (keyword.isSingleCharacter()) {
             return;
         }
         boolean words = keyword.usesEnglishWords(englishWordSearchEnabled);
-        query.setParameter("fullTextKeyword", words ? keyword.wordPhraseQuery() : keyword.booleanQuery(localizedSearchEnabled));
+        query.setParameter("fullTextKeyword", words ? keyword.wordPhraseQuery() : keyword.booleanQuery(true));
         if (words) {
             query.setParameter("wordKeyword", keyword.wordKey());
-        }
-        if (!localizedSearchEnabled) {
-            query.setParameter("scoreKeyword", keyword.scoreQuery(false));
         }
     }
 
@@ -259,70 +222,8 @@ public class ContentSearchNativeRepository {
         return keywordSql(condition, genreId, true);
     }
 
-    private String keywordSql(ContentSearchCondition condition, Long genreId, boolean paginated) {
-        if (localizedSearchEnabled && searchReadModelEnabled) {
-            return readModelKeywordSql(condition, genreId, paginated);
-        }
-        boolean exactOnly = ContentSearchKeyword.ofNullable(condition.keyword()).isSingleCharacter();
-        String title = localizedSearchEnabled ? "search_title" : "title";
-        String exactMatch = localizedSearchEnabled
-            ? "c.normalized_title_ko=:normalizedKeyword OR c.normalized_title_en=:normalizedKeyword"
-            : "LOWER(c.title)=:normalizedKeyword";
-        String candidates = localizedSearchEnabled ? """
-            SELECT id, MAX(relevanceScore) AS relevanceScore FROM (
-            SELECT id, 0.0 AS relevanceScore FROM content FORCE INDEX (idx_content_normalized_title_ko)
-            WHERE normalized_title_ko=:normalizedKeyword
-            UNION SELECT id, 0.0 AS relevanceScore FROM content FORCE INDEX (idx_content_normalized_title_en)
-            WHERE normalized_title_en=:normalizedKeyword
-            """ : """
-            SELECT id FROM content FORCE INDEX (idx_content_title_lower)
-            WHERE LOWER(title)=:normalizedKeyword
-            """;
-        if (localizedSearchEnabled) {
-            if (!exactOnly) {
-                candidates += """
-                    UNION SELECT id, MATCH(search_title) AGAINST (:fullTextKeyword IN BOOLEAN MODE) AS relevanceScore
-                    FROM content WHERE MATCH(search_title) AGAINST (:fullTextKeyword IN BOOLEAN MODE)>0
-                    """;
-            }
-            candidates += ") hits GROUP BY id";
-        } else if (!exactOnly) {
-            candidates += " UNION SELECT id FROM content WHERE MATCH(title) AGAINST (:fullTextKeyword IN BOOLEAN MODE)>0";
-        }
-        String score = exactOnly ? "0.0" : localizedSearchEnabled ? "candidates.relevanceScore"
-            : "MATCH(c." + title + ") AGAINST (:scoreKeyword IN NATURAL LANGUAGE MODE)";
-        StringBuilder sql = new StringBuilder("SELECT ranked.* FROM (SELECT ").append(CONTENT_COLUMNS)
-            .append(", CASE WHEN ").append(exactMatch).append(" THEN 0 ELSE 1 END AS exactMatchRank,")
-            .append(score).append(" AS relevanceScore FROM (").append(candidates)
-            .append(") candidates STRAIGHT_JOIN content c ON c.id=candidates.id");
-        if (genreId != null) {
-            sql.append(" STRAIGHT_JOIN content_genre cg FORCE INDEX (uk_content_genre)")
-                .append(" ON cg.content_id=c.id AND cg.genre_id=:genreId");
-        }
-        sql.append(" WHERE 1=1");
-        if (localizedSearchEnabled && !exactOnly) {
-            // AND finds all bigrams; substring verification rejects reordered or split-token matches.
-            sql.append(" AND (LOCATE(:normalizedKeyword,c.normalized_title_ko)>0")
-                .append(" OR LOCATE(:normalizedKeyword,c.normalized_title_en)>0)");
-        }
-        appendMediaFilter(sql, condition);
-        sql.append(") ranked");
-        if (condition.cursor() != null) {
-            sql.append("""
-                 WHERE (ranked.exactMatchRank>:cursorRank
-                    OR (ranked.exactMatchRank=:cursorRank AND ranked.relevanceScore<:cursorScore)
-                    OR (ranked.exactMatchRank=:cursorRank AND ranked.relevanceScore=:cursorScore AND ranked.id<:cursorId))
-                """);
-        }
-        sql.append(" ORDER BY ranked.exactMatchRank, ranked.relevanceScore DESC, ranked.id DESC");
-        if (paginated) {
-            sql.append(" LIMIT :queryLimit");
-        }
-        return sql.toString();
-    }
-
     // Derived MATCH scores disable FTS covering. Union only document IDs and score outside the derived table.
-    private String readModelKeywordSql(ContentSearchCondition condition, Long genreId, boolean paginated) {
+    private String keywordSql(ContentSearchCondition condition, Long genreId, boolean paginated) {
         boolean exactOnly = ContentSearchKeyword.ofNullable(condition.keyword()).isSingleCharacter();
         boolean words = usesEnglishWords(condition.keyword());
         String fields = words ? "word_title_ko,word_title_en" : "search_title";

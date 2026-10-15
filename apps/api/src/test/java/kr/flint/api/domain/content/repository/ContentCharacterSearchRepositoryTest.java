@@ -70,7 +70,7 @@ class ContentCharacterSearchRepositoryTest {
         em.createNativeQuery("DELETE FROM content").executeUpdate();
         commit();
         TestTransaction.start();
-        search = new ContentSearchNativeRepository(em, true, true, true, true);
+        search = new ContentSearchNativeRepository(em, true, true);
     }
 
     @ParameterizedTest
@@ -102,7 +102,7 @@ class ContentCharacterSearchRepositoryTest {
             }
             assertThat(seen).doesNotHaveDuplicates().containsExactlyElementsOf(expected);
         }
-        assertThat(new ContentSearchNativeRepository(em, true, true, true).searchAllKeywords(character))
+        assertThat(new ContentSearchNativeRepository(em, true, false).searchAllKeywords(character))
             .extracting(ContentSearchProjection::getId).containsExactly(exact.getId());
         assertThatThrownBy(() -> search.search(condition(character,
             ContentSearchCursor.keyword(0, 0, exact.getId(), true, true, true), 2), null)).hasMessageContaining("cursor");
@@ -126,7 +126,7 @@ class ContentCharacterSearchRepositoryTest {
             .extracting(ContentSearchProjection::getId).containsExactly(exact.getId(), partial.getId());
         assertThat(search.searchAllKeywords("봄"))
             .extracting(ContentSearchProjection::getId).containsExactly(exact.getId(), partial.getId());
-        assertThat(new SearchQueryRepository(new JPAQueryFactory(em), true, true, true)
+        assertThat(new SearchQueryRepository(new JPAQueryFactory(em), em, true, true)
             .searchBookmarkedContents(71L, "봄", null, 10))
             .extracting(BookmarkedContentSearchRes::contentId).containsExactly(partial.getId());
     }
@@ -144,7 +144,7 @@ class ContentCharacterSearchRepositoryTest {
             .extracting(ContentSearchProjection::getId).containsExactly(exact.getId(), partial.getId());
         assertThat(search.searchAllKeywords("Ａ!"))
             .extracting(ContentSearchProjection::getId).containsExactly(exact.getId(), partial.getId());
-        assertThat(new SearchQueryRepository(new JPAQueryFactory(em), true, true, true)
+        assertThat(new SearchQueryRepository(new JPAQueryFactory(em), em, true, true)
             .searchBookmarkedContents(81L, "Ａ!", null, 10))
             .extracting(BookmarkedContentSearchRes::contentId).containsExactly(partial.getId(), exact.getId());
     }
@@ -155,7 +155,7 @@ class ContentCharacterSearchRepositoryTest {
         commit();
         assertThat(search.searchAllKeywords("봄")).hasSize(50);
         assertThat(search.searchAllKeywords("봄날")).hasSize(55);
-        var old = new ContentSearchNativeRepository(em, true, true, true);
+        var old = new ContentSearchNativeRepository(em, true, false);
         for (String keyword : List.of("봄날", "spring day", "it")) {
             var condition = condition(keyword, null, 10);
             assertThat(search.searchSql(condition, null)).isEqualTo(old.searchSql(condition, null));
@@ -168,8 +168,7 @@ class ContentCharacterSearchRepositoryTest {
         var v5 = ContentSearchCursor.keyword(1, 0, 1L, true, true, true, true);
         assertThatThrownBy(() -> old.search(condition("봄", v5, 10), null)).hasMessageContaining("cursor");
         assertThatThrownBy(() -> search.search(condition("봄날", v5, 10), null)).hasMessageContaining("cursor");
-        assertThatThrownBy(() -> new ContentSearchNativeRepository(em, true, false, false, true))
-            .hasMessageContaining("requires localized search");
+        assertThat(new ContentSearchNativeRepository(em, false, true).usesSingleCharacterInfix("봄")).isTrue();
     }
 
     @Test
@@ -182,7 +181,7 @@ class ContentCharacterSearchRepositoryTest {
         for (ContentBookmark bookmark : List.of(first, second, ContentBookmark.create(41L, other.getId()),
             ContentBookmark.create(42L, partial.getId()))) em.persist(bookmark);
         commit();
-        var repository = new SearchQueryRepository(new JPAQueryFactory(em), true, true, true);
+        var repository = new SearchQueryRepository(new JPAQueryFactory(em), em, true, true);
         assertThat(repository.searchBookmarkedContents(41L, "봄!", null, 1))
             .extracting(BookmarkedContentSearchRes::contentId).containsExactly(partial.getId(), exact.getId());
         assertThat(repository.searchBookmarkedContents(41L, "봄", second.getId(), 1))

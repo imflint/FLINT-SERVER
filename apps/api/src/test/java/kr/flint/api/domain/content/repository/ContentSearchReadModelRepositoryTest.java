@@ -139,7 +139,7 @@ class ContentSearchReadModelRepositoryTest {
     void candidateUsesCoveringFullTextAndPageLimitPrecedesContentHydration() {
         entityManager.persist(Content.createLocalized(103L, MediaType.MOVIE, null, "It Follows", 2014, null, null, null));
         commit();
-        var repository = new ContentSearchNativeRepository(entityManager, true, true);
+        var repository = new ContentSearchNativeRepository(entityManager, false, false);
         var condition = ContentSearchCondition.of("it", null, null, null, 20);
         String sql = repository.searchSql(condition, null);
         assertThat(sql).doesNotContain("STRAIGHT_JOIN content c");
@@ -176,7 +176,7 @@ class ContentSearchReadModelRepositoryTest {
                 i == 0 ? "그것" : null, i < 2 ? "It" : "It Follows " + i, 2014, null, null, null));
         }
         commit();
-        var repository = new ContentSearchNativeRepository(entityManager, true, true);
+        var repository = new ContentSearchNativeRepository(entityManager, false, false);
         var expected = repository.searchAllKeywords("it");
         assertThat(expected).hasSize(6);
         assertThat(expected.subList(0, 2)).allSatisfy(value -> assertThat(value.getExactMatchRank()).isZero());
@@ -204,7 +204,7 @@ class ContentSearchReadModelRepositoryTest {
                 "그것 " + i, i < 2 ? "It" : "It Follows " + i, 2014, null, null, null));
         }
         commit();
-        var search = new ContentSearchNativeRepository(entityManager, true, true, true);
+        var search = new ContentSearchNativeRepository(entityManager, true, false);
         var expected = search.search(ContentSearchCondition.of("it", null, MediaType.MOVIE, null, 20), null);
         var seen = new ArrayList<Long>();
         ContentSearchCursor cursor = null;
@@ -229,27 +229,22 @@ class ContentSearchReadModelRepositoryTest {
         assertThatThrownBy(() -> search.search(ContentSearchCondition.of("그것", null, null, v4, 2), null))
             .isInstanceOf(GeneralException.class);
         assertThat(search.usesEnglishWords("그것")).isFalse();
-        assertThat(new ContentSearchNativeRepository(entityManager, true, true).usesEnglishWords("it")).isFalse();
+        assertThat(new ContentSearchNativeRepository(entityManager, false, false).usesEnglishWords("it")).isFalse();
     }
 
     @Test
-    void readinessRejectsMissingWordIndexAndInvalidFeatureDependencies() throws SQLException {
+    void readinessRejectsMissingSearchWordIndexAndInvalidParser() throws SQLException {
         var jdbc = new org.springframework.jdbc.core.JdbcTemplate(dataSource);
-        try (var connection = dataSource.getConnection(); var statement = connection.createStatement()) {
-            statement.execute("SET SESSION innodb_ft_user_stopword_table=CONCAT(DATABASE(),'/content_search_stopword')");
-            statement.execute("CREATE FULLTEXT INDEX ft_content_words ON content(word_title_ko,word_title_en)");
-        }
         var schema = new ContentWordSearchSchemaRepository(jdbc);
         schema.validate();
-        jdbc.execute("ALTER TABLE content DROP INDEX ft_content_words");
-        assertThatThrownBy(schema::validate).hasMessageContaining("Incorrect word index: ft_content_words");
-        jdbc.execute("CREATE FULLTEXT INDEX ft_content_words ON content(word_title_ko,word_title_en) WITH PARSER ngram");
-        assertThatThrownBy(schema::validate).hasMessageContaining("must use the default parser");
-        jdbc.execute("ALTER TABLE content DROP INDEX ft_content_words");
-        assertThatThrownBy(() -> new ContentSearchNativeRepository(entityManager, true, false, true))
-            .hasMessageContaining("requires localized search");
-        assertThatThrownBy(() -> new ContentSearchNativeRepository(entityManager, false, true, true))
-            .hasMessageContaining("requires localized search");
+        jdbc.execute("ALTER TABLE content_search_document DROP INDEX ft_search_document_words");
+        assertThatThrownBy(schema::validate).hasMessageContaining("Incorrect search index: ft_search_document_words");
+        jdbc.execute("CREATE FULLTEXT INDEX ft_search_document_words ON content_search_document(word_title_ko,word_title_en) WITH PARSER ngram");
+        assertThatThrownBy(schema::validate).hasMessageContaining("Incorrect search parser");
+        jdbc.execute("ALTER TABLE content_search_document DROP INDEX ft_search_document_words");
+        jdbc.execute("CREATE FULLTEXT INDEX ft_search_document_words ON content_search_document(word_title_ko,word_title_en)");
+        assertThat(new ContentSearchNativeRepository(entityManager, true, false).usesEnglishWords("it")).isTrue();
+        assertThat(new ContentSearchNativeRepository(entityManager, false, false).usesEnglishWords("it")).isFalse();
     }
 
     @ParameterizedTest
@@ -260,7 +255,7 @@ class ContentSearchReadModelRepositoryTest {
         }
         entityManager.persist(Content.createLocalized(505L, MediaType.MOVIE, keyword + " story", null, 2020, null, null, null));
         commit();
-        var search = new ContentSearchNativeRepository(entityManager, true, true, true);
+        var search = new ContentSearchNativeRepository(entityManager, true, false);
         var condition = ContentSearchCondition.of(keyword, null, null, null, 2);
         String sql = search.searchSql(condition, null);
         assertThat(sql).doesNotContain("MATCH(", "LOCATE(", "fullTextKeyword", "wordKeyword");
@@ -292,7 +287,7 @@ class ContentSearchReadModelRepositoryTest {
     }
 
     private void assertWordMatches(String keyword, Long... ids) {
-        assertThat(new ContentSearchNativeRepository(entityManager, true, true, true).searchAllKeywords(keyword))
+        assertThat(new ContentSearchNativeRepository(entityManager, true, false).searchAllKeywords(keyword))
             .extracting(ContentSearchProjection::getId).containsExactly(ids);
     }
 
@@ -317,7 +312,7 @@ class ContentSearchReadModelRepositoryTest {
     }
 
     private void assertMatches(String keyword, Long... ids) {
-        assertThat(new ContentSearchNativeRepository(entityManager, true, true).searchAllKeywords(keyword))
+        assertThat(new ContentSearchNativeRepository(entityManager, false, false).searchAllKeywords(keyword))
             .extracting(ContentSearchProjection::getId).containsExactly(ids);
     }
 
