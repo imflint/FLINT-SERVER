@@ -26,12 +26,8 @@ ORDER BY table_name, index_name, seq_in_index;
 SHOW CREATE TABLE content;
 SHOW CREATE TABLE content_genre;
 
-ALTER TABLE content
-	ADD FULLTEXT INDEX ft_content_title_ngram (title) WITH PARSER ngram;
-
--- Required only when localized-search-enabled=true; normally already present.
-ALTER TABLE content
-    ADD FULLTEXT INDEX ft_content_search_title_ngram (search_title) WITH PARSER ngram;
+-- Source FULLTEXT indexes were retired by content-fulltext-retirement.sql.
+-- Search indexes belong to content_search_document; do not recreate source FULLTEXT.
 
 CREATE INDEX idx_content_popular
 	ON content (bookmark_count DESC, id DESC);

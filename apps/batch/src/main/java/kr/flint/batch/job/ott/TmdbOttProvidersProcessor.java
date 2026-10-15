@@ -2,10 +2,10 @@ package kr.flint.batch.job.ott;
 
 import org.springframework.batch.item.ItemProcessor;
 
-import feign.FeignException;
+import kr.flint.batch.service.TmdbApiException;
+import kr.flint.batch.service.TmdbApiExecutor;
 import kr.flint.content.domain.MediaType;
 import kr.flint.infra.tmdb.client.TmdbClient;
-import kr.flint.infra.tmdb.dto.TmdbOttRes;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 public class TmdbOttProvidersProcessor implements ItemProcessor<OttSyncContentRow, OttSyncDraft> {
 
 	private final TmdbClient tmdbClient;
+	private final TmdbApiExecutor apiExecutor;
 
 	@Override
 	public OttSyncDraft process(OttSyncContentRow row) {
@@ -21,13 +22,13 @@ public class TmdbOttProvidersProcessor implements ItemProcessor<OttSyncContentRo
 			return null;
 		}
 		try {
-			TmdbOttRes res = row.mediaType() == MediaType.TV
-				? tmdbClient.getTvWatchProviders(row.tmdbId())
-				: tmdbClient.getMovieWatchProviders(row.tmdbId());
-
-			return TmdbOttSnapshot.from(res).toDraft(row.contentId());
-		} catch (FeignException.NotFound nf) {
-			log.debug("watch providers not found tmdbId={} mediaType={}", row.tmdbId(), row.mediaType());
+			return apiExecutor.execute("watchProviders:" + row.mediaType() + ":" + row.tmdbId(), () ->
+				TmdbOttSnapshot.from(row.mediaType() == MediaType.TV
+					? tmdbClient.getTvWatchProviders(row.tmdbId())
+					: tmdbClient.getMovieWatchProviders(row.tmdbId())).toDraft(row.contentId()));
+		} catch (TmdbApiException failure) {
+			if (!failure.notFound() && !failure.retryable()) throw failure;
+			log.warn("watch providers retained tmdbId={} mediaType={} cause={}", row.tmdbId(), row.mediaType(), failure.getMessage());
 			return null;
 		}
 	}

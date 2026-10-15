@@ -3,9 +3,14 @@ package kr.flint.api.admin.domain.batch.service;
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import kr.flint.api.admin.domain.batch.dto.request.LanguageCleanupExecuteReq;
@@ -13,22 +18,29 @@ import kr.flint.api.admin.domain.batch.dto.response.LanguageCleanupManifestRes;
 import kr.flint.api.domain.home.service.CollectionKeywordSyncService;
 import kr.flint.api.domain.home.service.RecommendationCacheService;
 import kr.flint.batch.repository.TmdbCatalogCleanupJdbcRepository;
+import kr.flint.batch.repository.TmdbSyncRunJdbcRepository;
+import kr.flint.batch.service.TmdbApiException;
 import kr.flint.batch.sync.TmdbPruneManifest;
 import kr.flint.batch.service.TmdbContentSyncService;
 import kr.flint.shared.exception.ErrorCode;
 import kr.flint.shared.exception.GeneralException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class TmdbLanguageCleanupService {
 
     private static final int DELETE_CHUNK_SIZE = 500;
+    private static final Duration LEASE_DURATION = Duration.ofMinutes(2);
 
     private final TmdbCatalogCleanupJdbcRepository cleanupRepository;
     private final CollectionKeywordSyncService collectionKeywordSyncService;
     private final RecommendationCacheService recommendationCacheService;
     private final TmdbContentSyncService contentSyncService;
+    private final TmdbSyncRunJdbcRepository runRepository;
+    private final ConcurrentHashMap<String, CleanupLease> activeLeases = new ConcurrentHashMap<>();
 
     public LanguageCleanupManifestRes preview() {
         long unclassifiedCount = cleanupRepository.countUnclassifiedContents();
@@ -60,26 +72,78 @@ public class TmdbLanguageCleanupService {
         }
 
         contentSyncService.ensureSchemaReady();
-        while (cleanupRepository.deleteNextChunk(manifest.id(), DELETE_CHUNK_SIZE) > 0) {
-            // 각 호출은 독립 트랜잭션으로 커밋되어 중단 후에도 이어서 실행할 수 있다.
-        }
-        long lastId = 0;
-        while (true) {
-            var progress = contentSyncService.promoteTitleChunk(lastId, 50);
-            if (progress.processedCount() == 0) {
-                break;
+        String ownerId = UUID.randomUUID().toString();
+        runRepository.acquireCleanupLease(manifest.id(), ownerId, LEASE_DURATION);
+        CleanupLease lease = new CleanupLease(manifest.id(), ownerId, new AtomicBoolean(false));
+        activeLeases.put(ownerId, lease);
+        try {
+            cleanupRepository.validateRemainingCandidates(manifest.id(), ownerId);
+            while (deleteNextChunk(lease) > 0) {
+                // 청크별 트랜잭션과 체크포인트로 중단 후 재개한다.
             }
-            lastId = progress.lastId();
+            long lastId = 0;
+            while (true) {
+                assertLease(lease);
+                var progress = contentSyncService.promoteTitleChunk(lastId, 50);
+                if (progress.processedCount() == 0) break;
+                lastId = progress.lastId();
+            }
+            assertLease(lease);
+            repairAffectedCollections(manifest.id());
+            cleanupRepository.completeManifest(manifest.id());
+            return LanguageCleanupManifestRes.from(cleanupRepository.findManifest(manifest.id()).orElseThrow());
+        } catch (RuntimeException failure) {
+            if (!lease.lost().get() && cleanupRepository.findManifest(manifest.id())
+                .map(current -> current.processedCount() > 0).orElse(false)) {
+                try {
+                    assertLease(lease);
+                    repairAffectedCollections(manifest.id());
+                } catch (RuntimeException repairFailure) {
+                    log.warn("TMDB cleanup repair deferred manifestId={} cause={}", manifest.id(), TmdbApiException.safeMessage(repairFailure));
+                }
+            }
+            throw failure;
+        } finally {
+            activeLeases.remove(ownerId);
+            runRepository.releaseCleanupLease(manifest.id(), ownerId);
         }
-        cleanupRepository.finalizeAffectedCollections(manifest.id());
+    }
 
-        for (Long collectionId : cleanupRepository.findActiveAffectedCollectionIds(manifest.id())) {
+    @Scheduled(fixedDelay = 30_000)
+    public void heartbeatCleanup() {
+        for (CleanupLease lease : activeLeases.values()) {
+            try {
+                if (!runRepository.renewCleanupLease(lease.manifestId(), lease.ownerId(), LEASE_DURATION)) {
+                    lease.lost().set(true);
+                }
+            } catch (RuntimeException failure) {
+                lease.lost().set(true);
+                log.warn("TMDB cleanup lease renewal failed manifestId={} cause={}", lease.manifestId(), TmdbApiException.safeMessage(failure));
+            }
+        }
+    }
+
+    private int deleteNextChunk(CleanupLease lease) {
+        assertLease(lease);
+        return cleanupRepository.deleteNextChunk(lease.manifestId(), lease.ownerId(), DELETE_CHUNK_SIZE);
+    }
+
+    private void assertLease(CleanupLease lease) {
+        if (lease.lost().get() || !runRepository.renewCleanupLease(lease.manifestId(), lease.ownerId(), LEASE_DURATION)) {
+            lease.lost().set(true);
+            throw new GeneralException(ErrorCode.CONFLICT, "TMDB 정리 작업의 임대가 만료되었습니다.");
+        }
+    }
+
+    private void repairAffectedCollections(Long manifestId) {
+        cleanupRepository.finalizeAffectedCollections(manifestId);
+        for (Long collectionId : cleanupRepository.findActiveAffectedCollectionIds(manifestId)) {
             collectionKeywordSyncService.fullSync(collectionId);
         }
         recommendationCacheService.invalidateAllCache();
-        cleanupRepository.completeManifest(manifest.id());
-        return LanguageCleanupManifestRes.from(cleanupRepository.findManifest(manifest.id()).orElseThrow());
     }
+
+    private record CleanupLease(Long manifestId, String ownerId, AtomicBoolean lost) {}
 
     private String hash(List<Long> contentIds) {
         try {

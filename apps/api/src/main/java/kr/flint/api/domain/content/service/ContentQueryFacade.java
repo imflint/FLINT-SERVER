@@ -104,8 +104,7 @@ public class ContentQueryFacade {
 		if (decodedCursor != null) {
 			decodedCursor.validateSortMode(condition.hasKeyword());
 			if (condition.hasKeyword()) {
-				decodedCursor.validateKeywordVersion(contentQueryRepository.localizedSearchEnabled(),
-					contentQueryRepository.searchReadModelEnabled(), contentQueryRepository.usesEnglishWords(condition.keyword()),
+				decodedCursor.validateKeywordVersion(true, true, contentQueryRepository.usesEnglishWords(condition.keyword()),
 					contentQueryRepository.usesSingleCharacterInfix(condition.keyword()));
 			}
 		}
@@ -124,7 +123,7 @@ public class ContentQueryFacade {
 		ContentSearchRow last = rows.get(rows.size() - 1);
 		return condition.hasKeyword()
 			? ContentSearchCursor.keyword(last.exactMatchRank(), last.relevanceScore(), last.id(),
-				contentQueryRepository.localizedSearchEnabled(), contentQueryRepository.searchReadModelEnabled(),
+				true, true,
 				contentQueryRepository.usesEnglishWords(condition.keyword()),
 				contentQueryRepository.usesSingleCharacterInfix(condition.keyword())).encode()
 			: ContentSearchCursor.popular(last.bookmarkCount(), last.id()).encode();

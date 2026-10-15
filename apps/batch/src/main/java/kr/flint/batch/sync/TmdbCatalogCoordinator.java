@@ -21,6 +21,7 @@ import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import kr.flint.batch.service.TmdbApiException;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.task.TaskExecutor;
@@ -145,7 +146,7 @@ public class TmdbCatalogCoordinator {
             try {
                 start(run.runKey(), run.runType(), run.businessDate());
             } catch (RuntimeException exception) {
-                log.warn("TMDB run resume deferred runKey={} cause={}", run.runKey(), exception.getMessage());
+                log.warn("TMDB run resume deferred runKey={} cause={}", run.runKey(), TmdbApiException.safeMessage(exception));
             }
         }
     }
@@ -223,7 +224,7 @@ public class TmdbCatalogCoordinator {
 			}
 			runRepository.markCompleted(run.runKey(), totalSteps, totalSteps);
         } catch (Exception exception) {
-            log.error("TMDB workflow failed runKey={}", run.runKey(), exception);
+            log.error("TMDB workflow failed runKey={} cause={}", run.runKey(), TmdbApiException.safeMessage(exception));
             runRepository.markFailed(run.runKey(), exception);
         }
     }
@@ -302,7 +303,7 @@ public class TmdbCatalogCoordinator {
                 jobOperator.stop(executionId);
             }
         } catch (Exception exception) {
-            log.warn("Failed to request batch stop jobName={} cause={}", jobName, exception.getMessage());
+            log.warn("Failed to request batch stop jobName={} cause={}", jobName, TmdbApiException.safeMessage(exception));
         }
     }
 

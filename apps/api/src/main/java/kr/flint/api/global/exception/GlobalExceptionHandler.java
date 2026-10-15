@@ -46,8 +46,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ProblemDetail> handleValidationException(MethodArgumentNotValidException e, HttpServletRequest request) {
-        log.warn("입력값 검증 오류: {}", e.getMessage());
         AppError errorCode = ErrorCode.INVALID_INPUT;
+        log.warn("입력값 검증 오류: code={} errorCount={}", errorCode.getCode(), e.getBindingResult().getErrorCount());
 
         Map<String, String> errors = new HashMap<>();
         e.getBindingResult()

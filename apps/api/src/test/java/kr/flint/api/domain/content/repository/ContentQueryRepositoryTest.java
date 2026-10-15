@@ -100,17 +100,12 @@ class ContentQueryRepositoryTest {
 		registry.add("spring.datasource.driver-class-name", MYSQL::getDriverClassName);
 		registry.add("spring.jpa.hibernate.ddl-auto", () -> "create");
 		registry.add("spring.jpa.properties.hibernate.dialect", () -> "org.hibernate.dialect.MySQLDialect");
-		registry.add("flint.content.localized-search-enabled", () -> "true");
-		registry.add("flint.content.search-read-model-enabled", () -> "true");
 	}
 
 	@BeforeEach
 	void ensureFullTextIndex() throws SQLException {
 		ContentSearchReadModelFixture.install(dataSource);
 		for (String ddl : List.of(
-			"CREATE FULLTEXT INDEX ft_content_words ON content (word_title_ko,word_title_en)",
-			"CREATE FULLTEXT INDEX ft_content_search_title_ngram ON content (search_title) WITH PARSER ngram",
-			"CREATE FULLTEXT INDEX ft_content_title_ngram ON content (title) WITH PARSER ngram",
 			"CREATE INDEX idx_content_popular ON content (bookmark_count DESC, id DESC)",
 			"CREATE INDEX idx_content_media_popular ON content (media_type, bookmark_count DESC, id DESC)",
 			"CREATE INDEX idx_content_title_lower ON content ((LOWER(title))) ALGORITHM=INPLACE LOCK=SHARED",
@@ -142,8 +137,8 @@ class ContentQueryRepositoryTest {
         entityManager.persist(ContentBookmark.create(11L, exact.getId()));
         entityManager.persist(ContentBookmark.create(12L, sequel.getId()));
         commitFullTextFixtures();
-        var nativeSearch = new ContentSearchNativeRepository(entityManager, true, true, true);
-        var bookmarkedSearch = new kr.flint.api.domain.search.repository.SearchQueryRepository(new JPAQueryFactory(entityManager), true, true);
+        var nativeSearch = new ContentSearchNativeRepository(entityManager, true, false);
+        var bookmarkedSearch = new kr.flint.api.domain.search.repository.SearchQueryRepository(new JPAQueryFactory(entityManager), entityManager, true, false);
         for (String keyword : List.of("Harry Potter", "ＨＡＲＲＹ　ＰＯＴＴＥＲ!🔥", "harry\t   potter")) {
             assertThat(nativeSearch.search(ContentSearchCondition.of(keyword, null, null, null, 20), null))
                 .extracting(ContentSearchProjection::getId).containsExactly(exact.getId(), sequel.getId());
@@ -181,13 +176,13 @@ class ContentQueryRepositoryTest {
         entityManager.persist(first);
         entityManager.persist(second);
         commitFullTextFixtures();
-        var search = new ContentSearchNativeRepository(entityManager, true, true, true);
+        var search = new ContentSearchNativeRepository(entityManager, true, false);
         assertThat(search.searchAllKeywords("it")).extracting(ContentSearchProjection::getId)
             .containsExactly(it.getId(), follows.getId());
         assertThat(search.searchAllKeywords("a man")).extracting(ContentSearchProjection::getId).containsExactly(man.getId());
         assertThat(search.searchAllKeywords("and i")).extracting(ContentSearchProjection::getId).containsExactly(man.getId());
         assertThat(search.searchAllKeywords("go go")).extracting(ContentSearchProjection::getId).containsExactly(repeated.getId());
-        var bookmarks = new kr.flint.api.domain.search.repository.SearchQueryRepository(new JPAQueryFactory(entityManager), true, true);
+        var bookmarks = new kr.flint.api.domain.search.repository.SearchQueryRepository(new JPAQueryFactory(entityManager), entityManager, true, false);
         assertThat(bookmarks.searchBookmarkedContents(21L, "it", null, 1))
             .extracting(kr.flint.api.domain.search.dto.response.BookmarkedContentSearchRes::contentId)
             .containsExactly(follows.getId(), it.getId());
@@ -207,7 +202,7 @@ class ContentQueryRepositoryTest {
 		for (String keyword : List.of("해 리 포 터!", "ＨＡＲＲＹ ＰＯＴＴＥＲ", "harry potter")) {
 			assertThat(repository(true).searchContents(condition(keyword, null, null, 10)))
 				.extracting(ContentSearchRow::id).containsExactly(exact.getId());
-			assertThat(new ContentSearchNativeRepository(entityManager, true).searchAllKeywords(keyword))
+			assertThat(new ContentSearchNativeRepository(entityManager, false, false).searchAllKeywords(keyword))
 				.extracting(ContentSearchProjection::getId).containsExactly(exact.getId());
 			assertThat(searchQueryRepository.searchBookmarkedContents(1L, keyword, null, 10))
 				.extracting(kr.flint.api.domain.search.dto.response.BookmarkedContentSearchRes::contentId)
@@ -360,9 +355,9 @@ class ContentQueryRepositoryTest {
         List<Long> expected = List.of(bothTitles.getId(), tv.getId(), englishTitle.getId()).stream()
             .sorted(java.util.Comparator.reverseOrder()).toList();
         List<ContentSearchNativeRepository> searches = List.of(
-            new ContentSearchNativeRepository(entityManager, true, false),
-            new ContentSearchNativeRepository(entityManager, true, true),
-            new ContentSearchNativeRepository(entityManager, true, true, true));
+            new ContentSearchNativeRepository(entityManager, false, false),
+            new ContentSearchNativeRepository(entityManager, false, false),
+            new ContentSearchNativeRepository(entityManager, true, false));
         for (ContentSearchNativeRepository search : searches) {
             for (String input : List.of(keyword, "  " + keyword + "!🔥  ")) {
                 var rows = search.search(condition(input, null, null, 10), null);
@@ -377,11 +372,11 @@ class ContentQueryRepositoryTest {
                     .extracting(ContentSearchProjection::getId).containsExactly(tv.getId());
             }
         }
-        var legacy = new ContentSearchNativeRepository(entityManager, false);
-        assertThat(legacy.searchAllKeywords(keyword)).extracting(ContentSearchProjection::getId)
-            .containsExactly(tv.getId(), bothTitles.getId());
+        var defaultSearch = new ContentSearchNativeRepository(entityManager, false, false);
+        assertThat(defaultSearch.searchAllKeywords(keyword)).extracting(ContentSearchProjection::getId)
+            .containsExactlyElementsOf(expected);
         for (boolean words : List.of(false, true)) {
-            var bookmarks = new kr.flint.api.domain.search.repository.SearchQueryRepository(new JPAQueryFactory(entityManager), true, words);
+            var bookmarks = new kr.flint.api.domain.search.repository.SearchQueryRepository(new JPAQueryFactory(entityManager), entityManager, words, false);
             for (String input : List.of(keyword, "  " + keyword + "!🔥  ")) {
                 assertThat(bookmarks.searchBookmarkedContents(31L, input, null, 1))
                     .extracting(kr.flint.api.domain.search.dto.response.BookmarkedContentSearchRes::contentId)
@@ -395,7 +390,7 @@ class ContentQueryRepositoryTest {
                 assertThat(bookmarks.searchBookmarkedContents(33L, input, null, 10)).isEmpty();
             }
         }
-        var titleBookmarks = new kr.flint.api.domain.search.repository.SearchQueryRepository(new JPAQueryFactory(entityManager), false);
+        var titleBookmarks = new kr.flint.api.domain.search.repository.SearchQueryRepository(new JPAQueryFactory(entityManager), entityManager, false, false);
         assertThat(titleBookmarks.searchBookmarkedContents(31L, keyword, null, 10))
             .extracting(kr.flint.api.domain.search.dto.response.BookmarkedContentSearchRes::contentId)
             .containsExactly(tv.getId(), bothTitles.getId());
@@ -544,14 +539,14 @@ class ContentQueryRepositoryTest {
 
 		List<ContentSearchRow> results = repository(localized)
 			.searchContents(condition("해리포터", null, null, 10));
-		String exact = localized
-			? "normalized_title_ko='해리포터' OR normalized_title_en='해리포터'"
-			: "LOWER(title)='해리포터'";
-		String title = localized ? "search_title" : "title";
-		List<?> original = entityManager.createNativeQuery("SELECT id, CASE WHEN " + exact +
-			" THEN 0 ELSE 1 END AS exactRank, MATCH(" + title + ") AGAINST ('해리포터' IN NATURAL LANGUAGE MODE) AS score " +
-			"FROM content WHERE (" + exact + ") OR MATCH(" + title + ") AGAINST ('해리포터' IN BOOLEAN MODE)>0 " +
-			"ORDER BY exactRank, score DESC, id DESC LIMIT 11", Tuple.class).getResultList();
+		String exact = "normalized_title_ko='해리포터' OR normalized_title_en='해리포터'";
+		List<?> original = entityManager.createNativeQuery("SELECT content_id AS id, CASE WHEN " + exact +
+			" THEN 0 ELSE 1 END AS exactRank, MATCH(search_title) AGAINST (:query IN BOOLEAN MODE) AS score " +
+			"FROM content_search_document WHERE (" + exact + ") OR (MATCH(search_title) AGAINST (:query IN BOOLEAN MODE)>0 " +
+			"AND (LOCATE('해리포터',normalized_title_ko)>0 OR LOCATE('해리포터',normalized_title_en)>0)) " +
+			"ORDER BY exactRank, score DESC, id DESC LIMIT 11", Tuple.class)
+			.setParameter("query", kr.flint.api.common.query.ContentSearchKeyword.ofNullable("해리포터").booleanQuery(true))
+			.getResultList();
 
 		assertThat(results).extracting(ContentSearchRow::id).doesNotHaveDuplicates()
 			.containsExactlyElementsOf(original.stream().map(row -> ((Number) ((Tuple) row).get("id")).longValue()).toList());
@@ -600,7 +595,7 @@ class ContentQueryRepositoryTest {
 			assertThat(page).hasSize(Math.min(2, all.size() - i));
 			ContentSearchRow first = page.getFirst();
 			pageIds.add(first.id());
-			cursor = ContentSearchCursor.keyword(first.exactMatchRank(), first.relevanceScore(), first.id(), localized, true);
+			cursor = ContentSearchCursor.keyword(first.exactMatchRank(), first.relevanceScore(), first.id(), true, true);
 		}
 		assertThat(pageIds).doesNotHaveDuplicates().containsExactlyElementsOf(all.stream().map(ContentSearchRow::id).toList());
 		assertThat(repository.searchContents(condition("해리포터", null, null, cursor, 1))).isEmpty();
@@ -661,7 +656,7 @@ class ContentQueryRepositoryTest {
 
 	private ContentQueryRepository repository(boolean localized) {
 		return new ContentQueryRepository(new JPAQueryFactory(entityManager),
-			new ContentSearchNativeRepository(entityManager, localized, true));
+			new ContentSearchNativeRepository(entityManager, false, false));
 	}
 
 	@ParameterizedTest
@@ -679,10 +674,12 @@ class ContentQueryRepositoryTest {
 		List<ContentSearchRow> all = repository(true).searchContents(condition(keyword, null, null, 10));
 		assertThat(all).hasSize(3).extracting(ContentSearchRow::id).doesNotContain(split.getId());
 		List<?> expected = entityManager.createNativeQuery("""
-			SELECT id, CASE WHEN normalized_title_en=:keyword THEN 0 ELSE 1 END exactRank,
-			MATCH(search_title) AGAINST (:keyword IN NATURAL LANGUAGE MODE) score FROM content
+			SELECT content_id AS id, CASE WHEN normalized_title_en=:keyword THEN 0 ELSE 1 END exactRank,
+			MATCH(search_title) AGAINST (:query IN BOOLEAN MODE) score FROM content_search_document
 			WHERE LOCATE(:keyword,normalized_title_en)>0 ORDER BY exactRank,score DESC,id DESC
-			""", Tuple.class).setParameter("keyword", keyword).getResultList();
+			""", Tuple.class).setParameter("keyword", keyword)
+			.setParameter("query", kr.flint.api.common.query.ContentSearchKeyword.ofNullable(keyword).booleanQuery(true))
+			.getResultList();
 		for (int i = 0; i < all.size(); i++) {
 			Tuple original = (Tuple) expected.get(i);
 			assertThat(all.get(i).id()).isEqualTo(((Number) original.get("id")).longValue());
@@ -695,7 +692,7 @@ class ContentQueryRepositoryTest {
 			cursor = ContentSearchCursor.keyword(expectedRow.exactMatchRank(), expectedRow.relevanceScore(), expectedRow.id(), true, true);
 		}
 		assertThat(repository(true).searchContents(condition(keyword, null, null, cursor, 1))).isEmpty();
-		assertThat(new ContentSearchNativeRepository(entityManager, true).searchAllKeywords(keyword))
+		assertThat(new ContentSearchNativeRepository(entityManager, false, false).searchAllKeywords(keyword))
 			.extracting(ContentSearchProjection::getId).containsExactlyElementsOf(all.stream().map(ContentSearchRow::id).toList());
 		TestTransaction.start();
 		entityManager.persist(ContentBookmark.create(1L, all.getFirst().id()));
@@ -722,8 +719,9 @@ class ContentQueryRepositoryTest {
 		assertThat(localized).extracting(ContentSearchRow::id).doesNotHaveDuplicates()
 			.containsExactlyInAnyOrder(bilingual.getId(), bothTitles.getId());
 		assertThat(localized).allMatch(row -> row.exactMatchRank() == 0);
-		assertThat(repository(false).searchContents(condition("Harry Potter", null, null, 10)))
-			.extracting(ContentSearchRow::id).containsExactly(bothTitles.getId());
+		assertThat(new ContentSearchNativeRepository(entityManager, false, false).searchAllKeywords("Harry Potter"))
+			.extracting(ContentSearchProjection::getId).doesNotHaveDuplicates()
+			.containsExactlyInAnyOrder(bilingual.getId(), bothTitles.getId());
 	}
 
 	@Test

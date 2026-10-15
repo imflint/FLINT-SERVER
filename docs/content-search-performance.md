@@ -1,5 +1,19 @@
 # Content search execution strategy
 
+## Current Read Model (2026-10-14)
+
+All content-title readers, including bookmarked content search, now use
+`content_search_document`. The three original `content` FULLTEXT indexes and
+localized/read-model switching paths have been retired in dev. Bookmarked search
+uses native SQL with an interface projection, preserving ownership and bookmark-ID
+paging. Startup validation requires the document indexes, not the retired indexes.
+See [the current rollout and recovery runbook](content-fulltext-retirement.md).
+
+The earlier implementation, deployment instructions and measurements below are
+historical records. Do not recreate original FULLTEXT indexes, enable retired flags
+or use an old-image rollback based on these sections. Current cursors remain Korean
+v3, English v4, single-character v5 and popularity v1.
+
 For the opt-in English whole-word phrase path, v4 cursors and manual schema/backfill
 steps, see [English word search](content-english-word-search.md). The flag defaults
 to false; historical bigram measurements below are not word-search benchmarks.

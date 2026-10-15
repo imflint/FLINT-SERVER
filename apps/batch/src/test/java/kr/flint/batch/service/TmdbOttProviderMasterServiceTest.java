@@ -17,6 +17,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import kr.flint.batch.job.ott.OttSyncDraft;
+import kr.flint.batch.config.BatchProperties;
+import kr.flint.batch.config.TmdbRetryPolicyFactory;
 import kr.flint.batch.repository.OttBatchJdbcRepository;
 import kr.flint.infra.tmdb.client.TmdbClient;
 import kr.flint.infra.tmdb.dto.TmdbWatchProviderListRes;
@@ -34,7 +36,9 @@ class TmdbOttProviderMasterServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		service = new TmdbOttProviderMasterService(tmdbClient, repository);
+		var properties = new BatchProperties(null, new BatchProperties.Tmdb(null, null, null, null, 1, 0L));
+		service = new TmdbOttProviderMasterService(tmdbClient, repository,
+			new TmdbApiExecutor(properties, new TmdbRetryPolicyFactory(properties)));
 	}
 
 	@Test
@@ -65,8 +69,8 @@ class TmdbOttProviderMasterServiceTest {
 		when(tmdbClient.getTvWatchProviderList("ko-KR", "KR")).thenReturn(response());
 
 		assertThatThrownBy(service::synchronize)
-			.isInstanceOf(IllegalStateException.class)
-			.hasMessageContaining("master is empty");
+			.isInstanceOf(TmdbApiException.class)
+			.hasMessageContaining("INVALID_RESPONSE");
 		verify(repository, never()).synchronizeProviderMaster(anyList());
 	}
 

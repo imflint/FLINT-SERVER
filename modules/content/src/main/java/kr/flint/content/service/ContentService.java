@@ -2,6 +2,7 @@ package kr.flint.content.service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -17,6 +18,7 @@ import kr.flint.content.domain.GenreCode;
 import kr.flint.shared.exception.ErrorCode;
 import kr.flint.shared.exception.GeneralException;
 import kr.flint.content.domain.MediaType;
+import kr.flint.content.dto.ContentCreateCommand;
 import kr.flint.content.dto.ContentUpdateCommand;
 import kr.flint.content.dto.ContentUpsertCommand;
 import kr.flint.content.dto.ContentWithGenres;
@@ -71,8 +73,20 @@ public class ContentService {
     public Content tmdbToDb(final Content content, List<Genre> genreList) {
         List<Genre> savedGenreList = resolveGenres(genreList == null ? List.of()
             : genreList.stream().map(Genre::getName).toList());
+        return saveWithGenres(content, savedGenreList);
+    }
+
+    @Transactional
+    public Content createByAdmin(final ContentCreateCommand command) {
+        List<Genre> genres = resolveGenres(command.genreNames());
+        Content content = Content.createManual(command.mediaType(), command.title(), command.year(),
+            command.author(), command.description(), command.poster());
+        return saveWithGenres(content, genres);
+    }
+
+    private Content saveWithGenres(Content content, List<Genre> genres) {
         Content savedContent = contentRepository.save(content);
-        List<ContentGenre> contentGenreList = savedGenreList.stream()
+        List<ContentGenre> contentGenreList = genres.stream()
             .map(genre -> ContentGenre.create(savedContent, genre))
             .toList();
 
@@ -84,6 +98,7 @@ public class ContentService {
     // 배치 적재용: 이미 존재하면 메타데이터 갱신, 없으면 신규 생성. 장르는 정규화 후 ContentGenre 동기화.
     @Transactional
     public Content upsertWithGenres(final ContentUpsertCommand command) {
+        Objects.requireNonNull(command.tmdbId(), "TMDB upsert requires tmdbId");
         if (!CollectionUtils.isEmpty(command.tmdbGenreIds())) {
             throw new GeneralException(ErrorCode.CONFLICT, "TMDB 장르 ID 적재는 공통 동기화 경로를 사용해야 합니다.");
         }

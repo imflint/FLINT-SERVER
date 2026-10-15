@@ -5,6 +5,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import kr.flint.batch.repository.TmdbS3DeleteQueueJdbcRepository;
+import kr.flint.batch.service.TmdbApiException;
+import kr.flint.infra.storage.cloudfront.CloudFrontUrlProvider;
 import kr.flint.infra.storage.s3.properties.S3Properties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +24,7 @@ public class TmdbS3CleanupScheduler {
     private final TmdbS3DeleteQueueJdbcRepository queueRepository;
     private final S3Client s3Client;
     private final S3Properties s3Properties;
+    private final CloudFrontUrlProvider cloudFrontUrlProvider;
 
     @Scheduled(cron = "0 30 3 * * *", zone = "Asia/Seoul")
     public void deleteDueObjects() {
@@ -31,14 +34,19 @@ public class TmdbS3CleanupScheduler {
                 continue;
             }
             try {
+                if (queueRepository.hasReferences(target.objectKey(), cloudFrontUrlProvider.resolveUrl(target.objectKey()))) {
+                    queueRepository.deferReferenced(target.id());
+                    continue;
+                }
                 s3Client.deleteObject(DeleteObjectRequest.builder()
                     .bucket(s3Properties.bucket())
                     .key(target.objectKey())
                     .build());
                 queueRepository.markDeleted(target.id());
             } catch (RuntimeException exception) {
-                log.warn("Deferred S3 delete failed key={}", target.objectKey(), exception);
-                queueRepository.markFailed(target.id(), target.retryCount(), exception.getMessage());
+                String message = TmdbApiException.safeMessage(exception);
+                log.warn("Deferred S3 delete failed queueId={} cause={}", target.id(), message);
+                queueRepository.markFailed(target.id(), target.retryCount(), message);
             }
         }
     }

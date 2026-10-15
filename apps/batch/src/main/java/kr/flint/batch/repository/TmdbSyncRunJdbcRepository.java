@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import io.hypersistence.tsid.TSID;
 import kr.flint.batch.sync.TmdbSyncRun;
+import kr.flint.batch.service.TmdbApiException;
 import kr.flint.batch.sync.TmdbSyncRunStatus;
 import kr.flint.batch.sync.TmdbSyncRunType;
 import kr.flint.shared.exception.ErrorCode;
@@ -152,7 +153,7 @@ public class TmdbSyncRunJdbcRepository {
 
 	@Transactional
 	public void markFailed(String runKey, Throwable error) {
-        String message = error == null ? null : String.valueOf(error.getMessage());
+        String message = TmdbApiException.safeMessage(error);
         if (message != null && message.length() > 1000) {
             message = message.substring(0, 1000);
         }
@@ -199,6 +200,51 @@ public class TmdbSyncRunJdbcRepository {
 
     private void release(String runKey) {
         jdbcTemplate.update("DELETE FROM tmdb_sync_lock WHERE lock_name = ? AND run_key = ?", LOCK_NAME, runKey);
+    }
+
+    @Transactional
+    public void acquireCleanupLease(Long manifestId, String ownerId, Duration duration) {
+        jdbcTemplate.update("""
+            INSERT IGNORE INTO tmdb_sync_lock (lock_name, owner_id, run_key, lease_until, heartbeat_at)
+            VALUES (?, '', '', TIMESTAMP('1970-01-01 00:00:01'), TIMESTAMP('1970-01-01 00:00:01'))
+            """, LOCK_NAME);
+        Boolean active = jdbcTemplate.queryForObject("""
+            SELECT lease_until >= UTC_TIMESTAMP() FROM tmdb_sync_lock WHERE lock_name = ? FOR UPDATE
+            """, Boolean.class, LOCK_NAME);
+        if (Boolean.TRUE.equals(active)) {
+            throw new GeneralException(ErrorCode.CONFLICT, "다른 TMDB 동기화 또는 정리 작업이 실행 중입니다.");
+        }
+        jdbcTemplate.update("""
+            UPDATE tmdb_sync_lock SET owner_id = ?, run_key = ?,
+                lease_until = DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? SECOND), heartbeat_at = UTC_TIMESTAMP()
+            WHERE lock_name = ?
+            """, ownerId, cleanupKey(manifestId), Math.toIntExact(duration.toSeconds()), LOCK_NAME);
+    }
+
+    public boolean renewCleanupLease(Long manifestId, String ownerId, Duration duration) {
+        return jdbcTemplate.update("""
+            UPDATE tmdb_sync_lock SET lease_until = DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? SECOND),
+                heartbeat_at = UTC_TIMESTAMP()
+            WHERE lock_name = ? AND owner_id = ? AND run_key = ? AND lease_until >= UTC_TIMESTAMP()
+            """, Math.toIntExact(duration.toSeconds()), LOCK_NAME, ownerId, cleanupKey(manifestId)) == 1;
+    }
+
+    public void assertCleanupLease(Long manifestId, String ownerId) {
+        List<String> owners = jdbcTemplate.queryForList("""
+            SELECT owner_id FROM tmdb_sync_lock
+            WHERE lock_name = ? AND owner_id = ? AND run_key = ? AND lease_until >= UTC_TIMESTAMP()
+            FOR UPDATE
+            """, String.class, LOCK_NAME, ownerId, cleanupKey(manifestId));
+        if (owners.isEmpty()) throw new GeneralException(ErrorCode.CONFLICT, "TMDB 정리 작업의 임대가 만료되었습니다.");
+    }
+
+    public void releaseCleanupLease(Long manifestId, String ownerId) {
+        jdbcTemplate.update("DELETE FROM tmdb_sync_lock WHERE lock_name = ? AND owner_id = ? AND run_key = ?",
+            LOCK_NAME, ownerId, cleanupKey(manifestId));
+    }
+
+    private String cleanupKey(Long manifestId) {
+        return "PRUNE:" + manifestId;
     }
 
     private boolean restartable(TmdbSyncRun run) {

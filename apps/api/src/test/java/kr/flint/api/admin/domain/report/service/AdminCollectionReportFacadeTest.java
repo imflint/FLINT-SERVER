@@ -95,7 +95,7 @@ class AdminCollectionReportFacadeTest {
         ReflectionTestUtils.setField(report, "id", 100L);
         Collection collection = Collection.create("제목", "설명", "image.jpg", true, 20L);
         ReflectionTestUtils.setField(collection, "id", 10L);
-        when(collectionService.getReportById(100L)).thenReturn(report);
+        when(collectionService.getReportByIdForUpdate(100L)).thenReturn(report);
         when(collectionService.getCollectionById(10L)).thenReturn(collection);
 
         facade.resolveReport(99L, 100L, new AdminCollectionReportResolutionReq(
@@ -126,7 +126,7 @@ class AdminCollectionReportFacadeTest {
         CollectionReport report = CollectionReport.create(1L, 10L, EnumSet.of(ReportReason.SPAM), null);
         ReflectionTestUtils.setField(report, "id", 100L);
         report.resolve(LocalDateTime.now());
-        when(collectionService.getReportById(100L)).thenReturn(report);
+        when(collectionService.getReportByIdForUpdate(100L)).thenReturn(report);
 
         assertThatThrownBy(() -> facade.resolveReport(99L, 100L, new AdminCollectionReportResolutionReq(
             CollectionModerationAction.DELETE,

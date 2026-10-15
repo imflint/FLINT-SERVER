@@ -22,10 +22,9 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
 
-import feign.FeignException;
 import kr.flint.batch.config.BatchProperties;
 import kr.flint.batch.config.TmdbBatchAsyncConfig;
-import kr.flint.batch.config.TmdbRetryPolicyFactory;
+import kr.flint.batch.service.TmdbApiExecutor;
 import kr.flint.batch.download.TmdbExportDownloader;
 import kr.flint.batch.job.ContentUpsertWriter;
 import kr.flint.batch.job.ContentSyncDraft;
@@ -51,7 +50,7 @@ public class TmdbMovieImportJobConfig {
 	private final TmdbClient tmdbClient;
 	private final ContentUpsertWriter contentUpsertWriter;
 	private final BatchProperties batchProperties;
-	private final TmdbRetryPolicyFactory tmdbRetryPolicyFactory;
+	private final TmdbApiExecutor apiExecutor;
 	private final TmdbLocalizedTitleService localizedTitleService;
 	private final TmdbCatalogEntryJdbcRepository catalogEntryRepository;
 
@@ -74,12 +73,6 @@ public class TmdbMovieImportJobConfig {
 			.processor(asyncMovieProcessor)
 			.writer(asyncContentWriter)
 			.faultTolerant()
-			.retry(FeignException.class)
-			.noRetry(FeignException.NotFound.class)
-			.retryLimit(batchProperties.tmdb().retryAttempts())
-			.backOffPolicy(tmdbRetryPolicyFactory.fixedBackOffPolicy())
-			.skip(FeignException.NotFound.class)
-			.skipLimit(Integer.MAX_VALUE)
 			.listener(new TmdbBatchSkipListener())
 			.build();
 	}
@@ -95,9 +88,11 @@ public class TmdbMovieImportJobConfig {
 		Resource resource;
 		try {
 			resource = downloader.fetchAsLineResource(TmdbExportDownloader.ExportType.MOVIE, date);
-		} catch (IOException | InterruptedException e) {
+		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
-			throw new IllegalStateException("Failed to fetch TMDB movie export for " + date, e);
+			throw new IllegalStateException("TMDB movie export download was interrupted");
+		} catch (IOException e) {
+			throw new IllegalStateException("Failed to fetch TMDB movie export for " + date);
 		}
 		return new TmdbExportRegistryItemReader(
 			resource,
@@ -122,7 +117,7 @@ public class TmdbMovieImportJobConfig {
 
 	@Bean
 	public ItemProcessor<TmdbIdLine, ContentSyncDraft> movieDetailProcessorDelegate() {
-		return new TmdbMovieDetailProcessor(tmdbClient, localizedTitleService);
+		return new TmdbMovieDetailProcessor(tmdbClient, localizedTitleService, apiExecutor);
 	}
 
 	@Bean

@@ -1,6 +1,7 @@
 package kr.flint.api.admin.domain.collection.controller;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -70,5 +71,15 @@ public class AdminCollectionController implements AdminCollectionControllerDocs 
             SuccessCode.SUCCESS_UPDATE,
             adminCollectionFacade.updateCollection(adminId, collectionId, request)
         ));
+    }
+
+    @Override
+    @DeleteMapping("/{collectionId}")
+    public ResponseEntity<SuccessResponse<Void>> deleteCollection(
+        @CurrentAdmin Long adminId,
+        @PathVariable Long collectionId
+    ) {
+        adminCollectionFacade.deleteCollection(adminId, collectionId);
+        return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_DELETE));
     }
 }

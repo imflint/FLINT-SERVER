@@ -2,7 +2,8 @@
 -- Take an RDS manual snapshot first. Run preview queries before each UPDATE.
 -- This script is intentionally manual and non-idempotent.
 
--- 1. Exploration snapshot schema. Apply before enabling FLINT_EXPLORATION_SNAPSHOT_ENABLED.
+-- 1. Exploration snapshot schema. Verify before deploying snapshot-only exploration.
+-- Inspect existing columns/table/indexes first and apply ONLY missing schema changes.
 ALTER TABLE user_exploration_progress
     ADD COLUMN session_version INT NOT NULL DEFAULT 1 AFTER completed,
     ADD COLUMN last_viewed_position INT NOT NULL DEFAULT 0 AFTER session_version;
@@ -172,6 +173,9 @@ WHERE TRIM(COALESCE(author, '')) = ''
 
 -- Rollout order:
 -- 1) Apply this schema and backfills in dev.
--- 2) Deploy the API with FLINT_EXPLORATION_SNAPSHOT_ENABLED=false.
--- 3) Run API smoke tests, then set the flag true in dev.
--- 4) Repeat snapshot, DDL, deploy, smoke test, and flag enablement in prod.
+-- 2) Verify exploration columns, snapshot table, and unique constraints before deployment.
+-- 3) Coordinate frontend/API cutover: remove /exploration/next calls and use GET after progress completion.
+--    Snapshot mode is mandatory; FLINT_EXPLORATION_SNAPSHOT_ENABLED is no longer read.
+-- 4) Smoke test GET reuse, PATCH completion, automatic GET advance, and no-next END in dev.
+-- 5) Repeat approved snapshot, missing-schema application, coordinated deployment, and smoke tests in prod.
+-- Do not execute the unrelated reconciliation/normalization sections for an exploration-only rollout.

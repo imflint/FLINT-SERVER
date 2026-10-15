@@ -74,8 +74,8 @@ class ContentWordSearchPerformanceRepositoryTest {
         // A nonmatching cohort prevents all-document bigrams from having zero IDF.
         assertThat(oldCandidates).isEqualTo(8000);
         assertThat(wordCandidates).isEqualTo(100);
-        var old = new ContentSearchNativeRepository(entityManager, true, true);
-        var words = new ContentSearchNativeRepository(entityManager, true, true, true);
+        var old = new ContentSearchNativeRepository(entityManager, false, false);
+        var words = new ContentSearchNativeRepository(entityManager, true, false);
         var first = ContentSearchCondition.of("it", null, null, null, 20);
         String sql = words.searchSql(first, null);
         var explain = entityManager.createNativeQuery("EXPLAIN " + sql);

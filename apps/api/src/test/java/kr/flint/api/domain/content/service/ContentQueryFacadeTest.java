@@ -217,7 +217,7 @@ class ContentQueryFacadeTest {
 			assertThat(response.data())
 				.extracting(GetContentSearchRes::title)
 				.containsExactly("눈물 액션 로맨스");
-			assertThat(response.meta().nextCursor()).isEqualTo(ContentSearchCursor.keyword(0, 4.5, 1L).encode());
+			assertThat(response.meta().nextCursor()).isEqualTo(ContentSearchCursor.keyword(0, 4.5, 1L, true, true).encode());
 			verify(contentQueryRepository).searchContents(condition);
 		}
 
@@ -236,7 +236,6 @@ class ContentQueryFacadeTest {
 		@Test
 		@DisplayName("localized 검색은 결과 조회 전에 이전 keyword 커서를 거절한다")
 		void rejectsLegacyKeywordCursorBeforeSearch() {
-			when(contentQueryRepository.localizedSearchEnabled()).thenReturn(true);
 			String cursor = ContentSearchCursor.keyword(0, 1.0, 1L).encode();
 			assertThatThrownBy(() -> contentQueryFacade.getContentSearchList("해리", SearchGenre.ACTION, null, cursor, 20))
 				.isInstanceOf(GeneralException.class)
@@ -246,8 +245,6 @@ class ContentQueryFacadeTest {
 
 		@Test
 		void readModelReturnsV3CursorAndRejectsEarlierKeywordVersions() {
-			when(contentQueryRepository.localizedSearchEnabled()).thenReturn(true);
-			when(contentQueryRepository.searchReadModelEnabled()).thenReturn(true);
 			var condition = ContentSearchCondition.of("해리", null, null, null, 1);
 			when(contentQueryRepository.searchContents(condition)).thenReturn(List.of(
 				new ContentSearchRow(2L, "해리", null, null, 2026, 0, 0, 2.5),
@@ -269,8 +266,6 @@ class ContentQueryFacadeTest {
 		@Test
 		@DisplayName("영문 단어 검색은 v4 커서를 반환하고 이전 커서를 조회 전에 거절한다")
 		void englishWordsReturnV4AndRejectV3BeforeReading() {
-			when(contentQueryRepository.localizedSearchEnabled()).thenReturn(true);
-			when(contentQueryRepository.searchReadModelEnabled()).thenReturn(true);
 			when(contentQueryRepository.usesEnglishWords("harry potter")).thenReturn(true);
 			var condition = ContentSearchCondition.of("harry potter", null, null, null, 1);
 			when(contentQueryRepository.searchContents(condition)).thenReturn(List.of(
@@ -291,8 +286,6 @@ class ContentQueryFacadeTest {
 		@Test
 		@DisplayName("한 글자 문자 검색은 v5를 반환하고 이전 커서를 조회 전에 거절한다")
 		void characterSearchReturnsV5AndRejectsOldPagesBeforeReading() {
-			when(contentQueryRepository.localizedSearchEnabled()).thenReturn(true);
-			when(contentQueryRepository.searchReadModelEnabled()).thenReturn(true);
 			when(contentQueryRepository.usesSingleCharacterInfix("봄")).thenReturn(true);
 			var condition = ContentSearchCondition.of("봄", null, null, null, 1);
 			when(contentQueryRepository.searchContents(condition)).thenReturn(List.of(

@@ -119,8 +119,8 @@ public class TmdbContentAdmissionJdbcRepository {
         String conditions = distinct.stream()
             .map(key -> "(media_type = ? AND `year` = ? AND title_dedup_key = UNHEX(?))")
             .collect(Collectors.joining(" OR "));
-        return jdbcTemplate.query("SELECT " + CONTENT_COLUMNS + " FROM content WHERE " + conditions
-            + " ORDER BY id FOR UPDATE", (rs, row) -> existingContent(rs), parameters.toArray());
+        return jdbcTemplate.query("SELECT " + CONTENT_COLUMNS + " FROM content WHERE tmdb_id IS NOT NULL AND ("
+            + conditions + ") ORDER BY id FOR UPDATE", (rs, row) -> existingContent(rs), parameters.toArray());
     }
 
     public List<PromotionCandidate> findPromotionCandidates(long afterId, int limit) {

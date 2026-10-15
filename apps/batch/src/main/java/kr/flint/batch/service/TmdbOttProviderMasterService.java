@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import kr.flint.batch.job.ott.OttSyncDraft;
 import kr.flint.batch.repository.OttBatchJdbcRepository;
@@ -23,32 +22,37 @@ public class TmdbOttProviderMasterService {
 
 	private final TmdbClient tmdbClient;
 	private final OttBatchJdbcRepository ottBatchJdbcRepository;
+	private final TmdbApiExecutor apiExecutor;
 
-	@Transactional
 	public int synchronize() {
-		TmdbWatchProviderListRes movie = tmdbClient.getMovieWatchProviderList(LANGUAGE, WATCH_REGION);
-		TmdbWatchProviderListRes tv = tmdbClient.getTvWatchProviderList(LANGUAGE, WATCH_REGION);
+		TmdbWatchProviderListRes movie = apiExecutor.execute("movieProviderMaster", () ->
+			validate(tmdbClient.getMovieWatchProviderList(LANGUAGE, WATCH_REGION)));
+		TmdbWatchProviderListRes tv = apiExecutor.execute("tvProviderMaster", () ->
+			validate(tmdbClient.getTvWatchProviderList(LANGUAGE, WATCH_REGION)));
 
 		Map<Long, OttSyncDraft.Provider> providers = new LinkedHashMap<>();
 		addAll(providers, movie);
 		addAll(providers, tv);
 		if (providers.isEmpty()) {
-			throw new IllegalStateException("TMDB KR watch provider master is empty");
+			throw TmdbApiException.invalidResponse("providerMaster");
 		}
 		ottBatchJdbcRepository.synchronizeProviderMaster(List.copyOf(providers.values()));
 		return providers.size();
 	}
 
 	private void addAll(Map<Long, OttSyncDraft.Provider> target, TmdbWatchProviderListRes response) {
-		if (response == null || response.results() == null) {
-			return;
-		}
 		for (TmdbWatchProviderListRes.Provider provider : response.results()) {
-			if (provider.providerId() == null || provider.providerName() == null) {
-				continue;
-			}
 			target.merge(provider.providerId(), toDraft(provider), this::preferLowerPriority);
 		}
+	}
+
+	private TmdbWatchProviderListRes validate(TmdbWatchProviderListRes response) {
+		if (response == null || response.results() == null || response.results().stream().anyMatch(provider ->
+			provider == null || provider.providerId() == null || provider.providerId() <= 0
+				|| provider.providerName() == null || provider.providerName().isBlank())) {
+			throw TmdbApiException.invalidResponse("providerMaster");
+		}
+		return response;
 	}
 
 	private OttSyncDraft.Provider toDraft(TmdbWatchProviderListRes.Provider provider) {

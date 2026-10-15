@@ -86,6 +86,12 @@ public class AdminCollectionFacade {
         return getCollectionDetail(collectionId);
     }
 
+    @Transactional
+    public void deleteCollection(Long adminId, Long collectionId) {
+        adminAuthorizationService.validateAdmin(adminId);
+        collectionService.deleteByAdmin(collectionId);
+    }
+
     private AdminCollectionDetailRes getCollectionDetail(Long collectionId) {
         CollectionDetailRow row = queryRepository.findCollectionDetailRow(collectionId);
         if (row == null) {

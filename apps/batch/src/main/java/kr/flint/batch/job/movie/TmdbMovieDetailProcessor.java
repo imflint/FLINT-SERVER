@@ -5,7 +5,8 @@ import java.util.List;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.util.StringUtils;
 
-import feign.FeignException;
+import kr.flint.batch.service.TmdbApiException;
+import kr.flint.batch.service.TmdbApiExecutor;
 import kr.flint.batch.job.TmdbIdLine;
 import kr.flint.batch.job.ContentSyncDraft;
 import kr.flint.batch.job.ott.TmdbOttSnapshot;
@@ -31,6 +32,7 @@ public class TmdbMovieDetailProcessor implements ItemProcessor<TmdbIdLine, Conte
 
 	private final TmdbClient tmdbClient;
 	private final TmdbLocalizedTitleService localizedTitleService;
+	private final TmdbApiExecutor apiExecutor;
 
 	@Override
 	public ContentSyncDraft process(TmdbIdLine line) {
@@ -38,7 +40,20 @@ public class TmdbMovieDetailProcessor implements ItemProcessor<TmdbIdLine, Conte
 			return null;
 		}
 		try {
-			TmdbMovieDetailRes detail = tmdbClient.getMovieFullDetail(line.id(), LANG, APPEND_TO_RESPONSE);
+			TmdbMovieDetailRes detail = apiExecutor.execute("movieDetail:" + line.id(), () -> {
+				TmdbMovieDetailRes response = tmdbClient.getMovieFullDetail(line.id(), LANG, APPEND_TO_RESPONSE);
+				if (response == null || !line.id().equals(response.id()) || response.genres() == null
+					|| response.genres().stream().anyMatch(genre -> genre == null || genre.id() == null)
+					|| response.translations() == null || response.translations().translations() == null
+					|| response.translations().translations().stream().anyMatch(translation ->
+						translation == null || translation.language() == null || translation.data() == null)
+					|| response.credits() == null || response.credits().crew() == null
+					|| response.credits().crew().stream().anyMatch(crew -> crew == null)) {
+					throw TmdbApiException.invalidResponse("movieDetail:" + line.id());
+				}
+				TmdbOttSnapshot.from(response.watchProviders());
+				return response;
+			});
 			String poster = resolvePoster(detail.posterPath());
 			TmdbMovieCreditRes credit = detail.credits();
 
@@ -77,14 +92,12 @@ public class TmdbMovieDetailProcessor implements ItemProcessor<TmdbIdLine, Conte
 				List.of()
 			).withTmdbGenreIds(genres);
 			return ContentSyncDraft.synchronizedContent(command, TmdbOttSnapshot.from(detail.watchProviders()));
-		} catch (FeignException.NotFound nf) {
-			log.debug("movie {} not found, skip", line.id());
+		} catch (TmdbApiException exception) {
+			if (!exception.notFound() && !exception.retryable()) throw exception;
 			return ContentSyncDraft.classified(ContentUpsertCommand.classified(
-				line.id(), MediaType.MOVIE, ContentCatalogStatus.NOT_FOUND, nf.getMessage()
-			));
-		} catch (FeignException exception) {
-			return ContentSyncDraft.classified(ContentUpsertCommand.classified(
-				line.id(), MediaType.MOVIE, ContentCatalogStatus.RETRY, exception.getMessage()
+				line.id(), MediaType.MOVIE,
+				exception.notFound() ? ContentCatalogStatus.NOT_FOUND : ContentCatalogStatus.RETRY,
+				TmdbApiException.safeMessage(exception)
 			));
 		}
 	}

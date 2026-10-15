@@ -9,6 +9,7 @@ import kr.flint.content.domain.MediaType;
 @Schema(description = "관리자 콘텐츠 응답")
 public record AdminContentRes(
     Long id,
+    @Schema(description = "TMDB ID. 수동 콘텐츠에는 포함되지 않습니다.", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     Long tmdbId,
     MediaType mediaType,
     String title,

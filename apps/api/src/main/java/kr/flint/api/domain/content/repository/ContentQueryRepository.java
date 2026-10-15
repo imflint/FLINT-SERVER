@@ -22,21 +22,12 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import kr.flint.api.domain.content.dto.ContentSearchCondition;
 import kr.flint.api.domain.content.dto.GetContentDetailRes;
 import kr.flint.api.domain.search.dto.response.GetContentSearchRes;
-import kr.flint.api.domain.search.dto.response.GetSearchBookmarkContentRes;
 import kr.flint.content.domain.GenreCode;
 
 @Repository
 public class ContentQueryRepository {
 	private final JPAQueryFactory jpaQueryFactory;
 	private final ContentSearchNativeRepository contentSearchNativeRepository;
-
-	public boolean localizedSearchEnabled() {
-		return contentSearchNativeRepository.localizedSearchEnabled();
-	}
-
-	public boolean searchReadModelEnabled() {
-		return contentSearchNativeRepository.searchReadModelEnabled();
-	}
 
 	public boolean usesEnglishWords(String keyword) {
 		return contentSearchNativeRepository.usesEnglishWords(keyword);
@@ -216,71 +207,6 @@ public class ContentQueryRepository {
 			: null;
 	}
 
-	public List<GetSearchBookmarkContentRes> getSearchBookmarkContent(Long userId, String keyword){
-		List<Tuple> rows= jpaQueryFactory
-			.select(
-				content.id,
-				content.title,
-				content.author,
-				content.poster,
-				content.year,
-				ottProvider.id,
-				ottProvider.logoUrl,
-				content.bookmarkCount
-			)
-			.from(content)
-			.join(contentBookmark).on(
-				contentBookmark.contentId.eq(content.id),
-				contentBookmark.userId.eq(userId)
-			)
-			.leftJoin(ottContent).on(
-				ottContent.contentId.eq(content.id)
-			)
-			.leftJoin(ottContent.ottProvider, ottProvider).on(ottProvider.active.isTrue())
-			.where(
-				content.title.contains(keyword)
-			)
-			.orderBy(
-				contentBookmark.createdAt.desc(),
-				ottProvider.displayPriority.asc(),
-				ottProvider.id.asc()
-			)
-			.limit(10)
-			.fetch();
-
-		Map<Long, GetSearchBookmarkContentRes> contentMap = new LinkedHashMap<>();
-		for (Tuple row : rows) {
-			Long contentId = row.get(content.id);
-			if (contentId == null) continue;
-			String title = row.get(content.title);
-			String author = row.get(content.author);
-			String posterUrl = row.get(content.poster);
-			int year = row.get(content.year);
-			int bookmarkCount = row.get(content.bookmarkCount);
-
-			Long ottId = row.get(ottProvider.id);
-			String logoUrl = row.get(ottProvider.logoUrl);
-
-			contentMap.computeIfAbsent(contentId, id ->
-				new GetSearchBookmarkContentRes(
-					id,
-					title,
-					author,
-					posterUrl,
-					year,
-					new ArrayList<>(),
-					bookmarkCount
-				)
-			);
-
-			GetSearchBookmarkContentRes dto = contentMap.get(contentId);
-			if (ottId != null) {
-				dto.getOttSimpleList().add(new GetSearchBookmarkContentRes.GetOttSimpleRes(ottId, logoUrl));
-			}
-		}
-
-		return new ArrayList<>(contentMap.values());
-	}
 
 	public List<ContentSearchRow> searchContents(ContentSearchCondition condition) {
 		Long genreId = findGenreId(condition.genreCode());

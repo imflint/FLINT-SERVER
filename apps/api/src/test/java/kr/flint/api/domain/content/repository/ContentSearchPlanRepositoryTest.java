@@ -35,6 +35,7 @@ import kr.flint.shared.config.QueryDslConfig;
 class ContentSearchPlanRepositoryTest {
     @Container
     static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4.8")
+        .withCommand("--log-bin-trust-function-creators=1")
         .withDatabaseName("flint_plan_test").withUsername("test").withPassword("test");
     @Autowired private EntityManager entityManager;
     @Autowired private ContentQueryRepository contentQueryRepository;
@@ -46,16 +47,14 @@ class ContentSearchPlanRepositoryTest {
         registry.add("spring.datasource.username", MYSQL::getUsername);
         registry.add("spring.datasource.password", MYSQL::getPassword);
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "create");
-        registry.add("flint.content.localized-search-enabled", () -> "true");
     }
 
     @BeforeEach
     void indexes() throws Exception {
+        ContentSearchReadModelFixture.install(dataSource);
         try (var connection = dataSource.getConnection(); var statement = connection.createStatement()) {
-            statement.execute("CREATE TABLE content_search_stopword(value VARCHAR(30)) ENGINE=InnoDB");
             statement.execute("SET SESSION innodb_ft_user_stopword_table='flint_plan_test/content_search_stopword'");
             for (String sql : List.of(
-                "CREATE FULLTEXT INDEX ft_content_search_title_ngram ON content(search_title) WITH PARSER ngram",
                 "CREATE INDEX idx_content_normalized_title_ko ON content(normalized_title_ko)",
                 "CREATE INDEX idx_content_normalized_title_en ON content(normalized_title_en)")) {
                 statement.execute(sql);
@@ -101,7 +100,7 @@ class ContentSearchPlanRepositoryTest {
             SELECT 5000000+id,id,:genre FROM content ORDER BY id LIMIT 2049
             """).setParameter("genre", aboveBoundary.getId()).executeUpdate();
         commitFullTextFixtures();
-        var nativeRepository = new ContentSearchNativeRepository(entityManager, true);
+        var nativeRepository = new ContentSearchNativeRepository(entityManager, false, false);
         var conditions = List.of(condition(null, "드라마", null, 20), condition(null, "드라마", MediaType.TV, 20),
             condition(null, "전쟁", null, 20), condition(null, "공포", null, 20), condition("해리포터", null, null, 20),
             condition("해리포터", "드라마", MediaType.TV, 20),
@@ -123,8 +122,7 @@ class ContentSearchPlanRepositoryTest {
             assertThat(plan).contains("actual time=");
             if (value.hasKeyword()) {
                 assertThat(plan).contains("Union materialize with deduplication", "Table scan on candidates",
-                    "idx_content_normalized_title_ko", "idx_content_normalized_title_en",
-                    "Full-text index search on content using ft_content_search_title_ngram");
+                    "idx_search_document_title_ko", "idx_search_document_title_en", "ft_search_document_title");
             } else {
                 boolean small = genreId.equals(rare.getId()) || genreId.equals(empty.getId()) || genreId.equals(boundary.getId());
                 if (small) {

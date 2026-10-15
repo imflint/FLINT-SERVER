@@ -90,7 +90,7 @@ public class AdminCollectionReportFacade {
     @Transactional
     public void resolveReport(Long adminId, Long reportId, AdminCollectionReportResolutionReq request) {
         adminAuthorizationService.validateAdmin(adminId);
-        CollectionReport report = collectionService.getReportById(reportId);
+        CollectionReport report = collectionService.getReportByIdForUpdate(reportId);
         if (report.isResolved()) {
             throw new CollectionException(CollectionErrorCode.COLLECTION_REPORT_ALREADY_RESOLVED);
         }
