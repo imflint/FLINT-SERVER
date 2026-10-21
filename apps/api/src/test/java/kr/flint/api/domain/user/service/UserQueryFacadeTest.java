@@ -18,7 +18,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -74,9 +73,6 @@ class UserQueryFacadeTest {
 
 	@Mock
 	private TermsService termsService;
-
-	@Spy
-	private KeywordColorAllocationService keywordColorAllocationService = new KeywordColorAllocationService();
 
     @InjectMocks
     private UserQueryFacade userQueryFacade;
@@ -175,22 +171,47 @@ class UserQueryFacadeTest {
 		}
 
 		@Test
-		@DisplayName("상위 3개 키워드의 레벨 색상이 같으면 서로 다른 색상을 배정")
-		void allocatesUniqueColorsToTopThreeKeywords() {
+		@DisplayName("색상은 키워드 레벨에서 그대로 파생된다")
+		void colorIsDerivedFromKeywordLevel() {
 			Long userId = 1L;
 			when(userService.getById(userId)).thenReturn(createUser(userId, "플린트"));
 			when(tasteService.hasUserKeywords(userId)).thenReturn(true);
 			when(tasteService.getUserKeywords(userId)).thenReturn(List.of(
 				keywordProjection(1, "드라마"),
-				keywordProjection(2, "액션"),
-				keywordProjection(3, "로맨스")
+				keywordProjection(2, "복수"),
+				keywordProjection(3, "한국"),
+				keywordProjection(4, "어두운"),
+				keywordProjection(5, "사극"),
+				keywordProjection(6, "액션")
 			));
 
 			UserKeywordsRes response = userQueryFacade.getUserKeywords(userId);
 
 			assertThat(response.keywords())
 				.extracting(UserKeywordsRes.KeywordItem::color)
-				.containsExactly("PINK", "GREEN", "ORANGE");
+				.containsExactly("PINK", "BLUE", "ORANGE", "GREEN", "YELLOW", "PINK");
+		}
+
+		@Test
+		@DisplayName("저장된 레벨이 어긋나 있어도 색상은 카탈로그를 따르고 아이콘은 레벨 기본값으로 대체")
+		void colorIgnoresMisalignedStoredLevel() {
+			Long userId = 1L;
+			when(userService.getById(userId)).thenReturn(createUser(userId, "플린트"));
+			when(tasteService.hasUserKeywords(userId)).thenReturn(true);
+			// 한국은 카탈로그에서 LV5(ORANGE) 인데 DB 에는 LV4 로 저장돼 있다
+			when(tasteService.getUserKeywords(userId))
+				.thenReturn(List.of(keywordProjection(1, "한국", KeywordLevel.LV4, null)));
+			when(cloudFrontUrlProvider.resolveUrl(KeywordLevel.LV5.getDefaultIconKey()))
+				.thenReturn("https://cdn.flint.kr/" + KeywordLevel.LV5.getDefaultIconKey());
+
+			UserKeywordsRes response = userQueryFacade.getUserKeywords(userId);
+
+			assertThat(response.keywords()).singleElement()
+				.satisfies(item -> {
+					assertThat(item.color()).isEqualTo("ORANGE");
+					assertThat(item.imageUrl())
+						.isEqualTo("https://cdn.flint.kr/" + KeywordLevel.LV5.getDefaultIconKey());
+				});
 		}
 	}
 
@@ -257,6 +278,10 @@ class UserQueryFacadeTest {
 	}
 
 	private UserKeywordProjection keywordProjection(int rank, String name) {
+		return keywordProjection(rank, name, KeywordLevel.LV1, null);
+	}
+
+	private UserKeywordProjection keywordProjection(int rank, String name, KeywordLevel level, String imageUrl) {
 		return new UserKeywordProjection() {
 			@Override
 			public int getRanking() {
@@ -265,12 +290,12 @@ class UserQueryFacadeTest {
 
 			@Override
 			public String getImageUrl() {
-				return null;
+				return imageUrl;
 			}
 
 			@Override
 			public KeywordLevel getLevel() {
-				return KeywordLevel.LV1;
+				return level;
 			}
 
 			@Override
