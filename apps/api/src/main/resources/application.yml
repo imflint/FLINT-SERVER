@@ -77,6 +77,8 @@ tmdb:
   requests-per-second: 5
 
 flint:
+  taste:
+    keyword-catalog-sync-enabled: ${FLINT_TASTE_KEYWORD_CATALOG_SYNC_ENABLED:true}
   content:
     english-word-search-enabled: ${FLINT_ENGLISH_WORD_SEARCH_ENABLED:false}
     single-character-infix-search-enabled: ${FLINT_SINGLE_CHARACTER_INFIX_SEARCH_ENABLED:false}

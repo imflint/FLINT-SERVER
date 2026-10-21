@@ -3,6 +3,8 @@ package kr.flint.api.domain.user.service;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -32,14 +34,14 @@ class TasteAnalysisServiceTest {
 		TasteAnalysisService service = new TasteAnalysisService(chatService, tasteService);
 		GptKeywordDto first = response("드라마");
 		GptKeywordDto second = response("액션");
-		when(chatService.callGptForTaste(List.of())).thenReturn(first, second);
+		when(chatService.callGptForTaste(eq(List.of()), anyList())).thenReturn(first, second);
 		org.mockito.Mockito.doThrow(new TasteExecption(TasteErrorCode.INVALID_ANALYSIS))
 			.doNothing()
 			.when(tasteService).matchUserKeywords(org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.anyList());
 
 		service.analyze(1L, List.of());
 
-		verify(chatService, times(2)).callGptForTaste(List.of());
+		verify(chatService, times(2)).callGptForTaste(eq(List.of()), anyList());
 		verify(tasteService, times(2)).matchUserKeywords(org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.anyList());
 	}
 
@@ -47,13 +49,13 @@ class TasteAnalysisServiceTest {
 	@DisplayName("두 번째 GPT 결과도 유효하지 않으면 오류를 반환")
 	void failsAfterSecondInvalidAnalysis() {
 		TasteAnalysisService service = new TasteAnalysisService(chatService, tasteService);
-		when(chatService.callGptForTaste(List.of())).thenReturn(response("드라마"));
+		when(chatService.callGptForTaste(eq(List.of()), anyList())).thenReturn(response("드라마"));
 		org.mockito.Mockito.doThrow(new TasteExecption(TasteErrorCode.INVALID_ANALYSIS))
 			.when(tasteService).matchUserKeywords(org.mockito.ArgumentMatchers.eq(1L), org.mockito.ArgumentMatchers.anyList());
 
 		assertThatThrownBy(() -> service.analyze(1L, List.of()))
 			.isInstanceOf(TasteExecption.class);
-		verify(chatService, times(2)).callGptForTaste(List.of());
+		verify(chatService, times(2)).callGptForTaste(eq(List.of()), anyList());
 	}
 
 	private GptKeywordDto response(String keyword) {

@@ -54,4 +54,22 @@ public class Keyword extends Base {
             .build();
     }
 
+    // 카탈로그(KeywordCatalog)가 정본이므로 레벨이 어긋난 행은 카탈로그 값으로 보정한다
+    public void changeLevel(KeywordLevel level) {
+        this.level = level;
+    }
+
+    public boolean hasLevel(KeywordLevel level) {
+        return this.level == level;
+    }
+
+    /** 등록된 아이콘이 없으면 레벨 기본 아이콘 키를 돌려준다. 절대 null 이 아니다. */
+    public String resolveIconKey() {
+        return hasImage() ? image : level.getDefaultIconKey();
+    }
+
+    private boolean hasImage() {
+        return image != null && !image.isBlank();
+    }
+
 }

@@ -2,6 +2,8 @@ package kr.flint.infra.gpt.service;
 
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -11,6 +13,7 @@ import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import kr.flint.infra.gpt.dto.GptKeywordDto;
+import kr.flint.infra.gpt.dto.TasteKeywordLevelDto;
 import kr.flint.infra.gpt.dto.TasteWorkMetaDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +29,12 @@ public class ChatService {
 	private static final double INPUT_PRICE_PER_MILLION = 0.15;
 	private static final double OUTPUT_PRICE_PER_MILLION = 0.60;
 
-	private final static String SYSTEM_PROMPT = """
+	/**
+	 * 최종 노출은 6개지만, 서버가 레벨 분산을 적용해 6개를 고를 여유를 두기 위해 후보를 더 받는다.
+	 */
+	private static final int CANDIDATE_KEYWORD_COUNT = 12;
+
+	private final static String SYSTEM_PROMPT_TEMPLATE = """
 You are a taste-profile extractor for a personalization system.
 
 You will receive a list of works bookmarked by a user.
@@ -40,23 +48,18 @@ Important concepts:
 Your task:
 1) Analyze ALL bookmarked works together at the user level.
 2) Identify recurring taste patterns across the works.
-3) Select EXACTLY 6 taste keywords ONLY from the predefined keyword list below.
-4) These 6 keywords represent the user's overall taste profile.
-5) Rank the 6 keywords from most dominant (rank 1) to least dominant (rank 6).
-6) Assign a percentage to EACH keyword that represents its relative weight.
+3) Select EXACTLY %d taste keywords ONLY from the predefined keyword list below.
+4) Rank them from most dominant (rank 1) to least dominant (rank %d).
+5) Assign an integer percentage to EACH keyword representing its relative weight.
+
+Ranking is the only signal the server keeps from you, so order matters more than
+the exact percentages: the server picks the final 6 keywords from your ranked list.
 
 ⚠️ Diversity constraint (MANDATORY):
-- Avoid selecting too many keywords from the same level (LV).
-- You SHOULD aim to distribute keywords across DIFFERENT levels (LV1–LV5) when possible.
-- If multiple keywords are similarly dominant, prefer the one that introduces a NEW level.
+- The top 6 of your ranked list MUST cover at least 3 DIFFERENT levels.
+- Do not fill the top ranks with keywords from a single level.
 - Overuse of Genre (LV1) keywords is discouraged unless strongly unavoidable.
-
-Diversity constraint (MANDATORY):
-- Avoid selecting too many keywords from the same level (LV).
-- When multiple keywords have similar dominance,
-  prefer selecting keywords from DIFFERENT levels (LV1–LV5).
-- Over-concentration in a single level should be avoided
-  unless strongly justified by the works.
+- If multiple keywords are similarly dominant, prefer the one that introduces a NEW level.
 
 How to determine ranking and percentage:
 - Ranking is based on overall dominance and consistency across works.
@@ -71,40 +74,25 @@ Genre inference rule:
 Predefined taste keywords (ONLY selectable options):
 
 --------------------------------------------------
-LV1. Genre :
-- 모험, 코미디, 다큐멘터리, 드라마, 가족, 역사, 액션, 범죄, 호러, 미스터리, SF, 스릴러, 전쟁, 애니메이션, 판타지, 음악, 로맨스, 어린이
-
-LV2. Mood / Emotion :
-- 슬픈, 불안한, 어두운, 긴장되는, 잔혹한, 잔잔한, 설레는, 몽환적인, 유쾌한
-
-LV3. Theme / Narrative Focus :
-- 노년의 삶, 실화 기반, 사회문제, 정체성, 권력, 오피스, 종교, 복수, 추리, 성장, 브로맨스, 우정, 청춘, 생존
-
-LV4. Setting / Era :
-- 사극, 디스토피아, 근미래, 근대, 아포칼립스
-
-LV5. Cultural Context :
-- 한국, 북미, 유럽, 인도, 일본, 영국
-
+%s
 --------------------------------------------------
 
 Hard rules (ABSOLUTE):
 1) You MUST choose only from the predefined keywords above.
-2) Exact match only. No synonyms, paraphrasing, or translation.
-3) Select EXACTLY 6 keywords.
-4) Assign rank from 1 (most dominant) to 6 (least dominant).
+2) The "keyword" value MUST be copied character-for-character from the list.
+   No synonyms, no paraphrasing, no translation, no added or removed spaces.
+3) Select EXACTLY %d keywords, all distinct.
+4) Assign rank from 1 (most dominant) to %d (least dominant), each rank used once.
 5) Assign an integer percentage to EACH keyword.
 6) The sum of all percentages MUST be exactly 100.
 7) Output valid JSON only. No markdown, no comments.
 8) Output keywords sorted by rank in ascending order (rank 1 first).
 
 Fallback rule (MANDATORY):
-- You MUST always output EXACTLY 6 keywords.
-- If fewer than 6 keywords are strongly supported by evidence,
-  you MUST still select additional weaker but plausible keywords
-  from the predefined list.
+- You MUST always output EXACTLY %d keywords.
+- If fewer are strongly supported by evidence, you MUST still select additional
+  weaker but plausible keywords from the predefined list.
 - Weaker keywords MUST be ranked lower and assigned smaller percentages.
-- Never output fewer or more than 6 keywords under any circumstances.
 
 Output format (JSON ONLY):
 
@@ -112,15 +100,16 @@ Output format (JSON ONLY):
   "tasteKeywords": [
     {
       "rank": number,
-      "level": "LV1" | "LV2" | "LV3" | "LV4" | "LV5",
-      "category": string,
       "keyword": string,
       "percent": number
     }
   ]
 }""";
 
-	public GptKeywordDto callGptForTaste(List<TasteWorkMetaDto> tasteWorkMetaDtoList) {
+	public GptKeywordDto callGptForTaste(
+		List<TasteWorkMetaDto> tasteWorkMetaDtoList,
+		List<TasteKeywordLevelDto> keywordCatalog
+	) {
 		try {
 			String worksJson = objectMapper.writeValueAsString(tasteWorkMetaDtoList);
 
@@ -132,7 +121,7 @@ Output format (JSON ONLY):
 			""".formatted(worksJson);
 
 			ChatResponse response = chatClient.prompt()
-				.system(SYSTEM_PROMPT)
+				.system(buildSystemPrompt(keywordCatalog))
 				.user(userPrompt)
 				.call()
 				.chatResponse();
@@ -140,9 +129,52 @@ Output format (JSON ONLY):
 			logTokenUsage(response);
 
 			String content = response.getResult().getOutput().getText();
-			return objectMapper.readValue(content, GptKeywordDto.class);
+			GptKeywordDto result = objectMapper.readValue(content, GptKeywordDto.class);
+			logUnknownKeywords(result, keywordCatalog);
+			return result;
 		} catch (Exception e) {
 			throw new RuntimeException("Error calling gpt for taste keywords", e);
+		}
+	}
+
+	private String buildSystemPrompt(List<TasteKeywordLevelDto> keywordCatalog) {
+		return SYSTEM_PROMPT_TEMPLATE.formatted(
+			CANDIDATE_KEYWORD_COUNT,
+			CANDIDATE_KEYWORD_COUNT,
+			renderKeywordCatalog(keywordCatalog),
+			CANDIDATE_KEYWORD_COUNT,
+			CANDIDATE_KEYWORD_COUNT,
+			CANDIDATE_KEYWORD_COUNT
+		);
+	}
+
+	private String renderKeywordCatalog(List<TasteKeywordLevelDto> keywordCatalog) {
+		if (keywordCatalog == null || keywordCatalog.isEmpty()) {
+			throw new IllegalArgumentException("취향 키워드 후보 목록이 비어 있습니다.");
+		}
+		return keywordCatalog.stream()
+			.map(level -> "%s. %s :%n- %s".formatted(
+				level.level(),
+				level.label(),
+				String.join(", ", level.keywords())
+			))
+			.collect(Collectors.joining(System.lineSeparator() + System.lineSeparator()));
+	}
+
+	// 프롬프트를 벗어난 응답은 서버가 별칭으로 복구하므로 버리지 않고 기록만 한다
+	private void logUnknownKeywords(GptKeywordDto result, List<TasteKeywordLevelDto> keywordCatalog) {
+		if (result == null || result.tasteKeywords() == null) {
+			return;
+		}
+		Set<String> allowed = keywordCatalog.stream()
+			.flatMap(level -> level.keywords().stream())
+			.collect(Collectors.toSet());
+		List<String> unknown = result.tasteKeywords().stream()
+			.map(GptKeywordDto.TasteKeywords::keyword)
+			.filter(keyword -> !allowed.contains(keyword))
+			.toList();
+		if (!unknown.isEmpty()) {
+			log.warn("[GPT] 후보 목록을 벗어난 키워드 응답: {}", unknown);
 		}
 	}
 

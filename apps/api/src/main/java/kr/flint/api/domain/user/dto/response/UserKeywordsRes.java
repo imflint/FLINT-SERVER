@@ -7,7 +7,6 @@ import java.util.stream.IntStream;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 import kr.flint.taste.dto.response.UserKeywordProjection;
-import kr.flint.taste.domain.KeywordColor;
 
 @Schema(description = "사용자 취향 키워드 응답")
 public record UserKeywordsRes(
@@ -16,18 +15,17 @@ public record UserKeywordsRes(
 ) {
     public static UserKeywordsRes from(
         List<UserKeywordProjection> projections,
-        List<KeywordColor> colors,
         Function<String, String> imageUrlResolver
     ) {
         List<KeywordItem> items = IntStream.range(0, Math.min(projections.size(), 6))
-            .mapToObj(index -> KeywordItem.from(projections.get(index), colors.get(index), index + 1, imageUrlResolver))
+            .mapToObj(index -> KeywordItem.from(projections.get(index), index + 1, imageUrlResolver))
             .toList();
         return new UserKeywordsRes(items);
     }
 
     @Schema(description = "키워드 항목")
     public record KeywordItem(
-		@Schema(description = "키워드 색상 (PINK, GREEN, ORANGE, YELLOW, BLUE)", example = "ORANGE")
+		@Schema(description = "키워드 색상 (PINK, GREEN, ORANGE, YELLOW, BLUE). 키워드 레벨에서 결정된다", example = "ORANGE")
 		String color,
 		@Schema(description = "순위", example = "1")
 		int rank,
@@ -42,17 +40,16 @@ public record UserKeywordsRes(
     ) {
         public static KeywordItem from(
 			UserKeywordProjection projection,
-			KeywordColor color,
 			int normalizedRank,
 			Function<String, String> imageUrlResolver
 		) {
             return new KeywordItem(
-				color.toString(),
+				projection.resolveColor().name(),
 				normalizedRank,
                 projection.getName(),
                 projection.getPercentage(),
 				normalizedRank <= 3 ? KeywordGroup.CORE : KeywordGroup.SUB,
-				imageUrlResolver.apply(projection.getImageUrl())
+				imageUrlResolver.apply(projection.resolveIconKey())
             );
         }
     }
