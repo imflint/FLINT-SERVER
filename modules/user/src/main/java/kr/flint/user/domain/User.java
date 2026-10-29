@@ -85,6 +85,15 @@ public class User extends BaseTime {
         this.profileImage = profileImage;
     }
 
+    // 프로필 이미지를 기본 이미지 상태(미등록)로 되돌린다
+    public void removeProfileImage() {
+        this.profileImage = null;
+    }
+
+    public boolean hasProfileImage() {
+        return profileImage != null && !profileImage.isBlank();
+    }
+
     public void withdraw() {
         this.status = UserStatus.WITHDRAWN;
         this.deletedAt = LocalDateTime.now();

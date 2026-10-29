@@ -81,6 +81,12 @@ public class UserService {
     }
 
     @Transactional
+    public void deleteProfileImage(Long userId) {
+        User user = getById(userId);
+        user.removeProfileImage();
+    }
+
+    @Transactional
         public void updateNickname(Long userId, String nickname) {
         NicknamePolicy.validate(nickname);
         if (existsByNickname(nickname)) {

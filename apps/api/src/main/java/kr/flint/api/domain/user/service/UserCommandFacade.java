@@ -40,6 +40,10 @@ public class UserCommandFacade {
 		userService.updateProfileImage(userId, profileImage);
 	}
 
+	public void deleteProfileImage(Long userId) {
+		userService.deleteProfileImage(userId);
+	}
+
 	public void updateNickname(Long userId, String nickname) {
 		userService.updateNickname(userId, nickname);
 	}

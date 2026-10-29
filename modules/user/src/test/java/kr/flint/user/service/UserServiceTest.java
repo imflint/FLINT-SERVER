@@ -40,6 +40,43 @@ class UserServiceTest {
     @InjectMocks
     private UserService userService;
 
+    @Nested
+    @DisplayName("deleteProfileImage")
+    class DeleteProfileImage {
+
+        @Test
+        @DisplayName("프로필 이미지를 삭제하면 미등록 상태로 되돌아간다")
+        void clearsRegisteredProfileImage() {
+            User user = User.createFling("플린트", "user/profile/old-key.jpg");
+            when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+            userService.deleteProfileImage(1L);
+
+            assertThat(user.getProfileImage()).isNull();
+            assertThat(user.hasProfileImage()).isFalse();
+        }
+
+        @Test
+        @DisplayName("이미 프로필 이미지가 없어도 실패하지 않는다")
+        void isIdempotentWhenProfileImageIsAbsent() {
+            User user = User.createFling("플린트");
+            when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+            assertThatCode(() -> userService.deleteProfileImage(1L)).doesNotThrowAnyException();
+            assertThat(user.getProfileImage()).isNull();
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 사용자는 USER_NOT_FOUND")
+        void failsWhenUserNotFound() {
+            when(userRepository.findById(999L)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> userService.deleteProfileImage(999L))
+                .isInstanceOf(UserException.class)
+                .extracting("errorCode").isEqualTo(UserErrorCode.USER_NOT_FOUND);
+        }
+    }
+
     @Test
     @DisplayName("사용자를 비관적 쓰기 잠금으로 조회")
     void getByIdForUpdate() {
