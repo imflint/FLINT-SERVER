@@ -161,6 +161,15 @@ public class UserController implements UserControllerDocs {
         return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_UPDATE));
     }
 
+    @Override
+    @DeleteMapping("/me/profile-image")
+    public ResponseEntity<SuccessResponse<Void>> deleteProfileImage(
+            @CurrentUser Long userId
+    ) {
+        userCommandFacade.deleteProfileImage(userId);
+        return ResponseEntity.ok(SuccessResponse.of(SuccessCode.SUCCESS_DELETE));
+    }
+
 	@Override
 	@GetMapping("/{userId}/bookmarked-contents")
 	public ResponseEntity<SuccessResponse<GetContentListRes>> getUserBookmarkedContents(

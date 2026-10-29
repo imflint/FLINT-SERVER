@@ -120,6 +120,21 @@ public interface UserControllerDocs {
             @Valid @RequestBody UpdateProfileImageReq request
     );
 
+    @Operation(summary = "프로필 이미지 삭제",
+               description = """
+                   로그인한 사용자의 프로필 이미지를 삭제하고 기본 이미지 상태로 되돌립니다.
+
+                   - 이미 프로필 이미지가 없어도 `200`을 반환합니다.
+                   - 삭제 후 프로필 조회의 `profileImageUrl`은 `null`로 내려갑니다.
+                   """)
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "프로필 이미지 삭제 성공", useReturnTypeSchema = true),
+            @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음")
+    })
+    ResponseEntity<SuccessResponse<Void>> deleteProfileImage(
+            @Parameter(hidden = true) Long userId
+    );
+
     // === 타인 조회 (인증 선택) ===
 
     @Operation(summary = "사용자 프로필 조회 - 호주",
