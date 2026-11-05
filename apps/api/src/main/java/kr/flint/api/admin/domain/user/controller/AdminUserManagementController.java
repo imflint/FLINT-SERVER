@@ -6,6 +6,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,6 +16,9 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 import kr.flint.api.admin.domain.user.controller.spec.AdminUserManagementControllerDocs;
 import kr.flint.api.admin.domain.user.dto.request.AdminUserModerationReq;
+import kr.flint.api.admin.domain.user.dto.request.AdminUserProfileImageReq;
+import kr.flint.shared.storage.FileExtension;
+import kr.flint.shared.storage.StorageUploadUrl;
 import kr.flint.api.admin.domain.user.dto.response.AdminUserDetailRes;
 import kr.flint.api.admin.domain.user.dto.response.AdminUserSummaryRes;
 import kr.flint.api.admin.domain.user.service.AdminUserManagementFacade;
@@ -58,6 +62,32 @@ public class AdminUserManagementController implements AdminUserManagementControl
         return ResponseEntity.ok(SuccessResponse.of(
             SuccessCode.SUCCESS_FETCH,
             adminUserManagementFacade.getUser(adminId, userId)
+        ));
+    }
+
+    @Override
+    @PostMapping("/{userId}/profile-image/upload-url")
+    public ResponseEntity<SuccessResponse<StorageUploadUrl>> getProfileImageUploadUrl(
+        @CurrentAdmin Long adminId,
+        @PathVariable Long userId,
+        @RequestParam FileExtension extension
+    ) {
+        return ResponseEntity.ok(SuccessResponse.of(
+            SuccessCode.SUCCESS_FETCH,
+            adminUserManagementFacade.getProfileImageUploadUrl(adminId, userId, extension)
+        ));
+    }
+
+    @Override
+    @PatchMapping("/{userId}/profile-image")
+    public ResponseEntity<SuccessResponse<AdminUserDetailRes>> updateProfileImage(
+        @CurrentAdmin Long adminId,
+        @PathVariable Long userId,
+        @Valid @RequestBody AdminUserProfileImageReq request
+    ) {
+        return ResponseEntity.ok(SuccessResponse.of(
+            SuccessCode.SUCCESS_UPDATE,
+            adminUserManagementFacade.updateProfileImage(adminId, userId, request)
         ));
     }
 

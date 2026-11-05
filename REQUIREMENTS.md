@@ -917,6 +917,8 @@ flint-api/
 - 관리자 인증은 일반 사용자 인증과 분리된 `ADMIN` audience JWT와 `AdminPrincipal`을 사용한다.
 - `/api/v1/admin/**`는 우선순위 1 SecurityFilterChain, 일반 API는 우선순위 2 SecurityFilterChain으로 처리한다.
 - 관리자 로그인·refresh 외 요청은 ADMIN 토큰만 허용하고, 일반 API는 USER 토큰만 허용한다.
+- 활성 플리너 사진은 회원 상세에서 JPG/PNG/WebP 파일을 선택해 교체한다. `POST /api/v1/admin/users/{userId}/profile-image/upload-url?extension=PNG`로 기존 `USER_PROFILE` 경로의 업로드 URL을 발급받고, PUT 업로드 성공 후 `PATCH /api/v1/admin/users/{userId}/profile-image`에 `profileImage` key를 전송한다. 발급과 변경 모두 관리자 계정 권한·활성 FLINER 여부를 검사하며 변경 시 사용자 행을 잠근다. 기존 사진 객체는 삭제하지 않는다.
+- 컬렉션 편집의 콘텐츠 선택은 기존 `/api/v1/admin/contents` 검색과 `nextCursor`를 사용해 추가 결과를 조회한다. 첫 20개에 없는 작품도 ‘검색 결과 더 보기’로 선택하며 제목·종류·연도·감독/작가를 표시한다. 선택한 ID와 이미지 배열 순서는 보존한다. 제목·설명에는 이모지를 입력할 수 있으며 기존 UTF-16 기준 길이 제한(20/200)은 유지한다. 실제 데이터의 특정 작품 노출과 S3 업로드는 별도 인증 검증이 필요하다.
 - `POST /api/v1/admin/contents`는 TMDB에 없는 영화/TV를 수동 등록한다. 종류·제목은 필수이며 연도(미입력 0)·감독/작가·설명·포스터·표준 장르는 선택이다. 관리자 권한 확인 후 새 ID와 저장 수 0, `tmdb_id=NULL`로 콘텐츠·장르를 원자적으로 저장하고 201 공통 응답을 반환한다. 제목은 기존 검색 정규화 로직으로 가공하며 같은 제목의 기존 작품을 병합하거나 덮어쓰지 않는다. 장르 별칭은 기존 표준 ID로 연결하고 알 수 없는 장르는 400, 마스터 이관 미완료는 409다.
 - 수동 콘텐츠는 기존 검색·컬렉션·북마크에서 사용하며 TMDB 동기화·제목 승격·언어 정리 및 TMDB 제목 중복 소유권 판정에서 제외한다. 기존 TMDB 작품 간 중복 규칙은 유지하고 수동 작품의 TMDB 연결·OTT 직접 등록은 추가하지 않는다. 전역 non-null 정책에 따라 수동 응답의 `tmdbId`는 생략하고 프런트는 nullable/optional 문자열로 수용한다.
 - 어드민 `/admin/content`에서 추가 Drawer로 등록하며 실패 시 입력을 유지하고 저장 중 중복 제출을 막는다. 기존 수정 요청 중에는 새 등록을 막아 지연 응답으로 두 Drawer가 겹치지 않도록 한다. 성공 시 목록 필터·커서를 초기화하고 생성 작품의 상세를 표시한다. 수동/TMDB 등록 경로를 목록·상세에서 구분한다. 서버 멱등 키는 추가하지 않으므로 응답 유실 후 재등록 전 목록 확인이 필요하다.

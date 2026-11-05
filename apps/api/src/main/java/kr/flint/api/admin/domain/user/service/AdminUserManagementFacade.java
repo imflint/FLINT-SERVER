@@ -11,20 +11,28 @@ import org.springframework.transaction.annotation.Transactional;
 
 import kr.flint.api.admin.common.AdminAuthorizationService;
 import kr.flint.api.admin.domain.user.dto.request.AdminUserModerationReq;
+import kr.flint.api.admin.domain.user.dto.request.AdminUserProfileImageReq;
 import kr.flint.api.admin.domain.user.dto.response.AdminUserDetailRes;
 import kr.flint.api.admin.domain.user.dto.response.AdminUserModerationHistoryRes;
 import kr.flint.api.admin.domain.user.dto.response.AdminUserSummaryRes;
 import kr.flint.api.admin.domain.user.repository.AdminUserQueryRepository;
 import kr.flint.api.admin.domain.user.repository.AdminUserQueryRepository.UserRow;
+import kr.flint.api.global.storage.service.StorageFacade;
 import kr.flint.infra.storage.cloudfront.CloudFrontUrlProvider;
+import kr.flint.infra.storage.enums.StoragePathType;
 import kr.flint.moderation.domain.UserModerationAction;
 import kr.flint.moderation.service.UserModerationHistoryService;
 import kr.flint.shared.dto.PaginationResponse;
 import kr.flint.shared.exception.ErrorCode;
 import kr.flint.shared.exception.GeneralException;
+import kr.flint.shared.storage.FileExtension;
+import kr.flint.shared.storage.StorageUploadUrl;
+import kr.flint.user.domain.User;
+import kr.flint.user.domain.UserRole;
 import kr.flint.user.domain.UserStatus;
 import kr.flint.user.exception.UserErrorCode;
 import kr.flint.user.exception.UserException;
+import kr.flint.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 
 @Component
@@ -40,6 +48,8 @@ public class AdminUserManagementFacade {
     private final AdminUserModerationApplicationService moderationApplicationService;
     private final UserModerationHistoryService userModerationHistoryService;
     private final CloudFrontUrlProvider cloudFrontUrlProvider;
+    private final UserService userService;
+    private final StorageFacade storageFacade;
 
     public PaginationResponse<AdminUserSummaryRes> getUsers(
         Long adminId,
@@ -87,6 +97,20 @@ public class AdminUserManagementFacade {
         return toDetail(getUserRow(userId));
     }
 
+    public StorageUploadUrl getProfileImageUploadUrl(Long adminId, Long userId, FileExtension extension) {
+        adminAuthorizationService.validateAdmin(adminId);
+        validateEditableFliner(userService.getById(userId));
+        return storageFacade.getUploadUrl(StoragePathType.USER_PROFILE, extension);
+    }
+
+    @Transactional
+    public AdminUserDetailRes updateProfileImage(Long adminId, Long userId, AdminUserProfileImageReq request) {
+        adminAuthorizationService.validateAdmin(adminId);
+        validateEditableFliner(userService.getByIdForUpdate(userId));
+        userService.updateProfileImage(userId, request.profileImage());
+        return toDetail(getUserRow(userId));
+    }
+
     @Transactional
     public AdminUserDetailRes moderateUser(Long adminId, Long userId, AdminUserModerationReq request) {
         adminAuthorizationService.validateAdmin(adminId);
@@ -102,6 +126,12 @@ public class AdminUserManagementFacade {
             normalizeNullableText(request.adminMemo())
         );
         return toDetail(getUserRow(userId));
+    }
+
+    private void validateEditableFliner(User user) {
+        if (user.getUserRole() != UserRole.FLINER || user.getStatus() != UserStatus.ACTIVE) {
+            throw new GeneralException(ErrorCode.INVALID_INPUT, "활성 플리너의 사진만 변경할 수 있습니다.");
+        }
     }
 
     private AdminUserSummaryRes toSummary(UserRow row) {

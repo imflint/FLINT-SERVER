@@ -13,6 +13,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import kr.flint.api.admin.domain.user.dto.request.AdminUserModerationReq;
+import kr.flint.api.admin.domain.user.dto.request.AdminUserProfileImageReq;
+import kr.flint.shared.storage.FileExtension;
+import kr.flint.shared.storage.StorageUploadUrl;
 import kr.flint.api.admin.domain.user.dto.response.AdminUserDetailRes;
 import kr.flint.api.admin.domain.user.dto.response.AdminUserSummaryRes;
 import kr.flint.shared.dto.PaginationResponse;
@@ -22,6 +25,22 @@ import kr.flint.user.domain.UserStatus;
 
 @Tag(name = "User Admin", description = "회원 관리 API")
 public interface AdminUserManagementControllerDocs {
+
+    @Operation(summary = "플리너 사진 업로드 URL 발급", description = "활성 플리너의 사진 교체를 위한 업로드 URL을 발급합니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    ResponseEntity<SuccessResponse<StorageUploadUrl>> getProfileImageUploadUrl(
+        @Parameter(hidden = true) Long adminId,
+        Long userId,
+        FileExtension extension
+    );
+
+    @Operation(summary = "플리너 사진 변경", description = "업로드 완료 후 반환받은 key로 활성 플리너의 사진을 변경합니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    ResponseEntity<SuccessResponse<AdminUserDetailRes>> updateProfileImage(
+        @Parameter(hidden = true) Long adminId,
+        Long userId,
+        AdminUserProfileImageReq request
+    );
 
     @Operation(summary = "회원 목록 조회", description = "관리자가 회원을 검색하고 목록을 page/size 기반으로 조회합니다.")
     @SecurityRequirement(name = "bearerAuth")
