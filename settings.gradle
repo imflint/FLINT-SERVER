@@ -16,6 +16,7 @@ include 'modules:terms'
 include 'modules:moderation'
 include 'modules:admin'
 include 'modules:exploration'
+include 'modules:system'
 
 include 'infra:redis'
 include 'infra:storage'
