@@ -65,7 +65,8 @@ public class SecurityConfig {
                         "/api/v1/bookmarks/{collectionId}",
                         "/api/v1/contents/search",
                         "/api/v1/search/contents",
-                        "/api/v1/home/popular-collections"
+                        "/api/v1/home/popular-collections",
+                        "/api/v1/system/version"
                     ).permitAll()
                     .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

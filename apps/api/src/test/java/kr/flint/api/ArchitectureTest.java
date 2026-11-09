@@ -32,7 +32,8 @@ class ArchitectureTest {
             "kr.flint.bookmark",
             "kr.flint.taste",
             "kr.flint.search",
-            "kr.flint.terms"
+            "kr.flint.terms",
+            "kr.flint.system"
     };
 
     private static final String[] INFRA_MODULES = {
