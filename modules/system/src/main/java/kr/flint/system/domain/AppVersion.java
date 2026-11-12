@@ -27,7 +27,7 @@ import lombok.NoArgsConstructor;
 public class AppVersion extends BaseTime {
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20, unique = true)
+    @Column(nullable = false, length = 20)
     private AppPlatform platform;
 
     /** 최소 지원 버전(x.y.z). 앱 버전이 이보다 낮으면 강제 업데이트 대상이다. */
