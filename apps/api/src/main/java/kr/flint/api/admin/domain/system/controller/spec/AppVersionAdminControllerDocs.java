@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import kr.flint.api.admin.domain.system.dto.request.AppVersionUpsertReq;
@@ -18,6 +19,7 @@ import kr.flint.system.domain.AppPlatform;
 @Tag(name = "Admin - App Version", description = "강제 업데이트 정책 관리 API")
 public interface AppVersionAdminControllerDocs {
 
+    @SecurityRequirement(name = "bearerAuth")
     @Operation(summary = "앱 버전 정책 목록 조회",
                description = "플랫폼별로 등록된 최소 지원 버전과 스토어 주소를 조회합니다.")
     @ApiResponses({
@@ -27,6 +29,7 @@ public interface AppVersionAdminControllerDocs {
             @Parameter(hidden = true) Long adminId
     );
 
+    @SecurityRequirement(name = "bearerAuth")
     @Operation(summary = "앱 최소 지원 버전 등록/변경",
                description = """
                    플랫폼의 최소 지원 버전과 스토어 주소를 등록하거나 변경합니다. **앱 재배포 없이 즉시 적용됩니다.**
