@@ -120,7 +120,8 @@ public class SwaggerConfig {
 				Map.entry("/api/v1/users/{userId}/keywords", List.of("GET")),
 				Map.entry("/api/v1/users/{userId}/collections", List.of("GET")),
 				Map.entry("/api/v1/users/{userId}/bookmarked-collections", List.of("GET")),
-				Map.entry("/api/v1/collections", List.of("GET"))
+				Map.entry("/api/v1/collections", List.of("GET")),
+				Map.entry("/api/v1/system/version", List.of("GET"))
 			);
 
 			publicByMethod.forEach((path, methods) -> {
